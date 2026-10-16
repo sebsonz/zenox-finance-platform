@@ -49,10 +49,6 @@ function app() {
   return server;
 }
 
-async function request(body: unknown) {
-  return app().request;
-}
-
 describe("POST /tax/calculate", () => {
   beforeEach(() => vi.clearAllMocks());
 
