@@ -20,12 +20,15 @@ ALTER TABLE public.finance_invoices
   ADD CONSTRAINT finance_invoices_tax_snapshot_pair_ck
   CHECK ((tax_snapshot_id IS NULL) = (tax_snapshot_version IS NULL));
 
+ALTER TABLE public.finance_tax_calculation_snapshots
+  ADD CONSTRAINT finance_tax_snapshots_tenant_id_id_uq UNIQUE (tenant_id, id);
+
 ALTER TABLE public.finance_invoices
   DROP CONSTRAINT IF EXISTS finance_invoices_tax_snapshot_fk;
 ALTER TABLE public.finance_invoices
   ADD CONSTRAINT finance_invoices_tax_snapshot_fk
-  FOREIGN KEY (tax_snapshot_id)
-  REFERENCES public.finance_tax_calculation_snapshots(id)
+  FOREIGN KEY (tenant_id, tax_snapshot_id)
+  REFERENCES public.finance_tax_calculation_snapshots(tenant_id, id)
   ON DELETE RESTRICT;
 
 CREATE INDEX IF NOT EXISTS finance_invoices_tax_snapshot_idx
