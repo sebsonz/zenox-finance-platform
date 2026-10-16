@@ -157,6 +157,33 @@ export const invoiceTaxSnapshotService = {
         };
       });
 
+      // Apply the authoritative per-line result in the same transaction as the
+      // immutable snapshot insert and invoice linkage. If any row is no longer
+      // attached to this invoice/tenant, throw and roll the entire operation back.
+      for (const line of calculatedLines) {
+        const updatedLine = await client.query(
+          `UPDATE public.finance_invoice_lines
+              SET taxable_amount = $4,
+                  tax_amount = $5,
+                  total = $6
+            WHERE tenant_id = $1 AND invoice_id = $2 AND id = $3`,
+          [
+            context.tenantId,
+            invoiceId,
+            line.invoiceLineId,
+            line.taxCalculation.baseAmount,
+            line.taxCalculation.taxTotal,
+            line.taxCalculation.grandTotal,
+          ],
+        );
+        if (updatedLine.rowCount !== 1) {
+          throw new InvoiceTaxSnapshotServiceError(
+            "TAX_SNAPSHOT_MISMATCH",
+            "An invoice line changed while the tax snapshot was being calculated.",
+          );
+        }
+      }
+
       const sum = (values: string[]): string =>
         values.reduce((total, value) => total.plus(new Decimal(value)), new Decimal(0))
           .toDecimalPlaces(currency.minorUnit, Decimal.ROUND_HALF_UP)
