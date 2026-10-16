@@ -77,3 +77,30 @@ A precise percentage is not asserted because there is no implemented-feature inv
 ## New-chat continuation note (2026-10-16)
 
 The latest code commit merged on `main` is `d01afcc306e92746e4c7e7c18ebfd807e13c61be` (invoice draft editing with optimistic concurrency); PR CI passed: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38969717194. The next session should start with authoritative tax-rule → immutable tax-snapshot binding for invoice drafts, then sequence-safe issuance and immutable issued documents; read current main files rather than asking for previously available files. All work used disposable PostgreSQL/CI only. The post-merge `main` workflow for `d01afcc` has been triggered and must be checked to completion. No live Finance Supabase connection or migration was performed, and ZENOX FRET V2 was not touched.
+
+
+## Continuation update — 2026-10-16 (tax binding + issuance)
+
+The Finance-only invoice tax binding and sequence-safe issuance work is now implemented on branch `feat/invoice-tax-snapshot-binding`, PR #5 remains open as a draft:
+https://github.com/sebsonz/zenox-finance-platform/pull/5
+
+Latest validated code head at this checkpoint: `e02808d3e551b0c49e44ad142571f47582eb0c4f`. Exact-head CI passed: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38978118027. The passing workflow includes backend typecheck/build, disposable PostgreSQL migration application, least-privilege runtime-role setup, migration checksum audit, unit + PostgreSQL integration tests, and frontend typecheck/build.
+
+### Newly implemented and CI-validated
+- Migration `20261016001100_invoice_tax_snapshot_binding.sql`: invoice revisions, snapshot link/version, tax status and amount due after withholding; constraints and tenant/document/revision linkage guards.
+- Per-line effective tax calculation from active jurisdiction/date/category rules; immutable tax input/rule/result snapshot; atomic invoice-line and invoice-total update; draft edit invalidates old snapshot link and increments document revision.
+- Migration `20261016001200_invoice_issuance_lifecycle.sql`: tenant/year sequence allocation through a tenant-context-checked database function; unique invoice code; issued-at/issuer metadata; database guard requiring a tax snapshot before issuance; immutable invoice and line triggers.
+- Protected `POST /api/v1/invoices/:invoiceId/issue` requiring `invoice:issue` and the exact `expectedUpdatedAt` concurrency token.
+- Number allocation, invoice status change and issue metadata are in one transaction. PostgreSQL integration tests exercise concurrent issuance with unique invoice codes, linked tax evidence, and rejection of issued-document and line mutation. The direct-database issuance bypass is also tested.
+- Existing draft integration fixture was updated to issue only with a linked snapshot and issuer identity.
+- Sequence table is not directly granted to the runtime role; allocation uses the tenant-context-checked function. CI migration application and checksum audit passed.
+- PR remains a draft and `main` remains unchanged. No live Finance Supabase migration was run; ZENOX FRET V2 was not touched.
+
+### Honest remaining invoice-module scope — do not start Payments yet
+1. Immutable issued-document artifact/rendering and PDF generation with a private-storage boundary, content hash, version and retrieval authorization.
+2. Credit-note/correction and cancellation-event workflow that never edits the issued source invoice.
+3. Issuance idempotency/retry semantics, complete legal-field/numbering policy configuration, and jurisdictional review (no claim of tax/legal compliance yet).
+4. Complete customer-facing invoice UI/workflows and end-to-end acceptance covering draft → tax snapshot → issue → immutable artifact → correction/credit note.
+5. Final security/concurrency review and exact-head green CI before merging PR #5.
+
+After these invoice lifecycle items are complete and validated, proceed to Payments/allocations. Keep all validation on disposable PostgreSQL until explicitly approved otherwise. Never apply Finance migrations to the ZENOX FRET V2 database.
