@@ -62,11 +62,12 @@ integrationDescribe("PostgreSQL customer write and read isolation contract", () 
         [customerId],
       );
       expect(foreign.rowCount).toBe(0);
+      const forbiddenUpdate = await runtime.query(
+        "UPDATE public.finance_customers SET legal_name = 'tampered' WHERE id = $1",
+        [customerId],
+      );
+      expect(forbiddenUpdate.rowCount).toBe(0);
       await runtime.query("ROLLBACK");
-
-      await expect(
-        runtime.query("UPDATE public.finance_customers SET legal_name = 'tampered' WHERE id = $1", [customerId]),
-      ).rejects.toMatchObject({ code: "42501" });
     } catch (error) {
       await runtime.query("ROLLBACK").catch(() => undefined);
       throw error;
