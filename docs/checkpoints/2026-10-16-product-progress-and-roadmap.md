@@ -27,10 +27,10 @@ Preserve the approved target: independent, extensible finance platform; modular 
   - Tenant repository transaction/RLS change: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38960942030
   - Tenant self-row RLS migration: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38960961866
 - Tenant-directory RLS integration tests initially exposed a policy issue; forward-only migration `20261016000900_reassert_tenant_directory_rls.sql` was added and CI passed: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38964772486.
-- Invoice draft persistence, tenant-scoped routes, validation tests and a PostgreSQL RLS isolation test have now been added. The latest PostgreSQL RLS test run is pending at https://github.com/sebsonz/zenox-finance-platform/actions/runs/38965751253; do not treat that test as passed until the run completes.
+- Invoice draft persistence, tenant-scoped routes, validation tests and PostgreSQL RLS isolation tests have been added. Invoice/line tenant isolation passed in CI: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38965751253. The follow-up cursor/sort alignment and expanded customer RLS tests are running in CI: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38966522663. Do not treat the latest changes as passed until that run completes.
 
 ### Partially implemented (do not describe as complete)
-- Invoice domain: draft persistence and tenant-scoped create/list/detail API now exist with stored lines, server-calculated draft totals, a customer snapshot and currency precision snapshot. Still incomplete: draft editing, authoritative jurisdiction-based tax rule application and tax snapshot binding at issue time, sequence-safe numbering, issue/cancel/credit-note lifecycle, immutable issued documents, document generation/PDF and full customer-facing workflows. The draft tax-rate input is provisional and is not a claim of tax compliance.
+- Invoice domain: draft persistence and tenant-scoped create/list/detail API now exist with stored lines, server-calculated draft totals, a customer snapshot and currency precision snapshot. Keyset pagination now compares the `(created_at, id)` tuple matching the descending sort; CI verification is in progress. Still incomplete: draft editing, authoritative jurisdiction-based tax rule application and tax snapshot binding at issue time, sequence-safe numbering, issue/cancel/credit-note lifecycle, immutable issued documents, document generation/PDF and full customer-facing workflows. The draft tax-rate input is provisional and is not a claim of tax compliance.
 - Customers/currencies: foundational schemas and some repository/service code exist; complete CRUD APIs, pagination/search, tenant security coverage, currency reference population/refresh policy and end-to-end UI are not yet evidenced as complete.
 - Taxes: core calculation and immutable snapshot API exist; authoritative jurisdiction-specific rule data requires reviewed sources and competent legal/tax validation. Schema coverage does not mean international tax compliance.
 - User authentication: token verification and single-tenant access lookup exist; membership invitation/activation/revocation, secure tenant discovery/listing and full BFF/UI session workflows remain open.
@@ -55,8 +55,8 @@ A precise percentage is not asserted because there is no implemented-feature inv
 
 ## Next execution order
 
-1. Confirm CI for commit `2cc13ca39e3cca77edd6d8a671fabec89beeff87`; fix any failure before proceeding.
-2. Expand PostgreSQL RLS tests to tenant memberships and customer records; assert the runtime role is non-superuser/non-BYPASSRLS and least-privilege grants are explicit.
+1. Confirm CI for the invoice pagination cursor fix and expanded customer RLS coverage; fix any failure before proceeding.
+2. Expand PostgreSQL RLS tests to tenant memberships; assert the runtime role is non-superuser/non-BYPASSRLS and least-privilege grants are explicit. Customer/invoice/line tenant isolation is now covered in the integration test.
 3. Establish an auditable test fixture/seed strategy and migration drift check for the dedicated Finance database; do not execute destructive changes on the real Supabase project without a verified inventory and backup.
 4. Finish customer and currency APIs/contracts and tenant-isolation tests.
 5. Complete invoice lifecycle: draft editing; apply authoritative jurisdiction rules and persist tax snapshots; sequence-safe issue; immutable issued documents; cancellation/credit notes; then end-to-end acceptance.
