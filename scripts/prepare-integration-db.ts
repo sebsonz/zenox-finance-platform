@@ -91,15 +91,15 @@ async function prepare(): Promise<void> {
       | Record<string, boolean>
       | undefined;
     if (
-      membershipGrants?.can_select !== false ||
-      membershipGrants.can_insert !== false ||
-      membershipGrants.can_update !== false ||
-      membershipGrants.can_delete !== false ||
-      membershipGrants.can_truncate !== false ||
-      membershipGrants.can_references !== false ||
-      membershipGrants.can_trigger !== false ||
-      membershipGrants.schema_usage !== true ||
-      membershipGrants.schema_create !== false
+      membershipGrants?.["can_select"] !== false ||
+      membershipGrants["can_insert"] !== false ||
+      membershipGrants["can_update"] !== false ||
+      membershipGrants["can_delete"] !== false ||
+      membershipGrants["can_truncate"] !== false ||
+      membershipGrants["can_references"] !== false ||
+      membershipGrants["can_trigger"] !== false ||
+      membershipGrants["schema_usage"] !== true ||
+      membershipGrants["schema_create"] !== false
     ) {
       throw new Error("Runtime database grants do not satisfy least-privilege membership policy");
     }
