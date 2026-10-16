@@ -2,9 +2,9 @@ name: ZENOX Finance CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/invoice-tax-snapshot-binding, chore/monorepo-frontend-backend-structure]
   pull_request:
-    branches: [main]
+    branches: [main, feat/invoice-tax-snapshot-binding]
 
 permissions:
   contents: read
@@ -39,23 +39,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install dependencies
-        run: npm install
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Build
-        run: npm run build
+      - name: Install backend dependencies
+        run: npm --prefix backend install
+      - name: Backend typecheck
+        run: npm --prefix backend run typecheck
+      - name: Backend build
+        run: npm --prefix backend run build
       - name: Apply Finance migrations to disposable PostgreSQL
-        run: npm run db:migrate
+        run: npm --prefix backend run db:migrate
       - name: Prepare least-privilege integration role and fixtures
-        run: npm run db:test:prepare
+        run: npm --prefix backend run db:test:prepare
       - name: Audit applied migration checksums
-        run: npm run db:drift-check
+        run: npm --prefix backend run db:drift-check
       - name: Unit and PostgreSQL integration tests
-        run: npm test
-      - name: Install web dependencies
-        run: npm --prefix web install
-      - name: Typecheck web
-        run: npm --prefix web run typecheck
-      - name: Build web
-        run: npm --prefix web run build
+        run: npm --prefix backend test
+      - name: Install frontend dependencies
+        run: npm --prefix frontend install
+      - name: Frontend typecheck
+        run: npm --prefix frontend run typecheck
+      - name: Frontend build
+        run: npm --prefix frontend run build
