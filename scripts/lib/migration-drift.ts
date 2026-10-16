@@ -12,7 +12,7 @@ export interface AppliedMigration {
 }
 
 export interface MigrationInventoryIssue {
-  code: "DUPLICATE_TIMESTAMP" | "APPLIED_MISSING_LOCALLY" | "CHECKSUM_MISMATCH" | "INVALID_NAME" | "DUPLICATE_NAME";
+  code: "DUPLICATE_TIMESTAMP" | "APPLIED_MISSING_LOCALLY" | "CHECKSUM_MISMATCH" | "INVALID_NAME" | "DUPLICATE_NAME" | "INVALID_CHECKSUM";
   message: string;
 }
 
@@ -79,6 +79,12 @@ export function compareMigrationInventory(
         message: `Migration ledger contains duplicate entry: ${applied.name}`,
       });
       continue;
+    }
+    if (!/^[a-f0-9]{64}$/.test(applied.checksum)) {
+      issues.push({
+        code: "INVALID_CHECKSUM",
+        message: `Migration ledger checksum is not a SHA-256 hex digest: ${applied.name}`,
+      });
     }
     appliedByName.set(applied.name, applied);
     const local = localByName.get(applied.name);
