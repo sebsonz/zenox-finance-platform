@@ -122,6 +122,40 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
     expect(verify.rows.every((row) => row.status === "ISSUED" && row.issued_at instanceof Date && row.tax_snapshot_id)).toBe(true);
   });
 
+  it("rejects direct database issuance when the authoritative tax snapshot is missing", async () => {
+    const admin = await pool.connect();
+    let draft: { id: string; updatedAt: string };
+    try {
+      await admin.query("BEGIN");
+      draft = await seedReadyDraft(admin);
+      await admin.query(
+        `UPDATE public.finance_invoices
+            SET tax_snapshot_id = NULL, tax_snapshot_version = NULL, tax_status = 'PROVISIONAL'
+          WHERE tenant_id = $1 AND id = $2`,
+        [tenantId, draft!.id],
+      );
+      await admin.query("SAVEPOINT issue_without_tax_evidence");
+      await expect(
+        admin.query(
+          `UPDATE public.finance_invoices
+              SET status = 'ISSUED', invoice_code = 'INV-INVALID-000001',
+                  issue_date = CURRENT_DATE, issued_at = clock_timestamp(),
+                  issued_by_principal_id = $3
+            WHERE tenant_id = $1 AND id = $2`,
+          [tenantId, draft!.id, randomUUID()],
+        ),
+      ).rejects.toMatchObject({ code: "23514" });
+      await admin.query("ROLLBACK TO SAVEPOINT issue_without_tax_evidence");
+      await admin.query("RELEASE SAVEPOINT issue_without_tax_evidence");
+      await admin.query("ROLLBACK");
+    } catch (error) {
+      await admin.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      admin.release();
+    }
+  });
+
   it("blocks edits/deletes of issued invoices and mutations of their lines", async () => {
     const admin = await pool.connect();
     let draft: { id: string; updatedAt: string };
