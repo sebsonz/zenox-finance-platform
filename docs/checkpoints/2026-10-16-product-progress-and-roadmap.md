@@ -129,3 +129,24 @@ Validated head for this slice: `55c58664a0675469487003995ff36663c35517f2`. Exact
 5. Security/concurrency review and green CI on the final invoice-module head before merging PR #5.
 
 Do not start Payments until these invoice lifecycle items are completed and validated. Keep PR #5 a draft while work remains. All DB tests use disposable PostgreSQL only.
+
+
+## Continuation update — 2026-10-17 (multi-line PDF + full-reversal credit notes)
+
+Additional code is now on PR #5 / branch `feat/invoice-tax-snapshot-binding`. This is implemented but must not be marked validated until CI passes on the final head.
+
+### Added
+- Multi-line invoice contract explicitly supports 1–500 lines. Repository persists every line, and HTML/PDF renderers iterate over every line in order.
+- Added renderer unit tests with multiple lines, discount/tax examples and HTML-escaping protection; invoice-draft schema tests now explicitly cover a multi-line request.
+- Added a built-in PDF 1.4 renderer and immutable PDF artifact table/migration `20261016001400_invoice_pdf_artifacts.sql`. PDF is created atomically with HTML during issuance, stores SHA-256, is tenant-scoped, immutable and hash-verified on retrieval.
+- Added authenticated `GET /api/v1/invoices/:invoiceId/document.pdf` with private/no-store caching and an ETag hash.
+- Added full-reversal credit-note migration `20261016001500_invoice_credit_notes.sql`, service, routes and tests. Only an issued source invoice with its linked tax snapshot can be reversed. The source invoice remains unchanged; a unique `CN-YYYY-NNNNNN` credit note stores original line/customer/tax evidence and immutable HTML/PDF renditions. Only one full reversal per source invoice is allowed.
+- Credit-note retrieval endpoints are tenant-scoped, require `invoice:read`, and verify content hashes. Creation requires `invoice:credit`.
+
+### Explicit limitations
+- Credit notes currently support full reversal only, not partial credit, debit notes, replacement invoices, or approval workflows.
+- Credit-note tax treatment and required legal fields must be validated per jurisdiction; the source snapshot is preserved as evidence, not a universal claim of credit-note tax compliance.
+- PDF output is a technical printable artifact using a built-in Helvetica PDF 1.4 writer; it normalizes non-ASCII characters and still needs visual/legal review, page-layout QA and archival-policy validation.
+- Frontend invoice workflows are still not connected to authenticated backend CRUD; the current frontend marks the invoice page as not connected. This must be completed before declaring the whole module done.
+- Issuance retry idempotency and final end-to-end UI acceptance remain open.
+- Keep PR #5 in draft. Do not merge until the latest exact head passes all CI checks and remaining frontend/idempotency/legal-scope criteria are handled. No live Finance migration and no ZENOX FRET V2 database access.
