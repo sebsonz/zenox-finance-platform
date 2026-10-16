@@ -165,7 +165,8 @@ export const invoiceTaxSnapshotService = {
 
       // Capture the pre-tax values before any update, so the immutable input
       // snapshot records exactly what the engine received.
-      const taxableTotal = sum(lines.rows.map((line) => line.taxable_amount));
+      const inputTaxableTotal = sum(lines.rows.map((line) => line.taxable_amount));
+      const taxableTotal = sum(calculatedLines.map((line) => line.taxCalculation.baseAmount));
       const provisionalLineInputs = lines.rows.map((line) => ({
         invoiceLineId: line.id,
         lineNumber: line.line_number,
@@ -231,6 +232,7 @@ export const invoiceTaxSnapshotService = {
             subtotal: invoice.subtotal,
             discountTotal: invoice.discount_total,
             taxableTotal: invoice.taxable_total,
+            inputTaxableTotal,
             provisionalTaxTotal: invoice.tax_total,
             provisionalGrandTotal: invoice.grand_total,
           },
@@ -280,20 +282,22 @@ export const invoiceTaxSnapshotService = {
             SET tax_snapshot_id = $4,
                 tax_snapshot_version = $5,
                 tax_status = 'CALCULATED',
-                tax_total = $6,
-                grand_total = $7,
+                taxable_total = $6,
+                tax_total = $7,
+                grand_total = $8,
                 updated_at = clock_timestamp()
           WHERE tenant_id = $1
             AND id = $2
             AND status = 'DRAFT'
             AND updated_at = $3::timestamptz
-            AND document_version = $8`,
+            AND document_version = $9`,
         [
           context.tenantId,
           invoiceId,
           input.expectedUpdatedAt,
           snapshot.id,
           snapshot.documentVersion,
+          taxableTotal,
           taxTotal,
           calculatedGrandTotal,
           invoice.document_version,
