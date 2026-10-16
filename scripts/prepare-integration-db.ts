@@ -24,7 +24,7 @@ async function prepare(): Promise<void> {
       $role$;
     `);
     const alterRole = await client.query<{ statement: string }>(
-      "SELECT format('ALTER ROLE finance_runtime_test WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD %L', $1) AS statement",
+      "SELECT format('ALTER ROLE finance_runtime_test WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD %L', $1::text) AS statement",
       [runtimePassword],
     );
     const statement = alterRole.rows[0]?.statement;
