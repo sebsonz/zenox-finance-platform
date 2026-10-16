@@ -52,15 +52,15 @@ integrationDescribe("PostgreSQL invoice draft tenant isolation", () => {
     try {
       await admin.query("BEGIN");
       await admin.query("SELECT set_config('app.tenant_id', $1, true)", [tenantA]);
-      const inserted = await admin.query<{ updated_at: Date }>(
+      const inserted = await admin.query<{ updated_at: string }>(
         `INSERT INTO public.finance_invoices
           (id, tenant_id, customer_id, status, currency_code, currency_minor_unit, customer_snapshot,
            subtotal, discount_total, taxable_total, tax_total, grand_total, calculation_policy, notes)
          VALUES ($1,$2,$3,'DRAFT','XOF',0,'{"legalName":"Original"}'::jsonb,100,0,100,0,100,'LINE_HALF_UP_TAX_EXCLUSIVE_V1','Original')
-         RETURNING updated_at`,
+         RETURNING updated_at::text AS updated_at`,
         [invoiceId, tenantA, customerId],
       );
-      originalUpdatedAt = inserted.rows[0]!.updated_at.toISOString();
+      originalUpdatedAt = inserted.rows[0]!.updated_at;
       await admin.query(
         `INSERT INTO public.finance_invoice_lines
           (tenant_id, invoice_id, line_number, description, quantity, unit_price, discount_percent,
@@ -80,16 +80,16 @@ integrationDescribe("PostgreSQL invoice draft tenant isolation", () => {
     try {
       await editor.query("BEGIN");
       await editor.query("SELECT set_config('app.tenant_id', $1, true)", [tenantA]);
-      const updated = await editor.query<{ id: string; notes: string; updated_at: Date }>(
+      const updated = await editor.query<{ id: string; notes: string; updated_at: string }>(
         `UPDATE public.finance_invoices
             SET notes = 'Updated notes', updated_at = now() + interval '1 second'
           WHERE tenant_id = $1 AND id = $2 AND status = 'DRAFT' AND updated_at = $3::timestamptz
-          RETURNING id, notes, updated_at`,
+          RETURNING id, notes, updated_at::text AS updated_at`,
         [tenantA, invoiceId, originalUpdatedAt],
       );
       expect(updated.rowCount).toBe(1);
       expect(updated.rows[0]?.notes).toBe("Updated notes");
-      const changedVersion = updated.rows[0]!.updated_at.toISOString();
+      const changedVersion = updated.rows[0]!.updated_at;
       const staleRetry = await editor.query(
         `UPDATE public.finance_invoices
             SET notes = 'Stale overwrite'
