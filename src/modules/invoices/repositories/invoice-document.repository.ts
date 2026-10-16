@@ -93,6 +93,10 @@ export const invoiceDocumentRepository = {
     );
     const row = result.rows[0];
     if (!row) return null;
+    const actualHash = createHash("sha256").update(row.html_content, "utf8").digest("hex");
+    if (actualHash !== row.content_sha256) {
+      throw new Error("INVOICE_DOCUMENT_ARTIFACT_HASH_MISMATCH");
+    }
     return {
       id: row.id,
       invoiceId: row.invoice_id,
