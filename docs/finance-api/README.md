@@ -5,7 +5,7 @@ The initial public API namespace is `/api/v1`. The OpenAPI document will be chec
 Minimum resource groups:
 - tenant billing settings and supported currencies
 - customers or customer references
-- invoices and invoice lines
+- invoices and invoice lines (see [invoice tax snapshot binding contract](../api/invoice-tax-snapshot-contracts.md))
 - tax profiles/rules and invoice tax snapshots
 - payments
 - payment allocations
