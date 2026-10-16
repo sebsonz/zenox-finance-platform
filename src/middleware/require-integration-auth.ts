@@ -73,7 +73,7 @@ export function requireIntegrationAuth(requiredScopes: readonly string[] = []) {
           allowedTenantIds: principal.allowed_tenant_ids,
         },
         tenantId: tenant.id,
-        correlationId: String(res.locals.correlationId ?? ""),
+        correlationId: String(res.locals["correlationId"] ?? ""),
       };
       next();
     } catch (error) {
