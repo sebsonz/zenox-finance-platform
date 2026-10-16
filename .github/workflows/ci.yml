@@ -51,3 +51,9 @@ jobs:
         run: npm run db:test:prepare
       - name: Unit and PostgreSQL integration tests
         run: npm test
+      - name: Install web dependencies
+        run: npm --prefix web install
+      - name: Typecheck web
+        run: npm --prefix web run typecheck
+      - name: Build web
+        run: npm --prefix web run build
