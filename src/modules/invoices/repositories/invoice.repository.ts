@@ -123,30 +123,30 @@ export const invoiceRepository = {
     const updated = await client.query<InvoiceRow>(
       `UPDATE public.finance_invoices
           SET customer_id = $4,
-              currency_code = $5,
-              currency_minor_unit = $6,
-              due_date = $7,
-              customer_snapshot = $8::jsonb,
-              subtotal = $9,
-              discount_total = $10,
-              taxable_total = $11,
-              tax_total = $12,
-              grand_total = $13,
-              calculation_policy = $14,
-              notes = $15,
+              currency_code = $4,
+              currency_minor_unit = $5,
+              due_date = $6,
+              customer_snapshot = $7::jsonb,
+              subtotal = $8,
+              discount_total = $9,
+              taxable_total = $10,
+              tax_total = $11,
+              grand_total = $12,
+              calculation_policy = $13,
+              notes = $14,
               updated_at = now()
         WHERE tenant_id = $1
           AND id = $2
           AND status = 'DRAFT'
-          AND updated_at = $3::timestamptz
+          AND updated_at = $15::timestamptz
       RETURNING ${invoiceColumns}`,
-      [tenantId, invoiceId, input.expectedUpdatedAt, customer.id, totals.currency, currencyMinorUnit,
+      [tenantId, invoiceId, customer.id, totals.currency, currencyMinorUnit,
         input.dueDate ?? null,
         JSON.stringify({ id: customer.id, legalName: customer.legalName, displayName: customer.displayName,
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
           taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
         totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
-        totals.calculationPolicy, input.notes ?? null],
+        totals.calculationPolicy, input.notes ?? null, input.expectedUpdatedAt],
     );
     const invoice = updated.rows[0];
     if (!invoice) return null;
