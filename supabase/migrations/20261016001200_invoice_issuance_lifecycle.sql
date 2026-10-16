@@ -78,6 +78,7 @@ END;
 $function$;
 
 REVOKE ALL ON FUNCTION public.finance_allocate_invoice_number(uuid, integer) FROM PUBLIC;
+REVOKE ALL ON TABLE public.finance_invoice_number_sequences FROM PUBLIC;
 
 DO $grants$
 DECLARE role_name text;
@@ -85,7 +86,7 @@ BEGIN
   FOREACH role_name IN ARRAY ARRAY['finance_runtime', 'finance_runtime_test'] LOOP
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
       EXECUTE format('GRANT EXECUTE ON FUNCTION public.finance_allocate_invoice_number(uuid, integer) TO %I', role_name);
-      EXECUTE format('GRANT SELECT, INSERT, UPDATE ON TABLE public.finance_invoice_number_sequences TO %I', role_name);
+      EXECUTE format('REVOKE ALL ON TABLE public.finance_invoice_number_sequences FROM %I', role_name);
     END IF;
   END LOOP;
 END;
