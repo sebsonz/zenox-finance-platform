@@ -12,6 +12,26 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: finance_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d finance_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/finance_test
+      FINANCE_SERVICE_TOKEN: ci-only-test-token-not-for-production-0123456789
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/finance_test
+      TEST_RUNTIME_DATABASE_URL: postgres://finance_runtime_test:zenox_test_runtime_password_2026@localhost:5432/finance_test
+      TEST_RUNTIME_PASSWORD: zenox_test_runtime_password_2026
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,5 +45,9 @@ jobs:
         run: npm run typecheck
       - name: Build
         run: npm run build
-      - name: Unit tests
+      - name: Apply Finance migrations to disposable PostgreSQL
+        run: npm run db:migrate
+      - name: Prepare least-privilege integration role
+        run: npm run db:test:prepare
+      - name: Unit and PostgreSQL integration tests
         run: npm test
