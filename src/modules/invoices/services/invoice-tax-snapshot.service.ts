@@ -166,6 +166,7 @@ export const invoiceTaxSnapshotService = {
       // Capture the pre-tax values before any update, so the immutable input
       // snapshot records exactly what the engine received.
       const inputTaxableTotal = sum(lines.rows.map((line) => line.taxable_amount));
+      const inputTaxableTotal = sum(lines.rows.map((line) => line.taxable_amount));
       const taxableTotal = sum(calculatedLines.map((line) => line.taxCalculation.baseAmount));
       const provisionalLineInputs = lines.rows.map((line) => ({
         invoiceLineId: line.id,
