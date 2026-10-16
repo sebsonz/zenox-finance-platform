@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-const adminUrl = process.env.TEST_DATABASE_URL;
-const runtimeUrl = process.env.TEST_RUNTIME_DATABASE_URL;
+const adminUrl = process.env["TEST_DATABASE_URL"];
+const runtimeUrl = process.env["TEST_RUNTIME_DATABASE_URL"];
 const integrationDescribe = adminUrl && runtimeUrl ? describe : describe.skip;
 const tenantA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const tenantB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
