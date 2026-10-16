@@ -114,12 +114,16 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
     const verify = await pool.query<{
       status: string; invoice_code: string; issued_at: Date; tax_snapshot_id: string;
       artifact_id: string; content_sha256: string; html_content: string;
+      pdf_artifact_id: string; pdf_sha256: string; pdf_content: Buffer;
     }>(
       `SELECT i.status, i.invoice_code, i.issued_at, i.tax_snapshot_id,
-              d.id AS artifact_id, d.content_sha256, d.html_content
+              d.id AS artifact_id, d.content_sha256, d.html_content,
+              p.id AS pdf_artifact_id, p.content_sha256 AS pdf_sha256, p.pdf_content
          FROM public.finance_invoices i
          JOIN public.finance_invoice_document_artifacts d
            ON d.tenant_id = i.tenant_id AND d.invoice_id = i.id AND d.document_version = i.document_version
+         JOIN public.finance_invoice_pdf_artifacts p
+           ON p.tenant_id = i.tenant_id AND p.invoice_id = i.id AND p.document_version = i.document_version
         WHERE i.tenant_id = $1 AND i.id = ANY($2::uuid[])
         ORDER BY i.invoice_code`,
       [tenantId, [first!.id, second!.id]],
@@ -131,6 +135,10 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
       expect(row.html_content).toContain(row.invoice_code);
       expect(row.html_content).toContain(row.tax_snapshot_id);
       expect(row.artifact_id).toMatch(/^[0-9a-f-]{36}$/i);
+      expect(row.pdf_artifact_id).toMatch(/^[0-9a-f-]{36}$/i);
+      expect(row.pdf_sha256).toMatch(/^[a-f0-9]{64}$/);
+      expect(row.pdf_content.subarray(0, 8).toString("ascii")).toBe("%PDF-1.4");
+      expect(row.pdf_content.toString("ascii")).toContain("Freight");
     }
   });
 
@@ -226,6 +234,16 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
       ).rejects.toMatchObject({ code: "55000" });
       await verify.query("ROLLBACK TO SAVEPOINT issued_line_update");
       await verify.query("RELEASE SAVEPOINT issued_line_update");
+
+      await verify.query("SAVEPOINT issued_pdf_update");
+      await expect(
+        verify.query(
+          "UPDATE public.finance_invoice_pdf_artifacts SET pdf_content = decode('00', 'hex') WHERE tenant_id = $1 AND invoice_id = $2",
+          [tenantId, draft!.id],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      await verify.query("ROLLBACK TO SAVEPOINT issued_pdf_update");
+      await verify.query("RELEASE SAVEPOINT issued_pdf_update");
 
       await verify.query("SAVEPOINT issued_artifact_update");
       await expect(
