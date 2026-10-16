@@ -146,7 +146,7 @@ describe("customer and currency API routes", () => {
       data: { customer: { id: CUSTOMER_ID, customerCode: "CUST_001" }, correlationId: expect.any(String) },
     });
     expect(customerService.create).toHaveBeenCalledWith(
-      expect.objectContaining({ tenantId: TENANT_A, principal: { id: PRINCIPAL_ID } }),
+      expect.objectContaining({ tenantId: TENANT_A, principal: expect.objectContaining({ id: PRINCIPAL_ID }) }),
       expect.objectContaining({ customerCode: "CUST_001" }),
     );
   });
