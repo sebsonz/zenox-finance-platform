@@ -51,17 +51,6 @@ export function calculateTaxStack(input: TaxStackCalculationInput): TaxStackCalc
 
   let base = amount;
   if (input.priceMode === "INCLUSIVE") {
-    let multiplier = new Decimal(1);
-    for (const { tax, rate } of appliedTaxes) {
-      multiplier = multiplier.times(new Decimal(1).plus(rate.div(100)));
-      if (tax.isCompound !== true) {
-        // A non-compound tax applies to the original base, so its multiplier
-        // is additive rather than compounded with earlier tax components.
-        multiplier = multiplier.minus(rate.div(100).times(
-          appliedTaxes.slice(0, appliedTaxes.indexOf({ tax, rate })).length,
-        ));
-      }
-    }
     // Reverse the exact sequential model used below. The calculation policy
     // makes order and rounding deterministic for audit and reproducibility.
     multiplier = new Decimal(1);
