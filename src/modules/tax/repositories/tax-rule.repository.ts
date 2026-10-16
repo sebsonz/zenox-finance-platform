@@ -108,7 +108,7 @@ export const taxRuleRepository = {
             AND (valid_to IS NULL OR valid_to >= $3::date)
             AND EXISTS (
               SELECT 1 FROM public.finance_tax_jurisdictions j
-               WHERE j.id = finance_tax_rules.jurisdiction_id AND j.is_active = true
+               WHERE j.id = r.jurisdiction_id AND j.is_active = true
             )
        )
        SELECT id, tenant_id, jurisdiction_id, rule_code, name, tax_type,
