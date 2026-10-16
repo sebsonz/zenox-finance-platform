@@ -76,4 +76,12 @@ describe("migration inventory drift comparator", () => {
     const report = compareMigrationInventory([invalidName], []);
     expect(report.issues.map((issue) => issue.code)).toContain("INVALID_NAME");
   });
+
+  it("rejects malformed migration ledger checksums", () => {
+    const report = compareMigrationInventory(
+      [migrationA],
+      [{ name: migrationA.name, checksum: "not-a-sha256-checksum" }],
+    );
+    expect(report.issues.map((issue) => issue.code)).toContain("INVALID_CHECKSUM");
+  });
 });
