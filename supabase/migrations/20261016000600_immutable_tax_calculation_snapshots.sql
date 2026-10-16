@@ -36,3 +36,23 @@ COMMENT ON COLUMN public.finance_invoices.tax_status IS
   'PROVISIONAL means line draft tax rates are user-supplied and not authoritative; CALCULATED means a matching immutable tax snapshot has been attached; REVIEW_REQUIRED means no safe rule composition was available.';
 COMMENT ON COLUMN public.finance_invoices.tax_snapshot_id IS
   'Immutable tax-calculation evidence associated with this invoice draft version. Snapshot tenant, document ID, document version and currency must match the invoice.';
+
+-- A snapshot is evidence for a specific immutable document revision, and cannot
+-- be updated or removed after insertion.
+CREATE OR REPLACE FUNCTION public.finance_reject_tax_snapshot_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION 'TAX_CALCULATION_SNAPSHOT_IMMUTABLE'
+    USING ERRCODE = '55000';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS finance_tax_snapshot_immutable
+  ON public.finance_tax_calculation_snapshots;
+CREATE TRIGGER finance_tax_snapshot_immutable
+  BEFORE UPDATE OR DELETE ON public.finance_tax_calculation_snapshots
+  FOR EACH ROW EXECUTE FUNCTION public.finance_reject_tax_snapshot_mutation();
+
+REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.finance_tax_calculation_snapshots FROM PUBLIC;
