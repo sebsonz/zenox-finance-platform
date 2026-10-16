@@ -158,9 +158,26 @@ export const invoiceTaxSnapshotService = {
         };
       });
 
-      // Apply the authoritative per-line result in the same transaction as the
-      // immutable snapshot insert and invoice linkage. If any row is no longer
-      // attached to this invoice/tenant, throw and roll the entire operation back.
+      const sum = (values: string[]): string =>
+        values.reduce((total, value) => total.plus(new Decimal(value)), new Decimal(0))
+          .toDecimalPlaces(currency.minorUnit, Decimal.ROUND_HALF_UP)
+          .toFixed(currency.minorUnit);
+
+      // Capture the pre-tax values before any update, so the immutable input
+      // snapshot records exactly what the engine received.
+      const taxableTotal = sum(lines.rows.map((line) => line.taxable_amount));
+      const provisionalLineInputs = lines.rows.map((line) => ({
+        invoiceLineId: line.id,
+        lineNumber: line.line_number,
+        description: line.description,
+        quantity: line.quantity,
+        unitPrice: line.unit_price,
+        discountPercent: line.discount_percent,
+        taxableAmount: line.taxable_amount,
+      }));
+
+      // Apply authoritative per-line results in the same transaction as the
+      // immutable snapshot insert and invoice linkage. Any failed row rolls back all.
       for (const line of calculatedLines) {
         const updatedLine = await client.query(
           `UPDATE public.finance_invoice_lines
@@ -184,13 +201,6 @@ export const invoiceTaxSnapshotService = {
           );
         }
       }
-
-      const sum = (values: string[]): string =>
-        values.reduce((total, value) => total.plus(new Decimal(value)), new Decimal(0))
-          .toDecimalPlaces(currency.minorUnit, Decimal.ROUND_HALF_UP)
-          .toFixed(currency.minorUnit);
-
-      const taxableTotal = sum(lines.rows.map((line) => line.taxable_amount));
       const taxTotal = sum(calculatedLines.map((line) => line.taxCalculation.taxTotal));
       const withholdingTotal = sum(calculatedLines.map((line) => line.taxCalculation.withholdingTotal));
       const calculatedGrandTotal = sum(calculatedLines.map((line) => line.taxCalculation.grandTotal));
@@ -224,15 +234,7 @@ export const invoiceTaxSnapshotService = {
             provisionalTaxTotal: invoice.tax_total,
             provisionalGrandTotal: invoice.grand_total,
           },
-          lines: lines.rows.map((line) => ({
-            invoiceLineId: line.id,
-            lineNumber: line.line_number,
-            description: line.description,
-            quantity: line.quantity,
-            unitPrice: line.unit_price,
-            discountPercent: line.discount_percent,
-            taxableAmount: line.taxable_amount,
-          })),
+          lines: provisionalLineInputs,
         },
         resultSnapshot: {
           perLine: calculatedLines,
