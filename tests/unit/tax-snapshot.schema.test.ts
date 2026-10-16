@@ -25,7 +25,9 @@ describe("createTaxSnapshotSchema", () => {
   });
 
   it("allows an absent jurisdiction for transactions without a resolved jurisdiction", () => {
-    const { jurisdictionId: _jurisdictionId, ...withoutJurisdiction } = validSnapshot;
+    const withoutJurisdiction = Object.fromEntries(
+      Object.entries(validSnapshot).filter(([key]) => key !== "jurisdictionId"),
+    );
     expect(createTaxSnapshotSchema.safeParse(withoutJurisdiction).success).toBe(true);
   });
 
