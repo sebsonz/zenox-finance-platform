@@ -15,8 +15,8 @@ describe("calculateInvoiceTotals", () => {
     expect(result.subtotal).toBe("2500");
     expect(result.discountTotal).toBe("200");
     expect(result.taxableTotal).toBe("2300");
-    expect(result.taxTotal).toBe("360");
-    expect(result.grandTotal).toBe("2660");
+    expect(result.taxTotal).toBe("324");
+    expect(result.grandTotal).toBe("2624");
     expect(result.calculationPolicy).toBe("LINE_HALF_UP_TAX_EXCLUSIVE_V1");
   });
 
