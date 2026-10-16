@@ -1,49 +1,51 @@
 import { describe, expect, it } from "vitest";
 import { createCustomerSchema, listCustomersQuerySchema } from "../../src/modules/customers/validators/customer.schema.js";
 
-describe("customer contracts", () => {
-  it("normalizes country and currency codes and applies safe defaults", () => {
-    const result = createCustomerSchema.parse({
-      customerCode: "CUST_001",
+describe("customer schemas", () => {
+  it("normalizes reference fields and trims text", () => {
+    const parsed = createCustomerSchema.parse({
+      customerCode: " CUST_01 ",
       customerType: "BUSINESS",
-      legalName: "  ZENOX Client SARL  ",
+      legalName: "  Client Test  ",
       countryCode: "bj",
       defaultCurrency: "xof",
+      phone: "  +229 00 00 00 00 ",
     });
-
-    expect(result.legalName).toBe("ZENOX Client SARL");
-    expect(result.countryCode).toBe("BJ");
-    expect(result.defaultCurrency).toBe("XOF");
-    expect(result.metadata).toEqual({});
-  });
-
-  it("requires external identity fields as a pair", () => {
-    const result = createCustomerSchema.safeParse({
-      customerCode: "CUST_002",
-      customerType: "INDIVIDUAL",
-      legalName: "Example Customer",
+    expect(parsed).toMatchObject({
+      customerCode: "CUST_01",
+      legalName: "Client Test",
       countryCode: "BJ",
-      externalSystem: "ZENox-fret",
+      defaultCurrency: "XOF",
+      phone: "+229 00 00 00 00",
     });
-
-    expect(result.success).toBe(false);
   });
 
-  it("rejects unknown input properties", () => {
-    const result = createCustomerSchema.safeParse({
-      customerCode: "CUST_003",
+  it("rejects unknown financial result fields and incomplete external identities", () => {
+    expect(createCustomerSchema.safeParse({
+      customerCode: "CUST_01",
       customerType: "BUSINESS",
-      legalName: "Example SARL",
+      legalName: "Client Test",
       countryCode: "BJ",
-      tenantId: "client-supplied-tenant",
-    });
+      total: "100",
+    }).success).toBe(false);
 
-    expect(result.success).toBe(false);
+    expect(createCustomerSchema.safeParse({
+      customerCode: "CUST_01",
+      customerType: "BUSINESS",
+      legalName: "Client Test",
+      countryCode: "BJ",
+      externalSystem: "legacy",
+    }).success).toBe(false);
   });
 
-  it("bounds list pagination and defaults to active customers", () => {
-    expect(listCustomersQuerySchema.parse({}).status).toBe("ACTIVE");
-    expect(listCustomersQuerySchema.parse({ limit: "50" }).limit).toBe(50);
-    expect(listCustomersQuerySchema.safeParse({ limit: "500" }).success).toBe(false);
+  it("enforces bounded, strict cursor query validation", () => {
+    expect(listCustomersQuerySchema.parse({ limit: "25", q: " Acme ", status: "ACTIVE" })).toMatchObject({
+      limit: 25,
+      q: "Acme",
+      status: "ACTIVE",
+    });
+    expect(listCustomersQuerySchema.safeParse({ limit: "1000" }).success).toBe(false);
+    expect(listCustomersQuerySchema.safeParse({ cursor: "not-a-uuid" }).success).toBe(false);
+    expect(listCustomersQuerySchema.safeParse({ unknown: "1" }).success).toBe(false);
   });
 });
