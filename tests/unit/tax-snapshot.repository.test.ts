@@ -73,13 +73,13 @@ describe("taxSnapshotRepository", () => {
   it("reads by document type, ID and version using parameterized values", async () => {
     const { client, query } = fakeClient([row]);
     const result = await taxSnapshotRepository.findByDocumentVersion(
-      client, "INVOICE", input.documentId, 1,
+      client, row.tenant_id, "INVOICE", input.documentId, 1,
     );
 
     expect(query).toHaveBeenCalledOnce();
     const [sql, params] = query.mock.calls[0] as unknown as [string, unknown[]];
     expect(sql).toContain("FROM public.finance_tax_calculation_snapshots");
-    expect(params).toEqual(["INVOICE", input.documentId, 1]);
+    expect(params).toEqual([row.tenant_id, "INVOICE", input.documentId, 1]);
     expect(result?.documentVersion).toBe(1);
     expect(result?.appliedRulesSnapshot[0]).toMatchObject({ ruleCode: "BJ_VAT_18" });
   });
@@ -87,7 +87,7 @@ describe("taxSnapshotRepository", () => {
   it("returns null when no snapshot exists for the requested version", async () => {
     const { client } = fakeClient([]);
     await expect(taxSnapshotRepository.findByDocumentVersion(
-      client, "INVOICE", input.documentId, 2,
+      client, row.tenant_id, "INVOICE", input.documentId, 2,
     )).resolves.toBeNull();
   });
 
