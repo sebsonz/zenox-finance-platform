@@ -1,12 +1,12 @@
 import { Pool } from "pg";
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env["DATABASE_URL"];
 if (!connectionString) throw new Error("DATABASE_URL is required for integration setup");
 
 const pool = new Pool({ connectionString, max: 2 });
 const tenantA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const tenantB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-const runtimePassword = process.env.TEST_RUNTIME_PASSWORD;
+const runtimePassword = process.env["TEST_RUNTIME_PASSWORD"];
 if (!runtimePassword || runtimePassword.length < 20) {
   throw new Error("TEST_RUNTIME_PASSWORD must be at least 20 characters");
 }
