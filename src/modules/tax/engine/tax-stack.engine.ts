@@ -27,7 +27,9 @@ function effectiveRate(tax: TaxComponentInput): Decimal {
   if (["ZERO_RATED", "EXEMPT", "REVERSE_CHARGE"].includes(tax.treatment) && !rate.isZero()) {
     throw new Error("NON_TAXABLE_TREATMENT_REQUIRES_ZERO_RATE");
   }
-  return tax.treatment === "STANDARD" || tax.treatment === "REDUCED" ? rate : new Decimal(0);
+  return tax.treatment === "STANDARD" || tax.treatment === "REDUCED" || tax.treatment === "WITHHOLDING"
+    ? rate
+    : new Decimal(0);
 }
 
 /**
@@ -53,7 +55,7 @@ export function calculateTaxStack(input: TaxStackCalculationInput): TaxStackCalc
   if (input.priceMode === "INCLUSIVE") {
     // Reverse the exact sequential model used below. The calculation policy
     // makes order and rounding deterministic for audit and reproducibility.
-    multiplier = new Decimal(1);
+    let multiplier = new Decimal(1);
     let cumulativeRate = new Decimal(0);
     for (const { tax, rate } of appliedTaxes) {
       const contribution = tax.isCompound ? cumulativeRate.plus(1).times(rate.div(100)) : rate.div(100);
