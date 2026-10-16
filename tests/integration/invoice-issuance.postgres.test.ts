@@ -34,7 +34,7 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
         (id, tenant_id, customer_id, status, currency_code, currency_minor_unit, customer_snapshot,
          subtotal, discount_total, taxable_total, tax_total, grand_total, amount_due, calculation_policy, notes)
        VALUES ($1,$2,$3,'DRAFT','XOF',0,'{"legalName":"Issuance integration"}'::jsonb,
-               1000,0,1000,180,1180,1180,'LINE_HALF_UP_TAX_EXCLUSIVE_V1','issuance integration')
+               2000,0,2000,360,2360,2360,'LINE_HALF_UP_TAX_EXCLUSIVE_V1','issuance integration')
        RETURNING to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at`,
       [invoiceId, tenantId, customer.rows[0]!.id],
     );
@@ -42,7 +42,9 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
       `INSERT INTO public.finance_invoice_lines
         (tenant_id, invoice_id, line_number, description, quantity, unit_price, discount_percent,
          tax_rate_percent, subtotal, discount_amount, taxable_amount, tax_amount, total)
-       VALUES ($1,$2,1,'Freight',1,1000,0,0,1000,0,1000,180,1180)`,
+       VALUES
+         ($1,$2,1,'Freight',1,1000,0,18,1000,0,1000,180,1180),
+         ($1,$2,2,'Handling',1,1000,0,18,1000,0,1000,180,1180)`,
       [tenantId, invoiceId],
     );
     const snapshot = await client.query<{ id: string }>(
@@ -52,7 +54,7 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
          result_snapshot, applied_rules_snapshot)
        VALUES ($1,'INVOICE',$2,1,'INVOICE_TAX_SNAPSHOT_PER_LINE_V1','integration-test',
                CURRENT_DATE,'XOF',0,'{"fixture":"issuance"}'::jsonb,
-               '{"taxableTotal":"1000","taxTotal":"180","grandTotal":"1180","amountDue":"1180"}'::jsonb,
+               '{"taxableTotal":"2000","taxTotal":"360","grandTotal":"2360","amountDue":"2360"}'::jsonb,
                '[{"ruleCode":"ITEST_VAT","ratePercent":"18"}]'::jsonb)
        RETURNING id`,
       [tenantId, invoiceId],
@@ -134,11 +136,14 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
       expect(row.content_sha256).toMatch(/^[a-f0-9]{64}$/);
       expect(row.html_content).toContain(row.invoice_code);
       expect(row.html_content).toContain(row.tax_snapshot_id);
+      expect(row.html_content).toContain("Freight");
+      expect(row.html_content).toContain("Handling");
       expect(row.artifact_id).toMatch(/^[0-9a-f-]{36}$/i);
       expect(row.pdf_artifact_id).toMatch(/^[0-9a-f-]{36}$/i);
       expect(row.pdf_sha256).toMatch(/^[a-f0-9]{64}$/);
       expect(row.pdf_content.subarray(0, 8).toString("ascii")).toBe("%PDF-1.4");
       expect(row.pdf_content.toString("ascii")).toContain("Freight");
+      expect(row.pdf_content.toString("ascii")).toContain("Handling");
     }
   });
 
