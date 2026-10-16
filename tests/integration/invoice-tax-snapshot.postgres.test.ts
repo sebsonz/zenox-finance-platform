@@ -102,10 +102,10 @@ integrationDescribe("PostgreSQL invoice tax snapshot binding", () => {
            subtotal, discount_total, taxable_total, tax_total, grand_total, amount_due, calculation_policy, notes)
          VALUES ($1,$2,$3,'DRAFT','XOF',0,'{"legalName":"Tax flow integration"}'::jsonb,
                  1000,0,1000,0,1000,1000,'LINE_HALF_UP_TAX_EXCLUSIVE_V1','tax flow')
-         RETURNING updated_at::text AS updated_at`,
+         RETURNING to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at`,
         [invoiceId, tenantA, customer.rows[0]!.id],
       );
-      updatedAt = new Date(invoice.rows[0]!.updated_at).toISOString();
+      updatedAt = invoice.rows[0]!.updated_at;
       await admin.query(
         `INSERT INTO public.finance_invoice_lines
           (tenant_id, invoice_id, line_number, description, quantity, unit_price, discount_percent,
