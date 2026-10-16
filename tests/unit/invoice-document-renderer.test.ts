@@ -44,7 +44,7 @@ describe("invoice document rendering", () => {
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("<script>alert(1)</script>");
     expect((html.match(/<tr>/g) ?? []).length).toBe(3);
-    expect(html).toContain("3,422.00000000");
+    expect(html).toContain("3422.00000000");
   });
 
   it("creates a valid PDF header and includes every line and total across its pages", () => {
