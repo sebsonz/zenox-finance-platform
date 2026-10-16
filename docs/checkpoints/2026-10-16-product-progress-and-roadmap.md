@@ -150,3 +150,11 @@ Additional code is now on PR #5 / branch `feat/invoice-tax-snapshot-binding`. Th
 - Frontend invoice workflows are still not connected to authenticated backend CRUD; the current frontend marks the invoice page as not connected. This must be completed before declaring the whole module done.
 - Issuance retry idempotency and final end-to-end UI acceptance remain open.
 - Keep PR #5 in draft. Do not merge until the latest exact head passes all CI checks and remaining frontend/idempotency/legal-scope criteria are handled. No live Finance migration and no ZENOX FRET V2 database access.
+
+
+### Idempotency continuation — 2026-10-17
+- Added migration `20261016001600_invoice_issuance_idempotency.sql` and tenant-scoped idempotency records for invoice issuance.
+- `POST /api/v1/invoices/:invoiceId/issue` now requires an `Idempotency-Key` header (8–128 chars). Repeating the same key for the same invoice/revision returns the same issued invoice; key reuse against a different invoice/revision returns conflict. The idempotency reservation, issue transition, and artifact creation share one transaction, so failures roll back cleanly.
+- Unit tests and PostgreSQL integration tests now pass idempotency keys; the integration suite checks a retry returns the same invoice code without duplicate artifact creation.
+- Exact CI passed for the code head before idempotency was added: `58ed01005836f2ba45a496ecf329830ecb913544`, run https://github.com/sebsonz/zenox-finance-platform/actions/runs/38980172883.
+- Current idempotency-inclusive head still requires a fresh exact-head CI pass. Do not merge before that pass.
