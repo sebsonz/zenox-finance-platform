@@ -178,12 +178,12 @@ integrationDescribe("PostgreSQL invoice tax snapshot binding", () => {
       document_version: 1,
       tax_snapshot_id: result.snapshot.id,
       tax_status: "CALCULATED",
-      taxable_total: "1000.0000",
-      tax_total: "180.0000",
-      grand_total: "1180.0000",
+      taxable_total: "1000.00000000",
+      tax_total: "180.00000000",
+      grand_total: "1180.00000000",
       amount_due: "1180.0000",
-      line_tax: "180.0000",
-      line_total: "1180.0000",
+      line_tax: "180.00000000",
+      line_total: "1180.00000000",
     });
   });
 
@@ -231,9 +231,12 @@ integrationDescribe("PostgreSQL invoice tax snapshot binding", () => {
       await admin.query("RELEASE SAVEPOINT foreign_snapshot_link");
 
       const duplicate = await insertSnapshot(admin, tenantA, invoiceA, 2);
+      await admin.query("SAVEPOINT duplicate_invoice_revision_snapshot");
       await expect(
         insertSnapshot(admin, tenantA, invoiceA, 1),
       ).rejects.toMatchObject({ code: "23505" });
+      await admin.query("ROLLBACK TO SAVEPOINT duplicate_invoice_revision_snapshot");
+      await admin.query("RELEASE SAVEPOINT duplicate_invoice_revision_snapshot");
       await admin.query("ROLLBACK");
       expect(duplicate).toMatch(/^[0-9a-f-]{36}$/i);
     } catch (error) {
