@@ -46,3 +46,29 @@ FROM PUBLIC;
 
 -- The app's backend database role must be granted SELECT on these control-plane
 -- tables by deployment provisioning. Do not grant these tables to browser roles.
+
+-- Explicit deny-by-default tenant policies for the two existing tenant data tables.
+-- Missing transaction context resolves to NULL, which cannot match a tenant_id.
+DROP POLICY IF EXISTS finance_idempotency_tenant_isolation
+  ON public.finance_idempotency_keys;
+CREATE POLICY finance_idempotency_tenant_isolation
+  ON public.finance_idempotency_keys
+  FOR ALL
+  USING (
+    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  )
+  WITH CHECK (
+    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  );
+
+DROP POLICY IF EXISTS finance_audit_tenant_isolation
+  ON public.finance_audit_events;
+CREATE POLICY finance_audit_tenant_isolation
+  ON public.finance_audit_events
+  FOR ALL
+  USING (
+    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  )
+  WITH CHECK (
+    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+  );
