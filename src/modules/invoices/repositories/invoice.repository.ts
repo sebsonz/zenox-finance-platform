@@ -44,13 +44,13 @@ const invoiceColumns = `id, customer_id, invoice_code, status, currency_code, cu
   issue_date, due_date, customer_snapshot, subtotal::text, discount_total::text, taxable_total::text,
   tax_total::text, grand_total::text, calculation_policy, notes, created_at, updated_at`;
 
-async function attachLines(client: PoolClient, row: InvoiceRow): Promise<FinanceInvoice> {
+async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow): Promise<FinanceInvoice> {
   const result = await client.query<LineRow>(
     `SELECT id, line_number, description, quantity::text, unit_price::text, discount_percent::text,
       tax_rate_percent::text, subtotal::text, discount_amount::text, taxable_amount::text,
       tax_amount::text, total::text
      FROM public.finance_invoice_lines WHERE tenant_id = $1 AND invoice_id = $2 ORDER BY line_number`,
-    [row.customer_snapshot["tenantId"] ?? "", row.id],
+    [tenantId, row.id],
   );
   return {
     id: row.id, customerId: row.customer_id, invoiceCode: row.invoice_code, status: row.status,
@@ -106,7 +106,7 @@ export const invoiceRepository = {
           calculated.discountAmount, calculated.taxableAmount, calculated.taxAmount, calculated.total],
       );
     }
-    return attachLines(client, { ...invoice, customer_snapshot: { ...invoice.customer_snapshot, tenantId } });
+    return attachLines(client, tenantId, invoice);
   },
 
   async findById(client: PoolClient, tenantId: string, invoiceId: string): Promise<FinanceInvoice | null> {
@@ -114,7 +114,7 @@ export const invoiceRepository = {
       `SELECT ${invoiceColumns} FROM public.finance_invoices WHERE tenant_id = $1 AND id = $2 LIMIT 1`,
       [tenantId, invoiceId],
     );
-    return found.rows[0] ? attachLines(client, { ...found.rows[0], customer_snapshot: { ...found.rows[0].customer_snapshot, tenantId } }) : null;
+    return found.rows[0] ? attachLines(client, tenantId, found.rows[0]) : null;
   },
 
   async list(client: PoolClient, tenantId: string, query: ListInvoiceDraftsQuery): Promise<FinanceInvoice[]> {
@@ -125,7 +125,7 @@ export const invoiceRepository = {
       [tenantId, query.status ?? null, query.cursor ?? null, query.limit],
     );
     const invoices: FinanceInvoice[] = [];
-    for (const row of found.rows) invoices.push(await attachLines(client, { ...row, customer_snapshot: { ...row.customer_snapshot, tenantId } }));
+    for (const row of found.rows) invoices.push(await attachLines(client, tenantId, row));
     return invoices;
   },
 };
