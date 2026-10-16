@@ -1,3 +1,4 @@
+import { Decimal } from "decimal.js";
 import { withTenantTransaction } from "../../../db/transaction.js";
 import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
 import { currencyRepository } from "../../currencies/repositories/currency.repository.js";
@@ -42,6 +43,7 @@ export const invoiceTaxSnapshotService = {
         currency_minor_unit: number;
         customer_id: string;
         updated_at: string;
+        document_version: number;
         subtotal: string;
         discount_total: string;
         taxable_total: string;
@@ -49,7 +51,7 @@ export const invoiceTaxSnapshotService = {
         grand_total: string;
       }>(
         `SELECT id, tenant_id, status, currency_code, currency_minor_unit, customer_id,
-                updated_at::text AS updated_at, subtotal::text, discount_total::text,
+                updated_at::text AS updated_at, document_version, subtotal::text, discount_total::text,
                 taxable_total::text, tax_total::text, grand_total::text
            FROM public.finance_invoices
           WHERE tenant_id = $1 AND id = $2 AND status = 'DRAFT'
@@ -154,21 +156,10 @@ export const invoiceTaxSnapshotService = {
         };
       });
 
-      const sum = (values: string[]): string => {
-        // Use decimal.js indirectly through the already rounded per-line results,
-        // and avoid JS number arithmetic for money totals.
-        return values.reduce((total, value) => {
-          const [whole = "0", fraction = ""] = value.split(".");
-          const [totalWhole = "0", totalFraction = ""] = total.split(".");
-          const places = currency.minorUnit;
-          const scale = 10n ** BigInt(places);
-          const toMinor = (w: string, f: string) => BigInt(w) * scale + BigInt((f + "0".repeat(places)).slice(0, places) || "0");
-          const result = toMinor(totalWhole, totalFraction) + toMinor(whole, fraction);
-          return places === 0
-            ? result.toString()
-            : `${result / scale}.${(result % scale).toString().padStart(places, "0")}`;
-        }, currency.minorUnit === 0 ? "0" : `0.${"0".repeat(currency.minorUnit)}`);
-      };
+      const sum = (values: string[]): string =>
+        values.reduce((total, value) => total.plus(new Decimal(value)), new Decimal(0))
+          .toDecimalPlaces(currency.minorUnit, Decimal.ROUND_HALF_UP)
+          .toFixed(currency.minorUnit);
 
       const taxableTotal = sum(lines.rows.map((line) => line.taxable_amount));
       const taxTotal = sum(calculatedLines.map((line) => line.taxCalculation.taxTotal));
@@ -181,7 +172,7 @@ export const invoiceTaxSnapshotService = {
       const snapshotInput = {
         documentType: "INVOICE" as const,
         documentId: invoiceId,
-        documentVersion: 1,
+        documentVersion: invoice.document_version,
         calculationPolicy: "INVOICE_TAX_SNAPSHOT_PER_LINE_V1",
         engineVersion: ENGINE_VERSION,
         taxDate: input.taxDate,
@@ -251,9 +242,11 @@ export const invoiceTaxSnapshotService = {
             SET tax_snapshot_id = $4,
                 tax_snapshot_version = $5,
                 tax_status = 'CALCULATED',
+                tax_total = $6,
+                grand_total = $7,
                 updated_at = clock_timestamp()
-          WHERE tenant_id = $1 AND id = $2 AND status = 'DRAFT' AND updated_at::text = $3`,
-        [context.tenantId, invoiceId, invoice.updated_at, snapshot.id, snapshot.documentVersion],
+          WHERE tenant_id = $1 AND id = $2 AND status = 'DRAFT' AND updated_at::text = $3 AND document_version = $8`,
+        [context.tenantId, invoiceId, invoice.updated_at, snapshot.id, snapshot.documentVersion, taxTotal, calculatedGrandTotal, invoice.document_version],
       );
       if (linked.rowCount !== 1) {
         throw new InvoiceTaxSnapshotServiceError(
