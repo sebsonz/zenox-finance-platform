@@ -113,7 +113,7 @@ export const customerRepository = {
           AND ($3::uuid IS NULL OR id > $3::uuid)
         ORDER BY id ASC
         LIMIT $4`,
-      [query.status, query.q ?? null, query.cursor ?? null, query.limit],
+      [query.status, query.q ?? null, query.cursor ?? null, query.limit + 1],
     );
     return result.rows.map(mapCustomer);
   },
