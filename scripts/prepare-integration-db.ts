@@ -23,10 +23,13 @@ async function prepare(): Promise<void> {
       END
       $role$;
     `);
-    await client.query(
-      "ALTER ROLE finance_runtime_test WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD $1",
+    const alterRole = await client.query<{ statement: string }>(
+      "SELECT format('ALTER ROLE finance_runtime_test WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD %L', $1) AS statement",
       [runtimePassword],
     );
+    const statement = alterRole.rows[0]?.statement;
+    if (!statement) throw new Error("Could not prepare test role password");
+    await client.query(statement);
     await client.query("GRANT CONNECT ON DATABASE finance_test TO finance_runtime_test").catch(async (error: unknown) => {
       // The database name may differ locally; connect privilege is commonly inherited from PUBLIC.
       const pgError = error as { code?: string };
