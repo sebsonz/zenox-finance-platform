@@ -1,20 +1,15 @@
 import { z } from "zod";
+import { taxTreatmentSchema } from "../types/tax.types.js";
 
 const decimalString = z.string().regex(/^(?:0|[1-9]\d*)(?:\.\d+)?$/);
 
-export const taxTreatmentSchema = z.enum([
-  "STANDARD",
-  "REDUCED",
-  "ZERO_RATED",
-  "EXEMPT",
-  "REVERSE_CHARGE",
-]);
+const taxTreatmentValidator = z.enum(taxTreatmentSchema);
 
 export const taxRuleSchema = z.object({
   code: z.string().trim().min(2).max(40).regex(/^[A-Z0-9][A-Z0-9_-]+$/),
   name: z.string().trim().min(1).max(120),
   countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/),
-  treatment: taxTreatmentSchema,
+  treatment: taxTreatmentValidator,
   ratePercent: decimalString,
   validFrom: z.iso.date(),
   validTo: z.iso.date().optional(),
