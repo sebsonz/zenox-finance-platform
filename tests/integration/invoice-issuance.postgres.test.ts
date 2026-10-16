@@ -101,8 +101,8 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
       correlationId: randomUUID(),
     };
     const [issuedFirst, issuedSecond] = await Promise.all([
-      invoiceIssuanceService.issue(context, first!.id, first!.updatedAt),
-      invoiceIssuanceService.issue(context, second!.id, second!.updatedAt),
+      invoiceIssuanceService.issue(context, first!.id, first!.updatedAt, randomUUID()),
+      invoiceIssuanceService.issue(context, second!.id, second!.updatedAt, randomUUID()),
     ]);
 
     expect(issuedFirst.status).toBe("ISSUED");
@@ -206,7 +206,7 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
       },
       correlationId: randomUUID(),
     };
-    await invoiceIssuanceService.issue(context, draft!.id, draft!.updatedAt);
+    await invoiceIssuanceService.issue(context, draft!.id, draft!.updatedAt, randomUUID());
 
     const verify = await pool.connect();
     try {
