@@ -52,7 +52,8 @@ export const invoiceTaxSnapshotService = {
         grand_total: string;
       }>(
         `SELECT id, tenant_id, status, currency_code, currency_minor_unit, customer_id,
-                updated_at::text AS updated_at, document_version, subtotal::text, discount_total::text,
+                to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at,
+                document_version, subtotal::text, discount_total::text,
                 taxable_total::text, tax_total::text, grand_total::text
            FROM public.finance_invoices
           WHERE tenant_id = $1 AND id = $2 AND status = 'DRAFT'
