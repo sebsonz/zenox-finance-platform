@@ -112,17 +112,23 @@ integrationDescribe("PostgreSQL invoice draft tenant isolation", () => {
       const foreign = await client.query("SELECT id FROM public.finance_invoices WHERE id = $1", [invoiceB]);
       const ownLines = await client.query("SELECT id FROM public.finance_invoice_lines WHERE invoice_id = $1", [invoiceA]);
       const foreignLines = await client.query("SELECT id FROM public.finance_invoice_lines WHERE invoice_id = $1", [invoiceB]);
+      const ownCustomer = await client.query("SELECT id FROM public.finance_customers WHERE id = $1", [customerA]);
+      const foreignCustomer = await client.query("SELECT id FROM public.finance_customers WHERE id = $1", [customerB]);
       expect(own.rowCount).toBe(1);
       expect(foreign.rowCount).toBe(0);
       expect(ownLines.rowCount).toBe(1);
       expect(foreignLines.rowCount).toBe(0);
+      expect(ownCustomer.rowCount).toBe(1);
+      expect(foreignCustomer.rowCount).toBe(0);
       await client.query("ROLLBACK");
 
       await client.query("BEGIN");
       const withoutContext = await client.query("SELECT id FROM public.finance_invoices");
       const linesWithoutContext = await client.query("SELECT id FROM public.finance_invoice_lines");
+      const customersWithoutContext = await client.query("SELECT id FROM public.finance_customers");
       expect(withoutContext.rowCount).toBe(0);
       expect(linesWithoutContext.rowCount).toBe(0);
+      expect(customersWithoutContext.rowCount).toBe(0);
       await client.query("ROLLBACK");
     } catch (error) {
       await client.query("ROLLBACK");
