@@ -38,7 +38,7 @@ interface InvoiceRow {
   currency_code: string; currency_minor_unit: number; issue_date: string | null; due_date: string | null;
   customer_snapshot: Record<string, unknown>; subtotal: string; discount_total: string; taxable_total: string;
   tax_total: string; grand_total: string; amount_due: string; calculation_policy: string; notes: string | null;
-  created_at: Date; updated_at: Date; document_version: number;
+  created_at: string; updated_at: string; document_version: number;
   tax_snapshot_id: string | null; tax_snapshot_version: number | null;
   tax_status: "PROVISIONAL" | "CALCULATED" | "REVIEW_REQUIRED";
 }
@@ -49,7 +49,9 @@ interface LineRow {
 }
 const invoiceColumns = `id, customer_id, invoice_code, status, currency_code, currency_minor_unit,
   issue_date, due_date, customer_snapshot, subtotal::text, discount_total::text, taxable_total::text,
-  tax_total::text, grand_total::text, amount_due::text, calculation_policy, notes, created_at, updated_at,
+  tax_total::text, grand_total::text, amount_due::text, calculation_policy, notes,
+  to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at,
+  to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at,
   document_version, tax_snapshot_id, tax_snapshot_version, tax_status`;
 
 async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow): Promise<FinanceInvoice> {
@@ -68,7 +70,7 @@ async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow
     customerSnapshot: row.customer_snapshot, subtotal: row.subtotal, discountTotal: row.discount_total,
     taxableTotal: row.taxable_total, taxTotal: row.tax_total, grandTotal: row.grand_total, amountDue: row.amount_due,
     calculationPolicy: row.calculation_policy, notes: row.notes,
-    createdAt: row.created_at.toISOString(), updatedAt: row.updated_at.toISOString(),
+    createdAt: row.created_at, updatedAt: row.updated_at,
     documentVersion: row.document_version, taxSnapshotId: row.tax_snapshot_id,
     taxSnapshotVersion: row.tax_snapshot_version, taxStatus: row.tax_status,
     lines: result.rows.map((line) => ({
