@@ -20,8 +20,28 @@ ALTER TABLE public.finance_invoices
   ADD CONSTRAINT finance_invoices_tax_snapshot_pair_ck
   CHECK ((tax_snapshot_id IS NULL) = (tax_snapshot_version IS NULL));
 
-ALTER TABLE public.finance_tax_calculation_snapshots
-  ADD CONSTRAINT finance_tax_snapshots_tenant_id_id_uq UNIQUE (tenant_id, id);
+DO $migration$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conname = 'finance_tax_snapshots_tenant_id_id_uq'
+       AND conrelid = 'public.finance_tax_calculation_snapshots'::regclass
+  ) THEN
+    ALTER TABLE public.finance_tax_calculation_snapshots
+      ADD CONSTRAINT finance_tax_snapshots_tenant_id_id_uq UNIQUE (tenant_id, id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conname = 'finance_tax_snapshots_document_revision_uq'
+       AND conrelid = 'public.finance_tax_calculation_snapshots'::regclass
+  ) THEN
+    ALTER TABLE public.finance_tax_calculation_snapshots
+      ADD CONSTRAINT finance_tax_snapshots_document_revision_uq
+      UNIQUE (tenant_id, document_type, document_id, document_version);
+  END IF;
+END;
+$migration$;
 
 ALTER TABLE public.finance_invoices
   DROP CONSTRAINT IF EXISTS finance_invoices_tax_snapshot_fk;
