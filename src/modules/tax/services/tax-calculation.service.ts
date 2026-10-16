@@ -65,10 +65,19 @@ export const taxCalculationService = {
         // Until a jurisdiction-specific tax-composition policy exists, do not silently
         // stack unrelated tax families (for example VAT with withholding or customs duty).
         const taxTypes = new Set(rules.map((rule) => rule.taxType));
-        if (taxTypes.size !== 1) {
+        const nonWithholdingTypes = new Set(rules
+          .filter((rule) => rule.taxType !== "WITHHOLDING")
+          .map((rule) => rule.taxType));
+        // Withholding is a separately modelled deduction in this engine, not an
+        // additive tax. Permit it alongside one primary tax family only.
+        const hasSupportedWithholdingCombination =
+          taxTypes.has("WITHHOLDING") &&
+          nonWithholdingTypes.size === 1 &&
+          taxTypes.size === 2;
+        if (taxTypes.size !== 1 && !hasSupportedWithholdingCombination) {
           throw new TaxCalculationServiceError(
             "AMBIGUOUS_TAX_TYPES",
-            "Applicable rules contain multiple tax types; calculation was refused until an explicit tax-composition policy is configured.",
+            "Applicable rules contain multiple tax families without an explicit composition policy; calculation was refused.",
           );
         }
 
