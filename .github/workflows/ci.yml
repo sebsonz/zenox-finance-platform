@@ -47,8 +47,10 @@ jobs:
         run: npm run build
       - name: Apply Finance migrations to disposable PostgreSQL
         run: npm run db:migrate
-      - name: Prepare least-privilege integration role
+      - name: Prepare least-privilege integration role and fixtures
         run: npm run db:test:prepare
+      - name: Audit applied migration checksums
+        run: npm run db:drift-check
       - name: Unit and PostgreSQL integration tests
         run: npm test
       - name: Install web dependencies
