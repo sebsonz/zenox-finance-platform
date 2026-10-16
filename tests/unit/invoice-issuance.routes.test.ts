@@ -72,14 +72,14 @@ describe("invoice issuance route", () => {
 
   it("validates invoice ID and requires a strict expected revision", async () => {
     const invalidId = await request(app(), "/invoices/not-a-uuid/issue", {
-      method: "POST", headers: { "content-type": "application/json" },
+      method: "POST", headers: { "content-type": "application/json", "Idempotency-Key": "test-issue-key-001" },
       body: JSON.stringify({ expectedUpdatedAt: UPDATED_AT }),
     });
     expect(invalidId.status).toBe(400);
     expect(invalidId.body).toMatchObject({ error: { code: "INVALID_INVOICE_ID" } });
 
     const invalidBody = await request(app(), `/invoices/${INVOICE_ID}/issue`, {
-      method: "POST", headers: { "content-type": "application/json" },
+      method: "POST", headers: { "content-type": "application/json", "Idempotency-Key": "test-issue-key-001" },
       body: JSON.stringify({ expectedUpdatedAt: UPDATED_AT, invoiceCode: "INV-2026-000001" }),
     });
     expect(invalidBody.status).toBe(400);
@@ -92,14 +92,14 @@ describe("invoice issuance route", () => {
       id: INVOICE_ID, status: "ISSUED", invoiceCode: "INV-2026-000001", taxStatus: "CALCULATED",
     } as never);
     const response = await request(app(), `/invoices/${INVOICE_ID}/issue`, {
-      method: "POST", headers: { "content-type": "application/json" },
+      method: "POST", headers: { "content-type": "application/json", "Idempotency-Key": "test-issue-key-001" },
       body: JSON.stringify({ expectedUpdatedAt: UPDATED_AT }),
     });
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       data: { invoice: { status: "ISSUED", invoiceCode: "INV-2026-000001" }, correlationId: "test-issue-correlation" },
     });
-    expect(invoiceIssuanceService.issue).toHaveBeenCalledWith(CONTEXT, INVOICE_ID, UPDATED_AT);
+    expect(invoiceIssuanceService.issue).toHaveBeenCalledWith(CONTEXT, INVOICE_ID, UPDATED_AT, "test-issue-key-001");
   });
 
   it("maps stale or already-issued revisions to 409", async () => {
@@ -107,7 +107,7 @@ describe("invoice issuance route", () => {
       new InvoiceIssuanceServiceError("INVOICE_NOT_FOUND_OR_CHANGED", "Reload the draft."),
     );
     const response = await request(app(), `/invoices/${INVOICE_ID}/issue`, {
-      method: "POST", headers: { "content-type": "application/json" },
+      method: "POST", headers: { "content-type": "application/json", "Idempotency-Key": "test-issue-key-001" },
       body: JSON.stringify({ expectedUpdatedAt: UPDATED_AT }),
     });
     expect(response.status).toBe(409);
@@ -119,7 +119,7 @@ describe("invoice issuance route", () => {
       new InvoiceIssuanceServiceError("INVOICE_TAX_NOT_CALCULATED", "Tax snapshot required."),
     );
     const response = await request(app(), `/invoices/${INVOICE_ID}/issue`, {
-      method: "POST", headers: { "content-type": "application/json" },
+      method: "POST", headers: { "content-type": "application/json", "Idempotency-Key": "test-issue-key-001" },
       body: JSON.stringify({ expectedUpdatedAt: UPDATED_AT }),
     });
     expect(response.status).toBe(422);
