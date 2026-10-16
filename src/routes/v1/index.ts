@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { healthRouter } from "../../modules/health/routes/health.routes.js";
+import { taxCalculationRouter } from "../../modules/tax/routes/tax-calculation.routes.js";
+import { userTenantAccessRouter } from "../../modules/user-auth/routes/user-tenant-access.routes.js";
 
 export const apiV1Router = Router();
 apiV1Router.use("/health", healthRouter);
-
-import { taxCalculationRouter } from "../../modules/tax/routes/tax-calculation.routes.js";
 apiV1Router.use("/tax", taxCalculationRouter);
+apiV1Router.use("/user", userTenantAccessRouter);
