@@ -111,15 +111,27 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
     expect(issuedFirst.taxStatus).toBe("CALCULATED");
     expect(issuedSecond.taxStatus).toBe("CALCULATED");
 
-    const verify = await pool.query<{ status: string; invoice_code: string; issued_at: Date; tax_snapshot_id: string }>(
-      `SELECT status, invoice_code, issued_at, tax_snapshot_id
-         FROM public.finance_invoices
-        WHERE tenant_id = $1 AND id = ANY($2::uuid[])
-        ORDER BY invoice_code`,
+    const verify = await pool.query<{
+      status: string; invoice_code: string; issued_at: Date; tax_snapshot_id: string;
+      artifact_id: string; content_sha256: string; html_content: string;
+    }>(
+      `SELECT i.status, i.invoice_code, i.issued_at, i.tax_snapshot_id,
+              d.id AS artifact_id, d.content_sha256, d.html_content
+         FROM public.finance_invoices i
+         JOIN public.finance_invoice_document_artifacts d
+           ON d.tenant_id = i.tenant_id AND d.invoice_id = i.id AND d.document_version = i.document_version
+        WHERE i.tenant_id = $1 AND i.id = ANY($2::uuid[])
+        ORDER BY i.invoice_code`,
       [tenantId, [first!.id, second!.id]],
     );
     expect(verify.rows).toHaveLength(2);
     expect(verify.rows.every((row) => row.status === "ISSUED" && row.issued_at instanceof Date && row.tax_snapshot_id)).toBe(true);
+    for (const row of verify.rows) {
+      expect(row.content_sha256).toMatch(/^[a-f0-9]{64}$/);
+      expect(row.html_content).toContain(row.invoice_code);
+      expect(row.html_content).toContain(row.tax_snapshot_id);
+      expect(row.artifact_id).toMatch(/^[0-9a-f-]{36}$/i);
+    }
   });
 
   it("rejects direct database issuance when the authoritative tax snapshot is missing", async () => {
@@ -214,6 +226,18 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
       ).rejects.toMatchObject({ code: "55000" });
       await verify.query("ROLLBACK TO SAVEPOINT issued_line_update");
       await verify.query("RELEASE SAVEPOINT issued_line_update");
+
+      await verify.query("SAVEPOINT issued_artifact_update");
+      await expect(
+        verify.query(
+          `UPDATE public.finance_invoice_document_artifacts
+              SET html_content = '<html>tampered</html>'
+            WHERE tenant_id = $1 AND invoice_id = $2`,
+          [tenantId, draft!.id],
+        ),
+      ).rejects.toMatchObject({ code: "55000" });
+      await verify.query("ROLLBACK TO SAVEPOINT issued_artifact_update");
+      await verify.query("RELEASE SAVEPOINT issued_artifact_update");
 
       await verify.query("ROLLBACK");
     } catch (error) {
