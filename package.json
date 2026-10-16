@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:migrate": "tsx scripts/migrate.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:test:prepare": "tsx scripts/prepare-integration-db.ts"
   },
   "dependencies": {
     "decimal.js": "^10.6.0",
