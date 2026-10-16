@@ -100,7 +100,7 @@ integrationDescribe("PostgreSQL invoice tax snapshot binding", () => {
             WHERE tenant_id = $1 AND id = $3`,
           [tenantB, snapshotA, invoiceB],
         ),
-      ).rejects.toMatchObject({ code: "23503" });
+      ).rejects.toMatchObject({ code: "23514" });
 
       const duplicate = await insertSnapshot(admin, tenantA, invoiceA, 2);
       await expect(
