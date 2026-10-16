@@ -137,8 +137,8 @@ async function prepare(): Promise<void> {
 
     await client.query("GRANT CONNECT ON DATABASE finance_test TO finance_runtime_test");
     await client.query("GRANT USAGE ON SCHEMA public TO finance_runtime_test");
-    await client.query("GRANT SELECT ON public.finance_tenants, public.finance_currencies, public.finance_customers TO finance_runtime_test");
-    await client.query("GRANT INSERT, UPDATE, DELETE ON public.finance_customers TO finance_runtime_test");
+    await client.query("GRANT SELECT ON public.finance_tenants, public.finance_currencies TO finance_runtime_test");
+    await client.query("GRANT SELECT, INSERT, UPDATE, DELETE ON public.finance_customers TO finance_runtime_test");
     await client.query("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO finance_runtime_test");
     await client.query("REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.finance_currencies FROM finance_runtime_test");
     await client.query("GRANT INSERT, SELECT ON public.finance_tax_calculation_snapshots TO finance_runtime_test");
