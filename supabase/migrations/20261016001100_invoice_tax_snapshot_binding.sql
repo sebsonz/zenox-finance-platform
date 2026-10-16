@@ -54,15 +54,6 @@ BEGIN
     ALTER TABLE public.finance_tax_calculation_snapshots
       ADD CONSTRAINT finance_tax_snapshots_tenant_id_id_uq UNIQUE (tenant_id, id);
   END IF;
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-     WHERE conname = 'finance_tax_calculation_snapshots_document_version_uq'
-       AND conrelid = 'public.finance_tax_calculation_snapshots'::regclass
-  ) THEN
-    ALTER TABLE public.finance_tax_calculation_snapshots
-      ADD CONSTRAINT finance_tax_calculation_snapshots_document_version_uq
-      UNIQUE (tenant_id, document_type, document_id, document_version);
-  END IF;
 END;
 $constraints$;
 
