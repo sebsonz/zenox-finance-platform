@@ -97,6 +97,45 @@ integrationDescribe("PostgreSQL tax snapshot security", () => {
     expect(privileges).not.toContain("DELETE");
   });
 
+  it("restricts tenant directory reads to the transaction tenant row", async () => {
+    const client = await runtimePool.connect();
+    try {
+      await client.query("BEGIN");
+      await inTenant(client, tenantA);
+      const own = await client.query<{ id: string }>(
+        "SELECT id FROM public.finance_tenants WHERE id = $1",
+        [tenantA],
+      );
+      const foreign = await client.query<{ id: string }>(
+        "SELECT id FROM public.finance_tenants WHERE id = $1",
+        [tenantB],
+      );
+      expect(own.rows.map((row) => row.id)).toEqual([tenantA]);
+      expect(foreign.rowCount).toBe(0);
+      await client.query("ROLLBACK");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
+  it("fails closed for tenant directory reads without tenant context", async () => {
+    const client = await runtimePool.connect();
+    try {
+      await client.query("BEGIN");
+      const visible = await client.query("SELECT id FROM public.finance_tenants");
+      expect(visible.rowCount).toBe(0);
+      await client.query("ROLLBACK");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
   it("isolates reads to the tenant transaction context", async () => {
     const client = await runtimePool.connect();
     try {
