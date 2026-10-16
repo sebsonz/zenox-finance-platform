@@ -54,6 +54,15 @@ BEGIN
     ALTER TABLE public.finance_tax_calculation_snapshots
       ADD CONSTRAINT finance_tax_snapshots_tenant_id_id_uq UNIQUE (tenant_id, id);
   END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conname = 'finance_tax_snapshots_document_revision_uq'
+       AND conrelid = 'public.finance_tax_calculation_snapshots'::regclass
+  ) THEN
+    ALTER TABLE public.finance_tax_calculation_snapshots
+      ADD CONSTRAINT finance_tax_snapshots_document_revision_uq
+      UNIQUE (tenant_id, document_type, document_id, document_version);
+  END IF;
 END;
 $constraints$;
 
@@ -69,26 +78,7 @@ CREATE INDEX IF NOT EXISTS finance_invoices_tax_snapshot_idx
   ON public.finance_invoices (tenant_id, tax_snapshot_id)
   WHERE tax_snapshot_id IS NOT NULL;
 
--- A snapshot is immutable even for the table owner. Use a uniquely named
--- function so we do not replace or mutate the existing immutable-snapshot API.
-CREATE OR REPLACE FUNCTION public.finance_reject_tax_snapshot_binding_mutation()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  RAISE EXCEPTION 'TAX_CALCULATION_SNAPSHOT_IMMUTABLE'
-    USING ERRCODE = '55000';
-END;
-$$;
-
-DROP TRIGGER IF EXISTS finance_tax_snapshot_binding_immutable
-  ON public.finance_tax_calculation_snapshots;
-CREATE TRIGGER finance_tax_snapshot_binding_immutable
-  BEFORE UPDATE OR DELETE ON public.finance_tax_calculation_snapshots
-  FOR EACH ROW EXECUTE FUNCTION public.finance_reject_tax_snapshot_binding_mutation();
-
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.finance_tax_calculation_snapshots FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.finance_reject_tax_snapshot_binding_mutation() FROM PUBLIC;
 
 COMMENT ON COLUMN public.finance_invoices.document_version IS
   'Monotonically increasing revision of the mutable draft; snapshots bind to this revision.';
