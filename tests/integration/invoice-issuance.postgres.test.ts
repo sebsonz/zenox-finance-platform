@@ -206,7 +206,11 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
       },
       correlationId: randomUUID(),
     };
-    await invoiceIssuanceService.issue(context, draft!.id, draft!.updatedAt, randomUUID());
+    const idempotencyKey = randomUUID();
+    const firstIssue = await invoiceIssuanceService.issue(context, draft!.id, draft!.updatedAt, idempotencyKey);
+    const retryIssue = await invoiceIssuanceService.issue(context, draft!.id, draft!.updatedAt, idempotencyKey);
+    expect(retryIssue.invoiceCode).toBe(firstIssue.invoiceCode);
+    expect(retryIssue.status).toBe("ISSUED");
 
     const verify = await pool.connect();
     try {
