@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { invoiceTaxSnapshotService } from "../../src/modules/invoices/services/invoice-tax-snapshot.service.js";
 
 const adminUrl = process.env["TEST_DATABASE_URL"];
 const runtimeUrl = process.env["TEST_RUNTIME_DATABASE_URL"];
@@ -61,6 +62,130 @@ integrationDescribe("PostgreSQL invoice tax snapshot binding", () => {
     );
     return result.rows[0]!.id;
   }
+
+  it("calculates real effective rules and atomically persists line totals, snapshot evidence and invoice net due", async () => {
+    const suffix = randomUUID().replaceAll("-", "").slice(0, 12).toUpperCase();
+    const invoiceId = randomUUID();
+    const principalId = randomUUID();
+    const jurisdictionId = randomUUID();
+    const customerCode = `TAXFLOW_${suffix}`;
+    const ruleCode = `TAXFLOW_${suffix}`;
+    const admin = await adminPool.connect();
+    let updatedAt = "";
+    try {
+      await admin.query("BEGIN");
+      await admin.query("SELECT set_config('app.tenant_id', $1, true)", [tenantA]);
+      const customer = await admin.query<{ id: string }>(
+        `INSERT INTO public.finance_customers
+          (tenant_id, customer_code, customer_type, legal_name, country_code, status)
+         VALUES ($1, $2, 'BUSINESS', 'Tax flow integration', 'BJ', 'ACTIVE')
+         RETURNING id`,
+        [tenantA, customerCode],
+      );
+      await admin.query(
+        `INSERT INTO public.finance_tax_jurisdictions
+          (id, code, country_code, name, jurisdiction_level, is_active)
+         VALUES ($1, $2, 'BJ', 'Tax flow integration jurisdiction', 'COUNTRY', true)`,
+        [jurisdictionId, `TF_${suffix}`],
+      );
+      await admin.query(
+        `INSERT INTO public.finance_tax_rules
+          (tenant_id, jurisdiction_id, rule_code, name, tax_type, treatment, rate_percent,
+           price_mode, priority, is_compound, applies_to, version, valid_from, status)
+         VALUES ($1,$2,$3,'Tax flow integration VAT','VAT','STANDARD',18,'EXCLUSIVE',10,false,
+                 'FREIGHT',1,CURRENT_DATE,'ACTIVE')`,
+        [tenantA, jurisdictionId, ruleCode],
+      );
+      const invoice = await admin.query<{ updated_at: string }>(
+        `INSERT INTO public.finance_invoices
+          (id, tenant_id, customer_id, status, currency_code, currency_minor_unit, customer_snapshot,
+           subtotal, discount_total, taxable_total, tax_total, grand_total, amount_due, calculation_policy, notes)
+         VALUES ($1,$2,$3,'DRAFT','XOF',0,'{"legalName":"Tax flow integration"}'::jsonb,
+                 1000,0,1000,0,1000,1000,'LINE_HALF_UP_TAX_EXCLUSIVE_V1','tax flow')
+         RETURNING updated_at::text AS updated_at`,
+        [invoiceId, tenantA, customer.rows[0]!.id],
+      );
+      updatedAt = new Date(invoice.rows[0]!.updated_at).toISOString();
+      await admin.query(
+        `INSERT INTO public.finance_invoice_lines
+          (tenant_id, invoice_id, line_number, description, quantity, unit_price, discount_percent,
+           tax_rate_percent, subtotal, discount_amount, taxable_amount, tax_amount, total)
+         VALUES ($1,$2,1,'Freight',1,1000,0,0,1000,0,1000,0,1000)`,
+        [tenantA, invoiceId],
+      );
+      await admin.query("COMMIT");
+    } catch (error) {
+      await admin.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      admin.release();
+    }
+
+    const result = await invoiceTaxSnapshotService.calculateAndAttach({
+      tenantId: tenantA,
+      principal: {
+        id: principalId,
+        principalCode: "tax-flow-integration",
+        displayName: "Tax flow integration",
+        scopes: ["invoice:draft:write", "tax:calculate"],
+        allowedTenantIds: [tenantA],
+      },
+      correlationId: `tax-flow-${suffix}`,
+    }, invoiceId, {
+      expectedUpdatedAt: updatedAt,
+      taxDate: new Date().toISOString().slice(0, 10),
+      jurisdictionId,
+      appliesTo: "FREIGHT",
+    });
+
+    expect(result.snapshot.documentType).toBe("INVOICE");
+    expect(result.snapshot.documentId).toBe(invoiceId);
+    expect(result.snapshot.documentVersion).toBe(1);
+    expect(result.snapshot.appliedRulesSnapshot).toHaveLength(1);
+    expect(result.snapshot.resultSnapshot).toMatchObject({
+      taxableTotal: "1000",
+      taxTotal: "180",
+      grandTotal: "1180",
+      amountDue: "1180",
+    });
+    expect(result.invoice).toMatchObject({
+      taxSnapshotId: result.snapshot.id,
+      taxSnapshotVersion: 1,
+      taxStatus: "CALCULATED",
+      amountDue: "1180",
+    });
+
+    const verify = await adminPool.query<{
+      document_version: number;
+      tax_snapshot_id: string;
+      tax_status: string;
+      taxable_total: string;
+      tax_total: string;
+      grand_total: string;
+      amount_due: string;
+      line_tax: string;
+      line_total: string;
+    }>(
+      `SELECT i.document_version, i.tax_snapshot_id, i.tax_status, i.taxable_total::text,
+              i.tax_total::text, i.grand_total::text, i.amount_due::text,
+              l.tax_amount::text AS line_tax, l.total::text AS line_total
+         FROM public.finance_invoices i
+         JOIN public.finance_invoice_lines l ON l.tenant_id = i.tenant_id AND l.invoice_id = i.id
+        WHERE i.tenant_id = $1 AND i.id = $2`,
+      [tenantA, invoiceId],
+    );
+    expect(verify.rows[0]).toMatchObject({
+      document_version: 1,
+      tax_snapshot_id: result.snapshot.id,
+      tax_status: "CALCULATED",
+      taxable_total: "1000.0000",
+      tax_total: "180.0000",
+      grand_total: "1180.0000",
+      amount_due: "1180.0000",
+      line_tax: "180.0000",
+      line_total: "1180.0000",
+    });
+  });
 
   it("links only same-tenant snapshots and rejects stale or mismatched revision references", async () => {
     const admin = await adminPool.connect();
