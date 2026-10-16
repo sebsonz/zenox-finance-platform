@@ -66,6 +66,24 @@ BEGIN
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
+     WHERE conname = 'finance_invoices_tax_status_snapshot_ck'
+       AND conrelid = 'public.finance_invoices'::regclass
+  ) THEN
+    ALTER TABLE public.finance_invoices
+      ADD CONSTRAINT finance_invoices_tax_status_snapshot_ck
+      CHECK ((tax_status = 'CALCULATED') = (tax_snapshot_id IS NOT NULL));
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conname = 'finance_invoices_amount_due_nonnegative_ck'
+       AND conrelid = 'public.finance_invoices'::regclass
+  ) THEN
+    ALTER TABLE public.finance_invoices
+      ADD CONSTRAINT finance_invoices_amount_due_nonnegative_ck
+      CHECK (amount_due >= 0);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
      WHERE conname = 'finance_tax_snapshots_tenant_id_id_uq'
        AND conrelid = 'public.finance_tax_calculation_snapshots'::regclass
   ) THEN
