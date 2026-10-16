@@ -13,7 +13,7 @@ userTenantAccessRouter.get(
   "/tenants/:tenantId",
   requireUserAuth(),
   async (req, res, next) => {
-    const parsedTenantId = tenantIdSchema.safeParse(req.params.tenantId);
+    const parsedTenantId = tenantIdSchema.safeParse(req.params["tenantId"]);
     if (!parsedTenantId.success) {
       res.status(400).json({
         error: { code: "INVALID_TENANT_ID", message: "A valid tenant ID is required." },
