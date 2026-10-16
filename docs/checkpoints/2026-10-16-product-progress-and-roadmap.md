@@ -27,10 +27,10 @@ Preserve the approved target: independent, extensible finance platform; modular 
   - Tenant repository transaction/RLS change: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38960942030
   - Tenant self-row RLS migration: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38960961866
 - Tenant-directory RLS integration tests initially exposed a policy issue; forward-only migration `20261016000900_reassert_tenant_directory_rls.sql` was added and CI passed: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38964772486.
-- Invoice draft persistence, tenant-scoped routes, validation tests and PostgreSQL RLS isolation tests have been added. Invoice/line tenant isolation passed in CI: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38965751253. The follow-up cursor/sort alignment and expanded customer RLS tests are running in CI: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38966522663. Do not treat the latest changes as passed until that run completes.
+- Invoice draft persistence, tenant-scoped routes, validation tests and PostgreSQL RLS isolation tests have been added. Invoice/line tenant isolation passed in CI: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38965751253. The keyset pagination fix aligning the `(created_at, id)` cursor with descending sort passed CI: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38966455543. Expanded customer RLS coverage also passed CI: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38966522663. The checkpoint update itself passed CI: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38966551445.
 
 ### Partially implemented (do not describe as complete)
-- Invoice domain: draft persistence and tenant-scoped create/list/detail API now exist with stored lines, server-calculated draft totals, a customer snapshot and currency precision snapshot. Keyset pagination now compares the `(created_at, id)` tuple matching the descending sort; CI verification is in progress. Still incomplete: draft editing, authoritative jurisdiction-based tax rule application and tax snapshot binding at issue time, sequence-safe numbering, issue/cancel/credit-note lifecycle, immutable issued documents, document generation/PDF and full customer-facing workflows. The draft tax-rate input is provisional and is not a claim of tax compliance.
+- Invoice domain: draft persistence and tenant-scoped create/list/detail API now exist with stored lines, server-calculated draft totals, a customer snapshot and currency precision snapshot. Keyset pagination now compares the `(created_at, id)` tuple matching the descending sort; CI passed. Still incomplete: draft editing, authoritative jurisdiction-based tax rule application and tax snapshot binding at issue time, sequence-safe numbering, issue/cancel/credit-note lifecycle, immutable issued documents, document generation/PDF and full customer-facing workflows. The draft tax-rate input is provisional and is not a claim of tax compliance.
 - Customers/currencies: foundational schemas and some repository/service code exist; complete CRUD APIs, pagination/search, tenant security coverage, currency reference population/refresh policy and end-to-end UI are not yet evidenced as complete.
 - Taxes: core calculation and immutable snapshot API exist; authoritative jurisdiction-specific rule data requires reviewed sources and competent legal/tax validation. Schema coverage does not mean international tax compliance.
 - User authentication: token verification and single-tenant access lookup exist; membership invitation/activation/revocation, secure tenant discovery/listing and full BFF/UI session workflows remain open.
@@ -55,16 +55,15 @@ A precise percentage is not asserted because there is no implemented-feature inv
 
 ## Next execution order
 
-1. Confirm CI for the invoice pagination cursor fix and expanded customer RLS coverage; fix any failure before proceeding.
-2. Expand PostgreSQL RLS tests to tenant memberships; assert the runtime role is non-superuser/non-BYPASSRLS and least-privilege grants are explicit. Customer/invoice/line tenant isolation is now covered in the integration test.
-3. Establish an auditable test fixture/seed strategy and migration drift check for the dedicated Finance database; do not execute destructive changes on the real Supabase project without a verified inventory and backup.
-4. Finish customer and currency APIs/contracts and tenant-isolation tests.
-5. Complete invoice lifecycle: draft editing; apply authoritative jurisdiction rules and persist tax snapshots; sequence-safe issue; immutable issued documents; cancellation/credit notes; then end-to-end acceptance.
-6. Build payments and allocations with idempotency, provider adapter boundary, atomic concurrency-safe balance invariants, refunds, and reconciliation.
-7. Deliver frontend workflows against a server-side BFF/API boundary; no service secrets in the browser.
-8. Add documents, notifications, webhooks/outbox, collections, reporting, customer portal and integrations.
-9. Add general ledger and period closing after the invoice/payment source-of-truth is stable.
-10. Validate full ZENOX FRET consumer contract, security, backups/restoration, operations and go/no-go before production.
+1. Extend PostgreSQL RLS tests to tenant memberships; assert runtime role is non-superuser/non-BYPASSRLS and verify least-privilege grants explicitly. Customer/invoice/line isolation and invoice cursor/sort alignment are covered and CI passed.
+2. Establish an auditable test fixture/seed strategy and migration drift check for the dedicated Finance database; do not execute destructive changes on the real Supabase project without a verified inventory and backup.
+3. Finish customer and currency APIs/contracts, pagination/search and tenant-isolation tests.
+4. Continue invoice lifecycle in safe order: draft editing; authoritative jurisdiction-based tax rules and immutable tax snapshots; sequence-safe issue; immutable issued documents; cancellation/credit notes; then end-to-end acceptance. The current draft tax rate remains provisional and must not be represented as official tax calculation.
+5. Build payments and allocations with idempotency, provider adapter boundary, atomic concurrency-safe balance invariants, refunds, and reconciliation.
+6. Deliver frontend workflows against a server-side BFF/API boundary; no service secrets in the browser.
+7. Add documents, notifications, webhooks/outbox, collections, reporting, customer portal and integrations.
+8. Add general ledger and period closing after the invoice/payment source-of-truth is stable.
+9. Validate full ZENOX FRET consumer contract, security, backups/restoration, operations and go/no-go before production.
 
 ## Hard constraints
 - Do not modify the ZENOX FRET V2 database.
@@ -73,3 +72,8 @@ A precise percentage is not asserted because there is no implemented-feature inv
 - Do not store secrets in source control or expose service credentials to the browser.
 - Do not call a feature complete or production-ready without code, passing CI, database-level tests and an accepted end-to-end flow.
 - Keep future modules in the target roadmap even when they are scheduled after the MVP.
+
+
+## New-chat continuation note (2026-10-16)
+
+The latest verified checkpoint commit is `b5f1f7e324ff6812ad81d21bce530ccc8126bc78`; its CI passed: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38966551445. The immediately preceding invoice pagination fix commit `9cf4eaec601ae5dfa4f798771262407400b80cf8` passed CI, and the customer/invoice/line RLS integration coverage commit `61377af35a1a4d1261417315bbb0d8a34eab096b` passed CI. Start the next chat by reading this checkpoint and the latest GitHub main branch; do not ask the user to resend prior files or repeat already completed audits. Continue directly with the next execution item, preserving all hard constraints above. No live Supabase migration or database modification was performed; CI used its disposable PostgreSQL database.
