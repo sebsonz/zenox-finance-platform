@@ -4,6 +4,7 @@ import type { FinanceRequestContext } from "../../integration-auth/types/authent
 import { currencyRepository } from "../../currencies/repositories/currency.repository.js";
 import { taxRuleRepository } from "../../tax/repositories/tax-rule.repository.js";
 import { taxSnapshotRepository, type TaxCalculationSnapshot } from "../../tax/repositories/tax-snapshot.repository.js";
+import type { CreateTaxSnapshotInput } from "../../tax/validators/tax-snapshot.schema.js";
 import { calculateTaxStack } from "../../tax/engine/tax-stack.engine.js";
 import { calculateInvoiceTaxSnapshotSchema, type CalculateInvoiceTaxSnapshotInput } from "../validators/invoice-tax-calculation.schema.js";
 
@@ -197,7 +198,7 @@ export const invoiceTaxSnapshotService = {
 
       // The snapshot records the line identities and all pre-tax values, not only
       // an aggregate amount. Future rule edits cannot alter this evidence.
-      const snapshotInput = {
+      const snapshotInput: CreateTaxSnapshotInput = {
         documentType: "INVOICE" as const,
         documentId: invoiceId,
         documentVersion: invoice.document_version,
@@ -270,7 +271,7 @@ export const invoiceTaxSnapshotService = {
         context.tenantId,
         context.principal.id,
         currency.minorUnit,
-        snapshotInput as never,
+        snapshotInput,
       );
       const linked = await client.query(
         `UPDATE public.finance_invoices
