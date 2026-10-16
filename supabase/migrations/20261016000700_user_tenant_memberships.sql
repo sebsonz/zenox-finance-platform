@@ -45,6 +45,7 @@ CREATE POLICY finance_user_membership_tenant_isolation
     tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
   );
 
--- No PUBLIC or browser-role grants are added. The deployment role must receive
--- only the backend privileges required by the reviewed BFF implementation.
+-- Runtime grants are intentionally provisioned explicitly by the deployment
+-- process or dedicated membership-administration service. The general Finance
+-- runtime role receives no membership table privileges in integration CI.
 REVOKE ALL ON TABLE public.finance_user_tenant_memberships FROM PUBLIC;
