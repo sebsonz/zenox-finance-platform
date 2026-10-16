@@ -2,6 +2,7 @@ import { withTenantTransaction } from "../../../db/transaction.js";
 import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
 import { invoiceRepository, type FinanceInvoice } from "../repositories/invoice.repository.js";
 import { invoiceDocumentRepository } from "../repositories/invoice-document.repository.js";
+import { invoicePdfRepository } from "../repositories/invoice-pdf.repository.js";
 
 export class InvoiceIssuanceServiceError extends Error {
   constructor(
@@ -101,6 +102,12 @@ export const invoiceIssuanceService = {
       // The immutable document artifact is written in the same transaction as
       // the issue transition; a rendering/storage failure rolls issuance back.
       await invoiceDocumentRepository.createForIssuedInvoice(
+        client,
+        context.tenantId,
+        context.principal.id,
+        issued,
+      );
+      await invoicePdfRepository.createForIssuedInvoice(
         client,
         context.tenantId,
         context.principal.id,
