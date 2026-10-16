@@ -57,14 +57,14 @@ function makePdf(lines: string[]): Buffer {
   return Buffer.from(pdf, "ascii");
 }
 
-export function renderInvoicePdfDocument(invoice: FinanceInvoice): Buffer {
+export function renderInvoicePdfDocument(invoice: FinanceInvoice, documentLabel = "FACTURE"): Buffer {
   if (invoice.status !== "ISSUED" || !invoice.invoiceCode || invoice.taxStatus !== "CALCULATED" || !invoice.taxSnapshotId) {
     throw new Error("INVOICE_PDF_REQUIRES_ISSUED_TAX_SNAPSHOTTED_INVOICE");
   }
   const customer = invoice.customerSnapshot;
   const lines = [
     "ZENOX FINANCE",
-    "FACTURE",
+    plainText(documentLabel),
     `Numero: ${invoice.invoiceCode}`,
     `Date emission: ${invoice.issueDate ?? "-"} | Echeance: ${invoice.dueDate ?? "-"}`,
     `Client: ${String(customer["legalName"] ?? customer["displayName"] ?? "-")}`,
