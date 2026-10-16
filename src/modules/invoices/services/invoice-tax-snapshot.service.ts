@@ -318,6 +318,7 @@ export const invoiceTaxSnapshotService = {
           taxSnapshotId: snapshot.id,
           taxSnapshotVersion: snapshot.documentVersion,
           taxStatus: "CALCULATED",
+          amountDue,
           taxTotals: { taxableTotal, taxTotal, withholdingTotal, grandTotal: calculatedGrandTotal, amountDue },
         },
       };
