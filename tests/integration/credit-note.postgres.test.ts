@@ -83,7 +83,7 @@ integrationDescribe("PostgreSQL full-reversal credit notes", () => {
     } finally { client.release(); }
 
     const ctx = context();
-    const original = await invoiceIssuanceService.issue(ctx, draft!.id, draft!.updatedAt);
+    const original = await invoiceIssuanceService.issue(ctx, draft!.id, draft!.updatedAt, randomUUID());
     const credit = await creditNoteService.issueFullReversal(ctx, draft!.id, "Annulation commerciale complète");
 
     expect(original.status).toBe("ISSUED");
