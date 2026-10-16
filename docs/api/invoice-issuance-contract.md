@@ -19,3 +19,12 @@ Required scope: `invoice:issue`. Tenant identity comes only from the authenticat
 ## Important limitations
 
 The current numbering policy is a technical default, not a claim that a particular jurisdiction's legal invoice numbering requirements have been validated. Prefix, fiscal-year policy, required legal fields, e-invoicing, PDF generation, document signature and archival obligations must be configured and reviewed per jurisdiction before production use. The PDF renderer uses a built-in PDF 1.4 writer with standard Helvetica and currently normalizes non-ASCII characters for broad compatibility; it is a technical printable artifact, not a jurisdictional legal-compliance certification. Legal formatting, mandatory fields, signatures and archival policy require jurisdictional review.
+
+
+## Full-reversal credit notes
+
+Create a full-reversal credit note with `POST /api/v1/invoices/:invoiceId/credit-notes`, required scope `invoice:credit`, and strict JSON body `{"reason":"..." }`. Only an issued source invoice with its original tax snapshot can be reversed. The credit note copies the original customer, line and tax-evidence references, uses a distinct `CN-YYYY-NNNNNN` number, and stores immutable HTML/PDF renditions with hashes. The original issued invoice and its artifacts remain unchanged.
+
+The current credit-note operation is deliberately **full reversal only**, with at most one credit note per source invoice. Partial credit notes, debit notes, replacement invoices, approval workflow and jurisdiction-specific credit-note requirements are not implemented by this endpoint and must not be inferred from it. The copied tax snapshot is source evidence; tax treatment for a real-world credit note must be confirmed for the relevant jurisdiction before production use.
+
+Retrieve credit-note renditions using `GET /api/v1/invoices/credit-notes/:creditNoteId/document` or `GET /api/v1/invoices/credit-notes/:creditNoteId/document.pdf`, with `invoice:read`.
