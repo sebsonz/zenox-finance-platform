@@ -1,6 +1,6 @@
 import type { PoolClient } from "pg";
 import type { CalculatedInvoiceTotals } from "../types/invoice-calculation.types.js";
-import type { CreateInvoiceDraftInput, ListInvoiceDraftsQuery } from "../validators/invoice-draft.schema.js";
+import type { CreateInvoiceDraftInput, ListInvoiceDraftsQuery, UpdateInvoiceDraftInput } from "../validators/invoice-draft.schema.js";
 
 export interface FinanceInvoice {
   id: string;
@@ -114,8 +114,7 @@ export const invoiceRepository = {
     client: PoolClient,
     tenantId: string,
     invoiceId: string,
-    expectedUpdatedAt: string,
-    input: CreateInvoiceDraftInput,
+    input: UpdateInvoiceDraftInput,
     currencyMinorUnit: number,
     totals: CalculatedInvoiceTotals,
     calculatedLines: readonly { subtotal: string; discountAmount: string; taxableAmount: string; taxAmount: string; total: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string }[],
