@@ -36,8 +36,9 @@ async function prepare(): Promise<void> {
       if (pgError.code !== "3D000") throw error;
     });
     await client.query("GRANT USAGE ON SCHEMA public TO finance_runtime_test");
-    await client.query("GRANT SELECT ON public.finance_tenants, public.finance_currencies TO finance_runtime_test");
+    await client.query("GRANT SELECT ON public.finance_tenants, public.finance_currencies, public.finance_customers TO finance_runtime_test");
     await client.query("GRANT INSERT, SELECT ON public.finance_tax_calculation_snapshots TO finance_runtime_test");
+    await client.query("GRANT SELECT, INSERT ON public.finance_invoices, public.finance_invoice_lines TO finance_runtime_test");
 
     await client.query(
       `INSERT INTO public.finance_tenants (id, tenant_code, legal_name, country_code, default_currency, status)
