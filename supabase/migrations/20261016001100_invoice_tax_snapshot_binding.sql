@@ -7,7 +7,15 @@ ALTER TABLE public.finance_invoices
   ADD COLUMN IF NOT EXISTS tax_snapshot_id uuid,
   ADD COLUMN IF NOT EXISTS tax_snapshot_version integer,
   ADD COLUMN IF NOT EXISTS tax_status text NOT NULL DEFAULT 'PROVISIONAL',
-  ADD COLUMN IF NOT EXISTS amount_due numeric(20, 4) NOT NULL DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS amount_due numeric(20, 4);
+
+UPDATE public.finance_invoices
+   SET amount_due = grand_total
+ WHERE amount_due IS NULL;
+
+ALTER TABLE public.finance_invoices
+  ALTER COLUMN amount_due SET DEFAULT 0,
+  ALTER COLUMN amount_due SET NOT NULL;
 
 DO $constraints$
 BEGIN
