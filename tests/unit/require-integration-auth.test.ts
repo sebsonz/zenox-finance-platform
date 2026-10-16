@@ -58,7 +58,7 @@ function response() {
 async function invoke(headers: Record<string, string>, scopes: readonly string[] = ["tax:snapshot:write"]) {
   const req = request(headers);
   const res = response();
-  const next = vi.fn<NextFunction>();
+  const next = vi.fn() as unknown as NextFunction;
   await requireIntegrationAuth(scopes)(req, res, next);
   return { req, res, next };
 }
