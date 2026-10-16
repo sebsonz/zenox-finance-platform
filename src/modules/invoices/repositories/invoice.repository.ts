@@ -109,6 +109,69 @@ export const invoiceRepository = {
     return attachLines(client, tenantId, invoice);
   },
 
+
+  async updateDraft(
+    client: PoolClient,
+    tenantId: string,
+    invoiceId: string,
+    expectedUpdatedAt: string,
+    input: CreateInvoiceDraftInput,
+    currencyMinorUnit: number,
+    totals: CalculatedInvoiceTotals,
+    calculatedLines: readonly { subtotal: string; discountAmount: string; taxableAmount: string; taxAmount: string; total: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string }[],
+    customer: { id: string; legalName: string; displayName: string | null; email: string | null; phone: string | null; countryCode: string; taxIdentifier: string | null; registrationIdentifier: string | null },
+  ): Promise<FinanceInvoice | null> {
+    const updated = await client.query<InvoiceRow>(
+      `UPDATE public.finance_invoices
+          SET customer_id = $4,
+              currency_code = $5,
+              currency_minor_unit = $6,
+              due_date = $7,
+              customer_snapshot = $8::jsonb,
+              subtotal = $9,
+              discount_total = $10,
+              taxable_total = $11,
+              tax_total = $12,
+              grand_total = $13,
+              calculation_policy = $14,
+              notes = $15,
+              updated_at = now()
+        WHERE tenant_id = $1
+          AND id = $2
+          AND status = 'DRAFT'
+          AND updated_at = $3::timestamptz
+      RETURNING ${"invoiceColumns"}`,
+      [tenantId, invoiceId, expectedUpdatedAt, customer.id, totals.currency, currencyMinorUnit,
+        input.dueDate ?? null,
+        JSON.stringify({ id: customer.id, legalName: customer.legalName, displayName: customer.displayName,
+          email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
+          taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
+        totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
+        totals.calculationPolicy, input.notes ?? null],
+    );
+    const invoice = updated.rows[0];
+    if (!invoice) return null;
+
+    await client.query(
+      "DELETE FROM public.finance_invoice_lines WHERE tenant_id = $1 AND invoice_id = $2",
+      [tenantId, invoiceId],
+    );
+    for (let i = 0; i < input.lines.length; i += 1) {
+      const source = input.lines[i]!;
+      const calculated = calculatedLines[i]!;
+      await client.query(
+        `INSERT INTO public.finance_invoice_lines (
+          tenant_id, invoice_id, line_number, description, quantity, unit_price, discount_percent,
+          tax_rate_percent, subtotal, discount_amount, taxable_amount, tax_amount, total
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        [tenantId, invoiceId, i + 1, source.description, calculated.quantity, calculated.unitPrice,
+          calculated.discountPercent, calculated.taxRatePercent, calculated.subtotal,
+          calculated.discountAmount, calculated.taxableAmount, calculated.taxAmount, calculated.total],
+      );
+    }
+    return attachLines(client, tenantId, invoice);
+  },
+
   async findById(client: PoolClient, tenantId: string, invoiceId: string): Promise<FinanceInvoice | null> {
     const found = await client.query<InvoiceRow>(
       `SELECT ${invoiceColumns} FROM public.finance_invoices WHERE tenant_id = $1 AND id = $2 LIMIT 1`,
