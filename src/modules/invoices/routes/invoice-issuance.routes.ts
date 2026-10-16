@@ -23,17 +23,22 @@ invoiceIssuanceRouter.post(
       res.status(400).json({ error: { code: "INVALID_INVOICE_ID", message: "The invoice ID must be a UUID." } });
       return;
     }
+    const parsedKey = z.string().trim().min(8).max(128).safeParse(req.header("Idempotency-Key"));
+    if (!parsedKey.success) {
+      res.status(400).json({ error: { code: "INVALID_IDEMPOTENCY_KEY", message: "An Idempotency-Key header between 8 and 128 characters is required." } });
+      return;
+    }
     const parsed = issueInvoiceSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: { code: "INVALID_REQUEST", message: "The invoice issue request is invalid." } });
       return;
     }
     try {
-      const invoice = await invoiceIssuanceService.issue(context, parsedId.data, parsed.data.expectedUpdatedAt);
+      const invoice = await invoiceIssuanceService.issue(context, parsedId.data, parsed.data.expectedUpdatedAt, parsedKey.data);
       res.status(200).json({ data: { invoice, correlationId: context.correlationId } });
     } catch (error) {
       if (error instanceof InvoiceIssuanceServiceError) {
-        const status = error.code === "INVOICE_NOT_FOUND_OR_CHANGED" ? 409 : 422;
+        const status = error.code === "INVOICE_NOT_FOUND_OR_CHANGED" || error.code === "IDEMPOTENCY_KEY_REUSED" ? 409 : 422;
         res.status(status).json({ error: { code: error.code, message: error.message, correlationId: context.correlationId } });
         return;
       }
