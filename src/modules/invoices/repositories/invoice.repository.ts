@@ -122,7 +122,7 @@ export const invoiceRepository = {
   ): Promise<FinanceInvoice | null> {
     const updated = await client.query<InvoiceRow>(
       `UPDATE public.finance_invoices
-          SET customer_id = $4,
+          SET customer_id = $3,
               currency_code = $4,
               currency_minor_unit = $5,
               due_date = $6,
