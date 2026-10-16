@@ -2,7 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from "express"
 import { z } from "zod";
 import { requireIntegrationAuth } from "../../../middleware/require-integration-auth.js";
 import { InvoiceDraftServiceError, invoiceDraftService } from "../services/invoice-draft.service.js";
-import { createInvoiceDraftSchema, listInvoiceDraftsQuerySchema } from "../validators/invoice-draft.schema.js";
+import { createInvoiceDraftSchema, listInvoiceDraftsQuerySchema, updateInvoiceDraftSchema } from "../validators/invoice-draft.schema.js";
 
 export const invoiceDraftRouter = Router();
 
@@ -27,6 +27,47 @@ invoiceDraftRouter.post(
     } catch (error) {
       if (error instanceof InvoiceDraftServiceError) {
         const status = error.code === "CUSTOMER_NOT_FOUND" ? 404 : 422;
+        res.status(status).json({ error: { code: error.code, message: error.message, correlationId: context.correlationId } });
+        return;
+      }
+      if (error instanceof Error && /^(INVALID_|EXCESSIVE_|QUANTITY_|UNIT_PRICE_|DISCOUNT_|TAX_RATE_|INVOICE_REQUIRES_|TOO_MANY_)/.test(error.message)) {
+        res.status(422).json({ error: { code: error.message, message: "The invoice lines cannot be calculated.", correlationId: context.correlationId } });
+        return;
+      }
+      next(error);
+    }
+  },
+);
+
+invoiceDraftRouter.put(
+  "/drafts/:invoiceId",
+  requireIntegrationAuth(["invoice:draft:write"]),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const context = req.financeContext;
+    if (!context) {
+      res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "A verified Finance context is required." } });
+      return;
+    }
+    const parsedId = z.string().uuid().safeParse(req.params["invoiceId"]);
+    if (!parsedId.success) {
+      res.status(400).json({ error: { code: "INVALID_INVOICE_ID", message: "The invoice ID must be a UUID." } });
+      return;
+    }
+    const parsed = updateInvoiceDraftSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: { code: "INVALID_REQUEST", message: "The invoice draft update request is invalid.",
+          issues: parsed.error.issues.map((issue) => ({ path: issue.path.join("."), code: issue.code, message: issue.message })) },
+      });
+      return;
+    }
+    try {
+      const invoice = await invoiceDraftService.updateDraft(context, parsedId.data, parsed.data);
+      res.status(200).json({ data: { invoice, correlationId: context.correlationId } });
+    } catch (error) {
+      if (error instanceof InvoiceDraftServiceError) {
+        const status = error.code === "CUSTOMER_NOT_FOUND" ? 404 :
+          error.code === "DRAFT_NOT_FOUND_OR_CHANGED" ? 409 : 422;
         res.status(status).json({ error: { code: error.code, message: error.message, correlationId: context.correlationId } });
         return;
       }
