@@ -114,6 +114,7 @@ export const invoiceRepository = {
     client: PoolClient,
     tenantId: string,
     invoiceId: string,
+    expectedUpdatedAt: string,
     input: UpdateInvoiceDraftInput,
     currencyMinorUnit: number,
     totals: CalculatedInvoiceTotals,
