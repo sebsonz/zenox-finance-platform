@@ -132,7 +132,7 @@ integrationDescribe("PostgreSQL full-reversal credit notes", () => {
       throw error;
     } finally { client.release(); }
     const ctx = context();
-    await invoiceIssuanceService.issue(ctx, draft!.id, draft!.updatedAt);
+    await invoiceIssuanceService.issue(ctx, draft!.id, draft!.updatedAt, randomUUID());
     await creditNoteService.issueFullReversal(ctx, draft!.id, "Erreur de commande");
 
     const verify = await pool.connect();
