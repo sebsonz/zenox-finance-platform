@@ -30,7 +30,7 @@ export interface FinanceInvoice {
 
 interface InvoiceRow {
   id: string; customer_id: string; invoice_code: string | null; status: "DRAFT" | "ISSUED" | "CANCELLED";
-  currency_code: string; currency_minor_unit: number; issue_date: Date | null; due_date: Date | null;
+  currency_code: string; currency_minor_unit: number; issue_date: string | null; due_date: string | null;
   customer_snapshot: Record<string, unknown>; subtotal: string; discount_total: string; taxable_total: string;
   tax_total: string; grand_total: string; calculation_policy: string; notes: string | null;
   created_at: Date; updated_at: Date;
@@ -55,8 +55,8 @@ async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow
   return {
     id: row.id, customerId: row.customer_id, invoiceCode: row.invoice_code, status: row.status,
     currencyCode: row.currency_code.trim(), currencyMinorUnit: row.currency_minor_unit,
-    issueDate: row.issue_date?.toISOString().slice(0, 10) ?? null,
-    dueDate: row.due_date?.toISOString().slice(0, 10) ?? null,
+    issueDate: row.issue_date,
+    dueDate: row.due_date,
     customerSnapshot: row.customer_snapshot, subtotal: row.subtotal, discountTotal: row.discount_total,
     taxableTotal: row.taxable_total, taxTotal: row.tax_total, grandTotal: row.grand_total,
     calculationPolicy: row.calculation_policy, notes: row.notes,
