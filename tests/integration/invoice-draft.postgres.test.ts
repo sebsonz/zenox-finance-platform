@@ -99,10 +99,29 @@ integrationDescribe("PostgreSQL invoice draft tenant isolation", () => {
       );
       expect(staleRetry.rowCount).toBe(0);
 
-      const issued = await editor.query(
-        `UPDATE public.finance_invoices SET status = 'ISSUED', invoice_code = 'INV-TEST-01', issue_date = CURRENT_DATE, issued_at = clock_timestamp()
-          WHERE tenant_id = $1 AND id = $2 RETURNING id`,
+      const snapshot = await editor.query<{ id: string }>(
+        `INSERT INTO public.finance_tax_calculation_snapshots
+          (tenant_id, document_type, document_id, document_version, calculation_policy,
+           engine_version, tax_date, currency_code, currency_minor_unit, input_snapshot,
+           result_snapshot, applied_rules_snapshot)
+         VALUES ($1,'INVOICE',$2,1,'INVOICE_TAX_SNAPSHOT_PER_LINE_V1','integration-test',
+                 CURRENT_DATE,'XOF',0,'{"fixture":"draft-test"}'::jsonb,
+                 '{"taxTotal":"0"}'::jsonb,'[]'::jsonb)
+         RETURNING id`,
         [tenantA, invoiceId],
+      );
+      await editor.query(
+        `UPDATE public.finance_invoices
+            SET tax_snapshot_id = $3, tax_snapshot_version = 1, tax_status = 'CALCULATED'
+          WHERE tenant_id = $1 AND id = $2`,
+        [tenantA, invoiceId, snapshot.rows[0]!.id],
+      );
+      const issued = await editor.query(
+        `UPDATE public.finance_invoices
+            SET status = 'ISSUED', invoice_code = 'INV-TEST-01', issue_date = CURRENT_DATE,
+                issued_at = clock_timestamp(), issued_by_principal_id = $3
+          WHERE tenant_id = $1 AND id = $2 RETURNING id`,
+        [tenantA, invoiceId, randomUUID()],
       );
       expect(issued.rowCount).toBe(1);
       const editAfterIssue = await editor.query(
