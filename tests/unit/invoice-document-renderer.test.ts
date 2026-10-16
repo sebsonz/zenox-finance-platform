@@ -43,7 +43,7 @@ describe("invoice document rendering", () => {
     expect(html.indexOf("Transport maritime")).toBeLessThan(html.indexOf("Manutention"));
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("<script>alert(1)</script>");
-    expect((html.match(/<tr>/g) ?? []).length).toBe(3);
+    const tbody = html.match(/<tbody>([\\s\\S]*?)<\\/tbody>/)?.[1] ?? "";\n    expect((tbody.match(/<tr>/g) ?? []).length).toBe(3);
     expect(html).toContain("3422.00000000");
   });
 
