@@ -120,7 +120,17 @@ export const invoiceRepository = {
   async list(client: PoolClient, tenantId: string, query: ListInvoiceDraftsQuery): Promise<FinanceInvoice[]> {
     const found = await client.query<InvoiceRow>(
       `SELECT ${invoiceColumns} FROM public.finance_invoices
-       WHERE tenant_id = $1 AND ($2::text IS NULL OR status = $2) AND ($3::uuid IS NULL OR id < $3::uuid)
+       WHERE tenant_id = $1
+         AND ($2::text IS NULL OR status = $2)
+         AND (
+           $3::uuid IS NULL
+           OR (created_at, id) < (
+             SELECT cursor_invoice.created_at, cursor_invoice.id
+               FROM public.finance_invoices AS cursor_invoice
+              WHERE cursor_invoice.tenant_id = $1
+                AND cursor_invoice.id = $3::uuid
+           )
+         )
        ORDER BY created_at DESC, id DESC LIMIT $4`,
       [tenantId, query.status ?? null, query.cursor ?? null, query.limit],
     );
