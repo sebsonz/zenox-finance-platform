@@ -1,5 +1,11 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import { resolve } from "node:path";
 import { z } from "zod";
+
+// Load the working-directory env first, then the repository-root env when
+// commands run from backend/; existing process variables always take priority.
+dotenv.config();
+dotenv.config({ path: resolve(process.cwd(), "../.env") });
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
