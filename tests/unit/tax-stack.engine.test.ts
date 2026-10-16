@@ -75,4 +75,59 @@ describe("calculateTaxStack", () => {
       taxes: [{ ruleCode: "EXEMPT", treatment: "EXEMPT", ratePercent: "5" }],
     })).toThrow("NON_TAXABLE_TREATMENT_REQUIRES_ZERO_RATE");
   });
+
+  it("rounds monetary tax amounts half-up at the currency precision", () => {
+    const result = calculateTaxStack({
+      amount: "0.05",
+      priceMode: "EXCLUSIVE",
+      currency: "EUR",
+      currencyDecimalPlaces: 2,
+      taxes: [{ ruleCode: "VAT10", treatment: "STANDARD", ratePercent: "10" }],
+    });
+    expect(result.taxes[0]?.taxAmount).toBe("0.01");
+    expect(result.grandTotal).toBe("0.06");
+  });
+
+  it("rejects tax rates above 100 percent", () => {
+    expect(() => calculateTaxStack({
+      amount: "100",
+      priceMode: "EXCLUSIVE",
+      currency: "EUR",
+      currencyDecimalPlaces: 2,
+      taxes: [{ ruleCode: "INVALID", treatment: "STANDARD", ratePercent: "100.01" }],
+    })).toThrow("TAX_RATE_PERCENT_OUT_OF_RANGE");
+  });
+
+  it("rejects more than 50 tax components", () => {
+    const taxes = Array.from({ length: 51 }, (_, index) => ({
+      ruleCode: `TAX_${index}`,
+      treatment: "STANDARD" as const,
+      ratePercent: "1",
+    }));
+    expect(() => calculateTaxStack({
+      amount: "100",
+      priceMode: "EXCLUSIVE",
+      currency: "EUR",
+      currencyDecimalPlaces: 2,
+      taxes,
+    })).toThrow("TOO_MANY_TAX_COMPONENTS");
+  });
+
+  it("does not include withholding in the inclusive price extraction multiplier", () => {
+    const result = calculateTaxStack({
+      amount: "118.00",
+      priceMode: "INCLUSIVE",
+      currency: "EUR",
+      currencyDecimalPlaces: 2,
+      taxes: [
+        { ruleCode: "VAT18", treatment: "STANDARD", ratePercent: "18" },
+        { ruleCode: "WHT5", treatment: "WITHHOLDING", ratePercent: "5" },
+      ],
+    });
+    expect(result.baseAmount).toBe("100.00");
+    expect(result.taxTotal).toBe("18.00");
+    expect(result.withholdingTotal).toBe("5.00");
+    expect(result.amountDue).toBe("113.00");
+  });
+
 });
