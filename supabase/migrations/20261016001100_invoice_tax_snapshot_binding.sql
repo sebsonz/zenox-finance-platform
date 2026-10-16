@@ -100,7 +100,7 @@ ALTER TABLE public.finance_invoices
 CREATE OR REPLACE FUNCTION public.finance_validate_invoice_tax_snapshot_link()
 RETURNS trigger
 LANGUAGE plpgsql
-AS $
+AS $function$
 BEGIN
   IF NEW.tax_snapshot_id IS NULL THEN
     RETURN NEW;
@@ -124,7 +124,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$;
+$function$;
 
 DROP TRIGGER IF EXISTS finance_invoice_tax_snapshot_link_guard ON public.finance_invoices;
 CREATE TRIGGER finance_invoice_tax_snapshot_link_guard
