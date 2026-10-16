@@ -114,6 +114,7 @@ export const invoiceRepository = {
     client: PoolClient,
     tenantId: string,
     invoiceId: string,
+    expectedUpdatedAt: string,
     input: UpdateInvoiceDraftInput,
     currencyMinorUnit: number,
     totals: CalculatedInvoiceTotals,
@@ -146,7 +147,7 @@ export const invoiceRepository = {
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
           taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
         totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
-        totals.calculationPolicy, input.notes ?? null, input.expectedUpdatedAt],
+        totals.calculationPolicy, input.notes ?? null, expectedUpdatedAt],
     );
     const invoice = updated.rows[0];
     if (!invoice) return null;
