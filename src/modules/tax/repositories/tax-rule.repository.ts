@@ -88,9 +88,9 @@ export const taxRuleRepository = {
   ): Promise<EffectiveTaxRule[]> {
     const result = await client.query<TaxRuleRow>(
       `SELECT id, tenant_id, jurisdiction_id, rule_code, name, tax_type,
-              treatment, rate_percent::text, price_mode, priority, is_compound,
+              treatment, rate_percent::text AS rate_percent, price_mode, priority, is_compound,
               applies_to, source_reference, source_url, version,
-              valid_from::text, valid_to::text
+              valid_from::text AS valid_from, valid_to::text AS valid_to
          FROM public.finance_tax_rules
         WHERE jurisdiction_id = $1
           AND status = 'ACTIVE'
