@@ -285,12 +285,13 @@ export const invoiceTaxSnapshotService = {
                 taxable_total = $6,
                 tax_total = $7,
                 grand_total = $8,
+                amount_due = $9,
                 updated_at = clock_timestamp()
           WHERE tenant_id = $1
             AND id = $2
             AND status = 'DRAFT'
             AND updated_at = $3::timestamptz
-            AND document_version = $9`,
+            AND document_version = $10`,
         [
           context.tenantId,
           invoiceId,
@@ -300,6 +301,7 @@ export const invoiceTaxSnapshotService = {
           taxableTotal,
           taxTotal,
           calculatedGrandTotal,
+          amountDue,
           invoice.document_version,
         ],
       );
