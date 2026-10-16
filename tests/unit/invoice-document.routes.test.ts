@@ -29,7 +29,7 @@ vi.mock("../../src/middleware/require-integration-auth.js", () => ({
 }));
 
 vi.mock("../../src/modules/invoices/services/invoice-document.service.js", () => ({
-  invoiceDocumentService: { findForInvoice: vi.fn() },
+  invoiceDocumentService: { findForInvoice: vi.fn(), findPdfForInvoice: vi.fn() },
 }));
 
 import { invoiceDocumentService } from "../../src/modules/invoices/services/invoice-document.service.js";
@@ -85,6 +85,27 @@ describe("immutable invoice document route", () => {
     expect(response.etag).toBe(`"sha256-${"a".repeat(64)}"`);
     expect(response.cacheControl).toBe("private, no-store");
     expect(invoiceDocumentService.findForInvoice).toHaveBeenCalledWith(CONTEXT, INVOICE_ID);
+  });
+
+  it("returns the immutable PDF as a private attachment with a hash ETag", async () => {
+    const pdfContent = Buffer.from("%PDF-1.4\\n%%EOF\\n", "ascii");
+    vi.mocked(invoiceDocumentService.findPdfForInvoice).mockResolvedValue({
+      id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      invoiceId: INVOICE_ID,
+      invoiceCode: "INV-2026-000001",
+      documentVersion: 1,
+      contentType: "application/pdf",
+      contentSha256: "b".repeat(64),
+      pdfContent,
+      createdAt: "2026-10-16T21:00:00.000000Z",
+    });
+    const response = await request(app(), `/invoices/${INVOICE_ID}/document.pdf`);
+    expect(response.status).toBe(200);
+    expect(response.body).toBe(pdfContent.toString("ascii"));
+    expect(response.contentType).toContain("application/pdf");
+    expect(response.etag).toBe(`"sha256-${"b".repeat(64)}"`);
+    expect(response.cacheControl).toBe("private, no-store");
+    expect(invoiceDocumentService.findPdfForInvoice).toHaveBeenCalledWith(CONTEXT, INVOICE_ID);
   });
 
   it("rejects malformed IDs and does not expose an artifact for an unknown invoice", async () => {
