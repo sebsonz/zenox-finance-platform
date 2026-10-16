@@ -1,19 +1,123 @@
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { Pool } from "pg";
+
+interface SeedTenant {
+  id: string;
+  tenant_code: string;
+  legal_name: string;
+  country_code: string;
+  default_currency: string;
+  status: string;
+}
+
+interface SeedCurrency {
+  code: string;
+  name: string;
+  minor_unit: number;
+  is_active: boolean;
+  source: string;
+}
+
+interface IntegrationSeedManifest {
+  schemaVersion: number;
+  purpose: string;
+  tenants: SeedTenant[];
+  currencies: SeedCurrency[];
+}
 
 const connectionString = process.env["DATABASE_URL"];
 if (!connectionString) throw new Error("DATABASE_URL is required for integration setup");
 
-const pool = new Pool({ connectionString, max: 2 });
-const tenantA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-const tenantB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+// This script creates roles and writes seed rows. Protect it from accidental use
+// against a remote Supabase or production database; CI uses localhost/finance_test.
+const databaseUrl = new URL(connectionString);
+const loopbackHosts = new Set(["localhost", "127.0.0.1", "::1"]);
+const databaseName = databaseUrl.pathname.replace(/^\//, "");
+if (!loopbackHosts.has(databaseUrl.hostname) || databaseName !== "finance_test") {
+  throw new Error(
+    "Refusing to prepare integration fixtures unless DATABASE_URL targets a loopback host and database finance_test.",
+  );
+}
+
+const manifestPath = resolve(process.cwd(), "tests/fixtures/integration-seed-manifest.json");
 const runtimePassword = process.env["TEST_RUNTIME_PASSWORD"];
 if (!runtimePassword || runtimePassword.length < 20) {
   throw new Error("TEST_RUNTIME_PASSWORD must be at least 20 characters");
 }
 
+function validateManifest(value: unknown): IntegrationSeedManifest {
+  if (!value || typeof value !== "object") throw new Error("Integration seed manifest must be a JSON object");
+  const manifest = value as Partial<IntegrationSeedManifest>;
+  if (manifest.schemaVersion !== 1) throw new Error("Unsupported integration seed manifest schemaVersion");
+  if (typeof manifest.purpose !== "string" || !manifest.purpose.includes("disposable")) {
+    throw new Error("Integration seed manifest must explicitly state its disposable-test purpose");
+  }
+  if (!Array.isArray(manifest.tenants) || manifest.tenants.length < 2) {
+    throw new Error("Integration seed manifest must define at least two tenants");
+  }
+  if (!Array.isArray(manifest.currencies) || manifest.currencies.length === 0) {
+    throw new Error("Integration seed manifest must define at least one currency");
+  }
+
+  const tenantIds = new Set<string>();
+  const tenantCodes = new Set<string>();
+  for (const tenant of manifest.tenants) {
+    if (
+      !tenant ||
+      typeof tenant.id !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tenant.id) ||
+      typeof tenant.tenant_code !== "string" ||
+      !/^ITEST_[A-Z0-9]+$/.test(tenant.tenant_code) ||
+      typeof tenant.legal_name !== "string" ||
+      tenant.country_code !== "BJ" ||
+      tenant.default_currency !== "XOF" ||
+      tenant.status !== "ACTIVE"
+    ) {
+      throw new Error("Invalid integration tenant fixture; tenant codes must remain in the ITEST_ namespace");
+    }
+    if (tenantIds.has(tenant.id) || tenantCodes.has(tenant.tenant_code)) {
+      throw new Error("Integration seed manifest contains duplicate tenant IDs or codes");
+    }
+    tenantIds.add(tenant.id);
+    tenantCodes.add(tenant.tenant_code);
+  }
+
+  const currencyCodes = new Set<string>();
+  for (const currency of manifest.currencies) {
+    if (
+      !currency ||
+      typeof currency.code !== "string" ||
+      !/^[A-Z]{3}$/.test(currency.code) ||
+      typeof currency.name !== "string" ||
+      !Number.isInteger(currency.minor_unit) ||
+      currency.minor_unit < 0 ||
+      currency.minor_unit > 4 ||
+      typeof currency.is_active !== "boolean" ||
+      currency.source !== "INTEGRATION_TEST"
+    ) {
+      throw new Error("Invalid integration currency fixture; source must remain INTEGRATION_TEST");
+    }
+    if (currencyCodes.has(currency.code)) throw new Error("Duplicate currency in integration seed manifest");
+    currencyCodes.add(currency.code);
+  }
+
+  return manifest as IntegrationSeedManifest;
+}
+
 async function prepare(): Promise<void> {
+  const rawManifest = await readFile(manifestPath, "utf8");
+  const manifest = validateManifest(JSON.parse(rawManifest) as unknown);
+  const pool = new Pool({ connectionString, max: 2 });
   const client = await pool.connect();
   try {
+    const database = await client.query<{ current_database: string; current_user: string }>(
+      "SELECT current_database(), current_user",
+    );
+    if (database.rows[0]?.current_database !== "finance_test") {
+      throw new Error("Refusing to seed: connected database is not finance_test");
+    }
+
     await client.query(`
       DO $role$
       BEGIN
@@ -31,33 +135,42 @@ async function prepare(): Promise<void> {
     if (!statement) throw new Error("Could not prepare test role password");
     await client.query(statement);
 
-    await client.query("GRANT CONNECT ON DATABASE finance_test TO finance_runtime_test").catch(async (error: unknown) => {
-      // The database name may differ locally; connect privilege is commonly inherited from PUBLIC.
-      const pgError = error as { code?: string };
-      if (pgError.code !== "3D000") throw error;
-    });
+    await client.query("GRANT CONNECT ON DATABASE finance_test TO finance_runtime_test");
     await client.query("GRANT USAGE ON SCHEMA public TO finance_runtime_test");
     await client.query("GRANT SELECT ON public.finance_tenants, public.finance_currencies, public.finance_customers TO finance_runtime_test");
     await client.query("GRANT INSERT, SELECT ON public.finance_tax_calculation_snapshots TO finance_runtime_test");
     await client.query("GRANT SELECT, INSERT ON public.finance_invoices, public.finance_invoice_lines TO finance_runtime_test");
 
-    // Membership access is intentionally not granted to the general invoice runtime role.
-    // Membership lifecycle changes must be implemented behind a separately reviewed admin service.
     await client.query("REVOKE ALL ON TABLE public.finance_user_tenant_memberships FROM finance_runtime_test");
     await client.query("REVOKE ALL ON TABLE public.finance_user_tenant_memberships FROM PUBLIC");
 
-    await client.query(
-      `INSERT INTO public.finance_tenants (id, tenant_code, legal_name, country_code, default_currency, status)
-       VALUES ($1, 'ITEST_A', 'Integration Tenant A', 'BJ', 'XOF', 'ACTIVE'),
-              ($2, 'ITEST_B', 'Integration Tenant B', 'BJ', 'XOF', 'ACTIVE')
-       ON CONFLICT (id) DO UPDATE SET status = 'ACTIVE'`,
-      [tenantA, tenantB],
-    );
-    await client.query(
-      `INSERT INTO public.finance_currencies (code, name, minor_unit, is_active, source)
-       VALUES ('XOF', 'West African CFA franc', 0, true, 'INTEGRATION_TEST')
-       ON CONFLICT (code) DO UPDATE SET minor_unit = EXCLUDED.minor_unit, is_active = true`,
-    );
+    for (const tenant of manifest.tenants) {
+      await client.query(
+        `INSERT INTO public.finance_tenants
+          (id, tenant_code, legal_name, country_code, default_currency, status)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (id) DO UPDATE SET
+           tenant_code = EXCLUDED.tenant_code,
+           legal_name = EXCLUDED.legal_name,
+           country_code = EXCLUDED.country_code,
+           default_currency = EXCLUDED.default_currency,
+           status = EXCLUDED.status`,
+        [tenant.id, tenant.tenant_code, tenant.legal_name, tenant.country_code, tenant.default_currency, tenant.status],
+      );
+    }
+
+    for (const currency of manifest.currencies) {
+      await client.query(
+        `INSERT INTO public.finance_currencies (code, name, minor_unit, is_active, source)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (code) DO UPDATE SET
+           name = EXCLUDED.name,
+           minor_unit = EXCLUDED.minor_unit,
+           is_active = EXCLUDED.is_active,
+           source = EXCLUDED.source`,
+        [currency.code, currency.name, currency.minor_unit, currency.is_active, currency.source],
+      );
+    }
 
     const roleCheck = await client.query(
       `SELECT rolsuper, rolbypassrls, rolcreatedb, rolcreaterole
@@ -87,9 +200,7 @@ async function prepare(): Promise<void> {
         has_schema_privilege('finance_runtime_test', 'public', 'USAGE') AS schema_usage,
         has_schema_privilege('finance_runtime_test', 'public', 'CREATE') AS schema_create
     `);
-    const membershipGrants = grants.rows[0] as
-      | Record<string, boolean>
-      | undefined;
+    const membershipGrants = grants.rows[0] as Record<string, boolean> | undefined;
     if (
       membershipGrants?.["can_select"] !== false ||
       membershipGrants["can_insert"] !== false ||
@@ -104,7 +215,9 @@ async function prepare(): Promise<void> {
       throw new Error("Runtime database grants do not satisfy least-privilege membership policy");
     }
 
-    process.stdout.write("Prepared isolated PostgreSQL integration role, tenant fixtures, and least-privilege checks.\n");
+    process.stdout.write(
+      `Prepared ${manifest.tenants.length} tenant fixtures and ${manifest.currencies.length} currency fixtures from ${manifestPath}; runtime grants verified.\n`,
+    );
   } finally {
     client.release();
     await pool.end();

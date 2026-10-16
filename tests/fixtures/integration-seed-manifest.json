@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Deterministic synthetic fixtures used only in disposable Finance integration-test PostgreSQL.",
+  "tenants": [
+    {
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "tenant_code": "ITEST_A",
+      "legal_name": "Integration Tenant A",
+      "country_code": "BJ",
+      "default_currency": "XOF",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "tenant_code": "ITEST_B",
+      "legal_name": "Integration Tenant B",
+      "country_code": "BJ",
+      "default_currency": "XOF",
+      "status": "ACTIVE"
+    }
+  ],
+  "currencies": [
+    {
+      "code": "XOF",
+      "name": "West African CFA franc",
+      "minor_unit": 0,
+      "is_active": true,
+      "source": "INTEGRATION_TEST"
+    }
+  ]
+}
