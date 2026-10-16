@@ -114,7 +114,6 @@ export const invoiceRepository = {
     client: PoolClient,
     tenantId: string,
     invoiceId: string,
-    expectedUpdatedAt: string,
     input: UpdateInvoiceDraftInput,
     currencyMinorUnit: number,
     totals: CalculatedInvoiceTotals,
@@ -141,7 +140,7 @@ export const invoiceRepository = {
           AND status = 'DRAFT'
           AND updated_at = $3::timestamptz
       RETURNING ${invoiceColumns}`,
-      [tenantId, invoiceId, expectedUpdatedAt, customer.id, totals.currency, currencyMinorUnit,
+      [tenantId, invoiceId, input.expectedUpdatedAt, customer.id, totals.currency, currencyMinorUnit,
         input.dueDate ?? null,
         JSON.stringify({ id: customer.id, legalName: customer.legalName, displayName: customer.displayName,
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
