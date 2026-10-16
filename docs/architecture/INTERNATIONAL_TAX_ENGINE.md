@@ -46,6 +46,13 @@ Before a jurisdiction is enabled for production:
 - Issued invoice tax snapshots must be immutable. Corrections should use credit notes or replacement documents according to jurisdiction policy.
 - Source references and rule changes should be audit logged.
 
+
+### Persisted snapshot contract
+
+Migration `20261016000600_immutable_tax_calculation_snapshots.sql` defines `finance_tax_calculation_snapshots` as tenant-scoped evidence keyed by document type, document ID, and document version. It stores the calculation policy and engine version, tax date, currency precision, jurisdiction, exact input/output JSON, and ordered applied-rule snapshots. A database trigger rejects UPDATE and DELETE; corrections must create a new document/version rather than rewrite prior evidence.
+
+The migration deliberately does not create a foreign key to an invoice table because the Finance document lifecycle is a separate module. Before runtime use, deployment must grant the dedicated backend database role only the required SELECT/INSERT privileges. The migration has been committed to source control; it is not considered deployed until applied and verified against a disposable/test database.
+
 ## Not yet claimed as implemented
 
 The current code does not yet provide comprehensive official rates for all countries, tax nexus/place-of-supply determination, registration-threshold monitoring, digital-service location evidence, tax return generation, customs tariff classification, treaty eligibility, withholding certificates, e-invoicing clearance, or legal certification. These must be implemented and verified separately before enabling affected jurisdictions.
