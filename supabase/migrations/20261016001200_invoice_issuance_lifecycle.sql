@@ -124,6 +124,8 @@ CREATE TRIGGER finance_invoice_issued_immutability_guard
 CREATE OR REPLACE FUNCTION public.finance_guard_issued_invoice_lines()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
 AS $function$
 DECLARE
   parent_tenant_id uuid;
