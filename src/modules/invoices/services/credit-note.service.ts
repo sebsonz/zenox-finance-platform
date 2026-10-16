@@ -26,6 +26,40 @@ export interface FinanceCreditNote {
 }
 
 export const creditNoteService = {
+  async findDocument(context: FinanceRequestContext, creditNoteId: string): Promise<{
+    creditNoteCode: string; contentType: "text/html; charset=utf-8"; content: string; sha256: string;
+  } | null> {
+    return withTenantTransaction(context.tenantId, async (client) => {
+      const result = await client.query<{ credit_note_code: string; html_content: string; html_sha256: string }>(
+        `SELECT credit_note_code, html_content, html_sha256
+           FROM public.finance_credit_notes WHERE tenant_id = $1 AND id = $2`,
+        [context.tenantId, creditNoteId],
+      );
+      const row = result.rows[0];
+      if (!row) return null;
+      const hash = createHash("sha256").update(row.html_content, "utf8").digest("hex");
+      if (hash !== row.html_sha256) throw new Error("CREDIT_NOTE_HTML_HASH_MISMATCH");
+      return { creditNoteCode: row.credit_note_code, contentType: "text/html; charset=utf-8", content: row.html_content, sha256: row.html_sha256 };
+    });
+  },
+
+  async findPdf(context: FinanceRequestContext, creditNoteId: string): Promise<{
+    creditNoteCode: string; contentType: "application/pdf"; content: Buffer; sha256: string;
+  } | null> {
+    return withTenantTransaction(context.tenantId, async (client) => {
+      const result = await client.query<{ credit_note_code: string; pdf_content: Buffer; pdf_sha256: string }>(
+        `SELECT credit_note_code, pdf_content, pdf_sha256
+           FROM public.finance_credit_notes WHERE tenant_id = $1 AND id = $2`,
+        [context.tenantId, creditNoteId],
+      );
+      const row = result.rows[0];
+      if (!row) return null;
+      const hash = createHash("sha256").update(row.pdf_content).digest("hex");
+      if (hash !== row.pdf_sha256) throw new Error("CREDIT_NOTE_PDF_HASH_MISMATCH");
+      return { creditNoteCode: row.credit_note_code, contentType: "application/pdf", content: row.pdf_content, sha256: row.pdf_sha256 };
+    });
+  },
+
   async issueFullReversal(context: FinanceRequestContext, invoiceId: string, reason: string): Promise<FinanceCreditNote> {
     return withTenantTransaction(context.tenantId, async (client) => {
       const lock = await client.query<{ status: string; tax_snapshot_id: string | null }>(
