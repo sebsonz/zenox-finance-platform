@@ -219,6 +219,7 @@ integrationDescribe("PostgreSQL invoice tax snapshot binding", () => {
       await admin.query("RELEASE SAVEPOINT stale_snapshot_revision");
 
       const invoiceB = await seedInvoice(admin, tenantB);
+      await admin.query("SAVEPOINT foreign_snapshot_link");
       await expect(
         admin.query(
           `UPDATE public.finance_invoices SET tax_snapshot_id = $2, tax_snapshot_version = 1
@@ -226,6 +227,8 @@ integrationDescribe("PostgreSQL invoice tax snapshot binding", () => {
           [tenantB, snapshotA, invoiceB],
         ),
       ).rejects.toMatchObject({ code: "23514" });
+      await admin.query("ROLLBACK TO SAVEPOINT foreign_snapshot_link");
+      await admin.query("RELEASE SAVEPOINT foreign_snapshot_link");
 
       const duplicate = await insertSnapshot(admin, tenantA, invoiceA, 2);
       await expect(
