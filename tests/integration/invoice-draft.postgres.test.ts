@@ -100,7 +100,7 @@ integrationDescribe("PostgreSQL invoice draft tenant isolation", () => {
       expect(staleRetry.rowCount).toBe(0);
 
       const issued = await editor.query(
-        `UPDATE public.finance_invoices SET status = 'ISSUED', invoice_code = 'INV-TEST-01', issue_date = CURRENT_DATE
+        `UPDATE public.finance_invoices SET status = 'ISSUED', invoice_code = 'INV-TEST-01', issue_date = CURRENT_DATE, issued_at = clock_timestamp()
           WHERE tenant_id = $1 AND id = $2 RETURNING id`,
         [tenantA, invoiceId],
       );
