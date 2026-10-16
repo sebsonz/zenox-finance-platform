@@ -16,6 +16,10 @@ export const createInvoiceDraftSchema = z.object({
   }).strict()).min(1).max(500),
 }).strict();
 
+export const updateInvoiceDraftSchema = createInvoiceDraftSchema.extend({
+  expectedUpdatedAt: z.iso.datetime({ offset: true }),
+});
+
 export const listInvoiceDraftsQuerySchema = z.object({
   status: z.enum(["DRAFT", "ISSUED", "CANCELLED"]).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
@@ -23,4 +27,5 @@ export const listInvoiceDraftsQuerySchema = z.object({
 }).strict();
 
 export type CreateInvoiceDraftInput = z.infer<typeof createInvoiceDraftSchema>;
+export type UpdateInvoiceDraftInput = z.infer<typeof updateInvoiceDraftSchema>;
 export type ListInvoiceDraftsQuery = z.infer<typeof listInvoiceDraftsQuerySchema>;
