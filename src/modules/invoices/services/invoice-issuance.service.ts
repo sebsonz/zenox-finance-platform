@@ -1,6 +1,7 @@
 import { withTenantTransaction } from "../../../db/transaction.js";
 import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
 import { invoiceRepository, type FinanceInvoice } from "../repositories/invoice.repository.js";
+import { invoiceDocumentRepository } from "../repositories/invoice-document.repository.js";
 
 export class InvoiceIssuanceServiceError extends Error {
   constructor(
@@ -97,6 +98,14 @@ export const invoiceIssuanceService = {
       }
       const issued = await invoiceRepository.findById(client, context.tenantId, invoiceId);
       if (!issued) throw new Error("ISSUED_INVOICE_READBACK_FAILED");
+      // The immutable document artifact is written in the same transaction as
+      // the issue transition; a rendering/storage failure rolls issuance back.
+      await invoiceDocumentRepository.createForIssuedInvoice(
+        client,
+        context.tenantId,
+        context.principal.id,
+        issued,
+      );
       return issued;
     });
   },
