@@ -46,8 +46,12 @@ describe("taxRuleSchema", () => {
     }).success).toBe(false);
   });
 
-  it("rejects unknown properties", () => {
-    expect(taxRuleSchema.safeParse({ ...baseRule, tenantId: "tenant" }).success).toBe(false);
+  it("rejects unknown properties independently of UUID validation", () => {
+    expect(taxRuleSchema.safeParse({
+      ...baseRule,
+      tenantId: "7c58f5f7-2dca-4ed1-a0db-8cc7d77f5c41",
+      unexpectedField: true,
+    }).success).toBe(false);
   });
 
   it("rejects rates with more precision than the database contract", () => {
