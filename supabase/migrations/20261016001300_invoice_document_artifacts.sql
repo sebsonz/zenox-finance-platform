@@ -31,11 +31,28 @@ CREATE POLICY finance_invoice_document_artifacts_tenant_policy
   USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid)
   WITH CHECK (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
 
-CREATE OR REPLACE FUNCTION public.finance_reject_invoice_document_artifact_mutation()
+CREATE OR REPLACE FUNCTION public.finance_guard_invoice_document_artifact()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
 AS $function$
 BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.finance_invoices i
+       WHERE i.tenant_id = NEW.tenant_id
+         AND i.id = NEW.invoice_id
+         AND i.status = 'ISSUED'
+         AND i.invoice_code = NEW.invoice_code
+         AND i.document_version = NEW.document_version
+         AND i.tax_status = 'CALCULATED'
+         AND i.tax_snapshot_id IS NOT NULL
+    ) THEN
+      RAISE EXCEPTION 'INVOICE_DOCUMENT_REQUIRES_MATCHING_ISSUED_INVOICE' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+  END IF;
   RAISE EXCEPTION 'ISSUED_INVOICE_DOCUMENT_IMMUTABLE' USING ERRCODE = '55000';
 END;
 $function$;
@@ -43,10 +60,10 @@ $function$;
 DROP TRIGGER IF EXISTS finance_invoice_document_artifact_immutable_guard
   ON public.finance_invoice_document_artifacts;
 CREATE TRIGGER finance_invoice_document_artifact_immutable_guard
-  BEFORE UPDATE OR DELETE ON public.finance_invoice_document_artifacts
-  FOR EACH ROW EXECUTE FUNCTION public.finance_reject_invoice_document_artifact_mutation();
+  BEFORE INSERT OR UPDATE OR DELETE ON public.finance_invoice_document_artifacts
+  FOR EACH ROW EXECUTE FUNCTION public.finance_guard_invoice_document_artifact();
 
-REVOKE ALL ON FUNCTION public.finance_reject_invoice_document_artifact_mutation() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.finance_guard_invoice_document_artifact() FROM PUBLIC;
 REVOKE ALL ON TABLE public.finance_invoice_document_artifacts FROM PUBLIC;
 
 DO $grants$
