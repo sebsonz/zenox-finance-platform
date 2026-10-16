@@ -140,7 +140,7 @@ export const invoiceRepository = {
           AND id = $2
           AND status = 'DRAFT'
           AND updated_at = $3::timestamptz
-      RETURNING ${"invoiceColumns"}`,
+      RETURNING ${invoiceColumns}`,
       [tenantId, invoiceId, expectedUpdatedAt, customer.id, totals.currency, currencyMinorUnit,
         input.dueDate ?? null,
         JSON.stringify({ id: customer.id, legalName: customer.legalName, displayName: customer.displayName,
