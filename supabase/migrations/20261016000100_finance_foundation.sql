@@ -1,6 +1,5 @@
 -- ZENOX Finance foundation. Finance database only; never run against ZENOX FRET.
--- Apply through the Finance project's migration workflow after review.
-BEGIN;
+-- Transaction boundaries are handled by the migration runner.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -83,8 +82,9 @@ CREATE INDEX IF NOT EXISTS finance_audit_tenant_time_idx
 CREATE INDEX IF NOT EXISTS finance_audit_resource_idx
   ON public.finance_audit_events (tenant_id, resource_type, resource_id);
 
--- These tables are tenant-scoped. RLS policies and runtime role grants must be
--- installed before exposing database access to any client or API consumer.
+-- RLS is enabled and forced on each tenant-scoped table. No permissive policy
+-- is added: access remains closed until a runtime tenant-context mechanism,
+-- service role grants, and explicit policies are reviewed and tested.
 ALTER TABLE public.finance_tenants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_tenants FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_integration_principals ENABLE ROW LEVEL SECURITY;
@@ -93,9 +93,3 @@ ALTER TABLE public.finance_idempotency_keys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_idempotency_keys FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_audit_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_audit_events FORCE ROW LEVEL SECURITY;
-
--- No permissive policies are created here. Runtime access is intentionally
--- closed until the tenant context mechanism, service role, and policies are
--- implemented and security-tested in a subsequent migration.
-
-COMMIT;
