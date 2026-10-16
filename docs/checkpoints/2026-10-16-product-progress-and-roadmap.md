@@ -104,3 +104,28 @@ Latest validated code head at this checkpoint: `e02808d3e551b0c49e44ad142571f475
 5. Final security/concurrency review and exact-head green CI before merging PR #5.
 
 After these invoice lifecycle items are complete and validated, proceed to Payments/allocations. Keep all validation on disposable PostgreSQL until explicitly approved otherwise. Never apply Finance migrations to the ZENOX FRET V2 database.
+
+
+## Continuation update — 2026-10-16 (immutable issued-document artifact)
+
+After the issuance lifecycle passed CI, added immutable server-rendered HTML document artifacts in the same transaction as invoice issuance. Current implementation is on the same draft PR #5:
+https://github.com/sebsonz/zenox-finance-platform/pull/5
+
+Validated head for this slice: `55c58664a0675469487003995ff36663c35517f2`. Exact-head CI is green: https://github.com/sebsonz/zenox-finance-platform/actions/runs/38978492883.
+
+### Implemented and CI-validated
+- Migration `20261016001300_invoice_document_artifacts.sql`: tenant-scoped artifact table with invoice revision, invoice code, HTML content, SHA-256, issuer principal and creation timestamp; RLS is enabled and forced; artifact rows cannot be updated or deleted.
+- Database insert guard permits an artifact only for the matching issued invoice revision with calculated tax evidence.
+- Issuance now generates and stores the HTML artifact inside the same transaction. If rendering or artifact insertion fails, issuance rolls back.
+- New authenticated `GET /api/v1/invoices/:invoiceId/document` endpoint requires `invoice:read`, returns the stored HTML with an ETag/content hash, private no-store caching, and tenant scope.
+- Retrieval verifies the SHA-256 digest before returning content. Unit and PostgreSQL integration tests cover concurrent numbering, artifact creation/content/hash, and immutability.
+- CI passed backend typecheck/build, disposable PostgreSQL migrations, least-privilege setup, migration drift audit, unit/PostgreSQL integration tests, frontend typecheck/build. No live Finance Supabase was changed; no ZENOX FRET V2 DB was touched.
+
+### Remaining before the invoice module is complete
+1. PDF generation and a private object-storage adapter/retention policy; current artifact is immutable printable HTML, not PDF.
+2. Credit-note/correction workflow and cancellation events, preserving the original issued invoice and its artifact.
+3. Idempotent issuance/retry behavior and jurisdiction-configurable numbering/legal fields; competent legal/tax review remains mandatory.
+4. Complete frontend/customer workflows and end-to-end acceptance from draft → tax snapshot → issue → immutable document → credit note/correction.
+5. Security/concurrency review and green CI on the final invoice-module head before merging PR #5.
+
+Do not start Payments until these invoice lifecycle items are completed and validated. Keep PR #5 a draft while work remains. All DB tests use disposable PostgreSQL only.
