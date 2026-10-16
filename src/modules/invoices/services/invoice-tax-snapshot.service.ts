@@ -55,11 +55,12 @@ export const invoiceTaxSnapshotService = {
                 taxable_total::text, tax_total::text, grand_total::text
            FROM public.finance_invoices
           WHERE tenant_id = $1 AND id = $2 AND status = 'DRAFT'
+            AND updated_at = $3::timestamptz
           FOR UPDATE`,
-        [context.tenantId, invoiceId],
+        [context.tenantId, invoiceId, input.expectedUpdatedAt],
       );
       const invoice = locked.rows[0];
-      if (!invoice || invoice.updated_at !== input.expectedUpdatedAt) {
+      if (!invoice) {
         throw new InvoiceTaxSnapshotServiceError(
           "INVOICE_NOT_FOUND_OR_CHANGED",
           "The draft is unavailable or was changed. Reload the draft before attaching tax evidence.",
@@ -181,6 +182,7 @@ export const invoiceTaxSnapshotService = {
         inputSnapshot: {
           invoiceId,
           invoiceVersionUpdatedAt: invoice.updated_at,
+          documentVersion: invoice.document_version,
           appliesTo: input.appliesTo,
           priceMode,
           currencyCode: currency.code,
@@ -245,7 +247,7 @@ export const invoiceTaxSnapshotService = {
                 tax_total = $6,
                 grand_total = $7,
                 updated_at = clock_timestamp()
-          WHERE tenant_id = $1 AND id = $2 AND status = 'DRAFT' AND updated_at::text = $3 AND document_version = $8`,
+          WHERE tenant_id = $1 AND id = $2 AND status = 'DRAFT' AND updated_at = $3::timestamptz AND document_version = $8`,
         [context.tenantId, invoiceId, invoice.updated_at, snapshot.id, snapshot.documentVersion, taxTotal, calculatedGrandTotal, invoice.document_version],
       );
       if (linked.rowCount !== 1) {
