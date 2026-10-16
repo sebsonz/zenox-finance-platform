@@ -9,7 +9,7 @@ import { createTaxSnapshotSchema } from "../validators/tax-snapshot.schema.js";
 
 export class TaxCalculationServiceError extends Error {
   constructor(
-    readonly code: "CURRENCY_NOT_SUPPORTED" | "NO_ACTIVE_TAX_RULES" | "INCOMPATIBLE_TAX_PRICE_MODES" | "SNAPSHOT_ALREADY_EXISTS",
+    readonly code: "CURRENCY_NOT_SUPPORTED" | "NO_ACTIVE_TAX_RULES" | "INCOMPATIBLE_TAX_PRICE_MODES" | "AMBIGUOUS_TAX_TYPES" | "SNAPSHOT_ALREADY_EXISTS",
     message: string,
   ) {
     super(message);
@@ -61,6 +61,16 @@ export const taxCalculationService = {
           );
         }
         if (rules.length > 50) throw new Error("TOO_MANY_TAX_COMPONENTS");
+
+        // Until a jurisdiction-specific tax-composition policy exists, do not silently
+        // stack unrelated tax families (for example VAT with withholding or customs duty).
+        const taxTypes = new Set(rules.map((rule) => rule.taxType));
+        if (taxTypes.size !== 1) {
+          throw new TaxCalculationServiceError(
+            "AMBIGUOUS_TAX_TYPES",
+            "Applicable rules contain multiple tax types; calculation was refused until an explicit tax-composition policy is configured.",
+          );
+        }
 
         const priceModes = new Set(rules.map((rule) => rule.priceMode));
         if (priceModes.size !== 1) {
