@@ -238,7 +238,13 @@ export const invoiceTaxSnapshotService = {
         })),
       };
 
-      const snapshot = await taxSnapshotRepository.create(client, context.tenantId, context.principal.id, currency.minorUnit, snapshotInput as never);
+      const snapshot = await taxSnapshotRepository.create(
+        client,
+        context.tenantId,
+        context.principal.id,
+        currency.minorUnit,
+        snapshotInput as never,
+      );
       const linked = await client.query(
         `UPDATE public.finance_invoices
             SET tax_snapshot_id = $4,
@@ -247,8 +253,21 @@ export const invoiceTaxSnapshotService = {
                 tax_total = $6,
                 grand_total = $7,
                 updated_at = clock_timestamp()
-          WHERE tenant_id = $1 AND id = $2 AND status = 'DRAFT' AND updated_at = $3::timestamptz AND document_version = $8`,
-        [context.tenantId, invoiceId, invoice.updated_at, snapshot.id, snapshot.documentVersion, taxTotal, calculatedGrandTotal, invoice.document_version],
+          WHERE tenant_id = $1
+            AND id = $2
+            AND status = 'DRAFT'
+            AND updated_at = $3::timestamptz
+            AND document_version = $8`,
+        [
+          context.tenantId,
+          invoiceId,
+          input.expectedUpdatedAt,
+          snapshot.id,
+          snapshot.documentVersion,
+          taxTotal,
+          calculatedGrandTotal,
+          invoice.document_version,
+        ],
       );
       if (linked.rowCount !== 1) {
         throw new InvoiceTaxSnapshotServiceError(
