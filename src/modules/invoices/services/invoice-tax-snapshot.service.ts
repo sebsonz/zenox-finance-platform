@@ -191,7 +191,7 @@ export const invoiceTaxSnapshotService = {
             line.invoiceLineId,
             line.taxCalculation.baseAmount,
             line.taxCalculation.taxTotal,
-            line.taxCalculation.amountDue,
+            line.taxCalculation.grandTotal,
           ],
         );
         if (updatedLine.rowCount !== 1) {
