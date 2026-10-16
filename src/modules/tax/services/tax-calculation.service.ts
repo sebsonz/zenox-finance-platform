@@ -17,6 +17,19 @@ export class TaxCalculationServiceError extends Error {
   }
 }
 
+/**
+ * Conservative default composition policy. Withholding is a separate deduction;
+ * any other cross-family stack requires an explicit jurisdiction policy.
+ */
+export function isSupportedTaxFamilyComposition(taxTypes: readonly string[]): boolean {
+  const distinctTypes = new Set(taxTypes);
+  if (distinctTypes.size <= 1) return true;
+  const nonWithholdingTypes = new Set(taxTypes.filter((type) => type !== "WITHHOLDING"));
+  return distinctTypes.has("WITHHOLDING") &&
+    nonWithholdingTypes.size === 1 &&
+    distinctTypes.size === 2;
+}
+
 function mapDatabaseError(error: unknown): never {
   if (typeof error === "object" && error !== null && "code" in error) {
     const pgCode = String((error as { code: unknown }).code);
@@ -64,17 +77,8 @@ export const taxCalculationService = {
 
         // Until a jurisdiction-specific tax-composition policy exists, do not silently
         // stack unrelated tax families (for example VAT with withholding or customs duty).
-        const taxTypes = new Set(rules.map((rule) => rule.taxType));
-        const nonWithholdingTypes = new Set(rules
-          .filter((rule) => rule.taxType !== "WITHHOLDING")
-          .map((rule) => rule.taxType));
-        // Withholding is a separately modelled deduction in this engine, not an
-        // additive tax. Permit it alongside one primary tax family only.
-        const hasSupportedWithholdingCombination =
-          taxTypes.has("WITHHOLDING") &&
-          nonWithholdingTypes.size === 1 &&
-          taxTypes.size === 2;
-        if (taxTypes.size !== 1 && !hasSupportedWithholdingCombination) {
+        const taxTypes = rules.map((rule) => rule.taxType);
+        if (!isSupportedTaxFamilyComposition(taxTypes)) {
           throw new TaxCalculationServiceError(
             "AMBIGUOUS_TAX_TYPES",
             "Applicable rules contain multiple tax families without an explicit composition policy; calculation was refused.",
