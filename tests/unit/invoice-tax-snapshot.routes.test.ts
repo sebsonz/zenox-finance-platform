@@ -6,7 +6,6 @@ const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const PRINCIPAL_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const INVOICE_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const SNAPSHOT_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
-const TOKEN = "invoice-tax-snapshot-test-token-1234567890";
 const CONTEXT = {
   tenantId: TENANT_ID,
   principal: {
