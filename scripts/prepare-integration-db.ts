@@ -147,6 +147,8 @@ async function prepare(): Promise<void> {
     await client.query("REVOKE UPDATE, DELETE, TRUNCATE ON public.finance_tax_calculation_snapshots FROM finance_runtime_test");
     await client.query("GRANT SELECT, INSERT, UPDATE ON public.finance_invoices TO finance_runtime_test");
     await client.query("GRANT SELECT, INSERT ON public.finance_invoice_document_artifacts TO finance_runtime_test");
+    await client.query("GRANT SELECT, INSERT ON public.finance_invoice_pdf_artifacts TO finance_runtime_test");
+    await client.query("REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.finance_invoice_pdf_artifacts FROM finance_runtime_test");
     await client.query("REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.finance_invoice_document_artifacts FROM finance_runtime_test");
     await client.query("GRANT EXECUTE ON FUNCTION public.finance_allocate_invoice_number(uuid, integer) TO finance_runtime_test");
     await client.query("REVOKE ALL ON public.finance_invoice_number_sequences FROM finance_runtime_test");
