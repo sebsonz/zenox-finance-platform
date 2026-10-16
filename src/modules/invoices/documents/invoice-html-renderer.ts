@@ -4,6 +4,7 @@ export interface InvoiceHtmlDocumentInput {
   invoice: FinanceInvoice;
   appliedRules: readonly Record<string, unknown>[];
   taxResult: Record<string, unknown>;
+  documentLabel?: string;
 }
 
 function escapeHtml(value: unknown): string {
@@ -24,7 +25,7 @@ function customerValue(snapshot: Record<string, unknown>, key: string): string {
 }
 
 export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): string {
-  const { invoice, appliedRules, taxResult } = input;
+  const { invoice, appliedRules, taxResult, documentLabel = "FACTURE" } = input;
   if (invoice.status !== "ISSUED" || !invoice.invoiceCode || invoice.taxStatus !== "CALCULATED" || !invoice.taxSnapshotId) {
     throw new Error("INVOICE_DOCUMENT_REQUIRES_ISSUED_TAX_SNAPSHOTTED_INVOICE");
   }
@@ -77,7 +78,7 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
 <body>
 <main>
 <header>
-  <div><h1>FACTURE</h1><div class="muted">Document fiscal émis par ZENOX Finance</div></div>
+  <div><h1>${escapeHtml(documentLabel)}</h1><div class="muted">Document fiscal émis par ZENOX Finance</div></div>
   <div><strong>${escapeHtml(invoice.invoiceCode)}</strong><br><span class="muted">Date d'émission : ${escapeHtml(invoice.issueDate)}</span><br><span class="muted">Échéance : ${escapeHtml(invoice.dueDate ?? "—")}</span></div>
 </header>
 <section class="columns">
