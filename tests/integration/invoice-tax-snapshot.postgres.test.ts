@@ -83,6 +83,16 @@ integrationDescribe("PostgreSQL invoice tax snapshot binding", () => {
         tax_status: "CALCULATED",
       });
 
+      await admin.query("SAVEPOINT stale_snapshot_revision");
+      await expect(
+        admin.query(
+          "UPDATE public.finance_invoices SET document_version = 2 WHERE tenant_id = $1 AND id = $2",
+          [tenantA, invoiceA],
+        ),
+      ).rejects.toMatchObject({ code: "23514" });
+      await admin.query("ROLLBACK TO SAVEPOINT stale_snapshot_revision");
+      await admin.query("RELEASE SAVEPOINT stale_snapshot_revision");
+
       const invoiceB = await seedInvoice(admin, tenantB);
       await expect(
         admin.query(
