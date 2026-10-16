@@ -8,6 +8,8 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   FINANCE_SERVICE_TOKEN: z.string().min(32, "FINANCE_SERVICE_TOKEN must be at least 32 characters"),
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_ANON_KEY: z.string().min(20).optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
