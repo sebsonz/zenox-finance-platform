@@ -100,8 +100,8 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
 <tr><td>Remises</td><td class="number">${escapeHtml(invoice.discountTotal)} ${escapeHtml(invoice.currencyCode)}</td></tr>
 <tr><td>Base taxable</td><td class="number">${escapeHtml(invoice.taxableTotal)} ${escapeHtml(invoice.currencyCode)}</td></tr>
 <tr><td>Taxes</td><td class="number">${escapeHtml(invoice.taxTotal)} ${escapeHtml(invoice.currencyCode)}</td></tr>
-<tr class="grand"><td>Total brut</td><td class="number">${escapeHtml(invoice.grandTotal)} ${escapeHtml(invoice.currencyCode)}</td></tr>
-<tr><td>Net à payer (après retenues)</td><td class="number"><strong>${escapeHtml(invoice.amountDue)} ${escapeHtml(invoice.currencyCode)}</strong></td></tr>
+<tr class="grand"><td>${escapeHtml(documentLabel === "AVOIR" ? "Total de l’avoir" : "Total brut")}</td><td class="number">${escapeHtml(invoice.grandTotal)} ${escapeHtml(invoice.currencyCode)}</td></tr>
+<tr><td>${escapeHtml(documentLabel === "AVOIR" ? "Montant à créditer" : "Net à payer (après retenues)")}</td><td class="number"><strong>${escapeHtml(invoice.amountDue)} ${escapeHtml(invoice.currencyCode)}</strong></td></tr>
 </table>
 <section class="evidence"><h2>Règles fiscales appliquées</h2><ul>${rules}</ul>
 <div class="muted">Le document conserve la référence d'un snapshot fiscal immuable. Hash du snapshot : ${escapeHtml(invoice.taxSnapshotId)}.</div>
