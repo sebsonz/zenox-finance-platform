@@ -66,6 +66,18 @@ describe("user BFF session routes", () => {
     verifyRequestUser.mockResolvedValue({ id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", email: "user@example.test" });
   });
 
+  it("does not cache public authentication configuration", async () => {
+    const response = await request(app(), "GET", "/user/session/config");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.body).toMatchObject({
+      data: {
+        supabaseUrl: "https://auth.example.test",
+        supabaseAnonKey: "public-anon-key-for-tests-long-enough",
+      },
+    });
+  });
+
   it("rejects session exchange requests without a same-origin Origin header", async () => {
     const response = await request(app(), "POST", "/user/session", { body: { accessToken: "a".repeat(40) } });
     expect(response.status).toBe(403);
