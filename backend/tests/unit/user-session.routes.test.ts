@@ -73,6 +73,16 @@ describe("user BFF session routes", () => {
     expect(verifyRequestUser).not.toHaveBeenCalled();
   });
 
+  it("rejects session exchange from the same hostname on a different port", async () => {
+    const response = await request(app(), "POST", "/user/session", {
+      origin: "http://127.0.0.1:12345",
+      body: { accessToken: "a".repeat(40) },
+    });
+    expect(response.status).toBe(403);
+    expect(response.body).toMatchObject({ error: { code: "ORIGIN_NOT_ALLOWED" } });
+    expect(verifyRequestUser).not.toHaveBeenCalled();
+  });
+
   it("rejects malformed session exchange bodies", async () => {
     const response = await request(app(), "POST", "/user/session", {
       origin: "SAME_ORIGIN",
