@@ -6,13 +6,12 @@ const mocks = vi.hoisted(() => ({
   verifyRequestUser: vi.fn(),
   userSessionCookie: vi.fn((token: string) => `zenox_finance_session=${token}; Path=/api/v1/user; Max-Age=3600; HttpOnly; SameSite=Lax`),
   clearUserSessionCookie: vi.fn(() => "zenox_finance_session=; Path=/api/v1/user; Max-Age=0; HttpOnly; SameSite=Lax"),
-  requireUserAuth: vi.fn(),
+  requireUserAuth: vi.fn(() => (req: Request, _res: Response, next: NextFunction) => {
+    req.financeUser = { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", issuer: "https://auth.example.test", email: "user@example.test" };
+    next();
+  }),
 }));
-const { verifyRequestUser, userSessionCookie, clearUserSessionCookie, requireUserAuth } = mocks;
-requireUserAuth.mockImplementation(() => (req: Request, _res: Response, next: NextFunction) => {
-  req.financeUser = { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", issuer: "https://auth.example.test", email: "user@example.test" };
-  next();
-});
+const { verifyRequestUser, userSessionCookie, clearUserSessionCookie } = mocks;
 
 vi.mock("../../src/config/env.js", () => ({
   env: {
