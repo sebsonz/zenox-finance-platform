@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" role="img" aria-labelledby="title">
+  <title id="title">ZENOX Finance</title>
+  <defs><linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2F80FF"/><stop offset="1" stop-color="#0757E8"/></linearGradient></defs>
+  <g transform="translate(2 2) scale(.78)">
+    <path fill="url(#blue)" d="M60 5 91 36 60 67 29 36 60 5Z"/>
+    <path fill="url(#blue)" d="M29 36 60 67 91 36 105 50 60 95 15 50 29 36Z"/>
+    <path fill="#FFFFFF" d="M29 36 60 67 46 81 15 50 29 36Z"/>
+    <path fill="url(#blue)" d="M15 50 46 81 60 95 29 114 5 90 15 50Z"/>
+    <path fill="url(#blue)" d="M60 67 91 36 105 50 60 95 46 81 60 67Z"/>
+  </g>
+  <text x="100" y="47" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800" letter-spacing="-.8" fill="#0B2D6B">ZENOX</text>
+  <text x="101" y="77" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="650" letter-spacing="-.4" fill="#2563EB">Finance</text>
+</svg>
