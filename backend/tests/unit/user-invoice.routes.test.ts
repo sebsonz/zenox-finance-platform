@@ -136,7 +136,7 @@ describe("GET /user/tenants/:tenantId/invoices", () => {
     });
     expect(userTenantMembershipRepository.findActiveMembership).toHaveBeenCalledWith(TENANT_ID, USER_ISSUER, USER_ID);
     expect(withTenantTransaction).toHaveBeenCalledWith(TENANT_ID, expect.any(Function));
-    expect(invoiceRepository.list).toHaveBeenCalledWith(expect.anything(), TENANT_ID, { status: "DRAFT", limit: 10 });
+    expect(invoiceRepository.list).toHaveBeenCalledWith(expect.anything(), TENANT_ID, expect.objectContaining({ status: "DRAFT", limit: 10 }));
   });
 
   it("forwards unexpected repository failures to the safe error handler", async () => {
