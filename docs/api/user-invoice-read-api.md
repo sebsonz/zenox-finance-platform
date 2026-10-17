@@ -11,7 +11,7 @@ Optional query parameters are the same bounded filters used by the internal invo
 - `limit`: integer from 1 to 100; defaults to 25
 - `cursor`: invoice UUID
 
-The endpoint returns the tenant-scoped invoice rows and a count for the current response. It never accepts client-supplied totals, status changes, or tenant permissions.
+The endpoint returns the tenant-scoped invoice rows and a page object with the returned count and an optional `nextCursor`. When a page is full, clients may request the next page with that cursor; the next page may be empty if the result set ended exactly on the page boundary. It never accepts client-supplied totals, status changes, or tenant permissions.
 
 ## Authorization sequence
 
