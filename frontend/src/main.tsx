@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity, ArrowDownRight, ArrowUpRight, Bell, BookOpen, Building2, ChevronDown,
@@ -172,7 +172,7 @@ function PublicFeatures({ onHome }: { onHome: () => void }) {
   </main>;
 }
 
-function FeatureCard({icon:Icon,title,description,tone}:{icon:typeof FileText;title:string;description:string;tone:string}) { return <article className="public-feature-card"><div className={"value-icon value-"+tone}><Icon/></div><h3>{title}</h3><p>{description}</p></article>; }
+function FeatureCard({icon:Icon,title,description,tone}:{icon:ComponentType<{size?: number}>;title:string;description:string;tone:string}) { return <article className="public-feature-card"><div className={"value-icon value-"+tone}><Icon/></div><h3>{title}</h3><p>{description}</p></article>; }
 function PublicCallToAction(){return <section className="public-final-cta"><img src="/brand/zenox-symbol.svg" alt=""/><div><h2>Prêt à découvrir ZENOX Finance ?</h2><p>Une plateforme en construction, pensée pour une gestion financière structurée.</p></div><a className="public-cta" href="/app">Accéder à la plateforme <ArrowUpRight size={16}/></a></section>}
 function CheckMark(){return <span className="floating-check"><ShieldCheck size={15}/></span>}
 function Link2Icon(){return <Activity/>}
