@@ -34,13 +34,13 @@ function originFailure(res: Response): void {
 }
 
 userSessionRouter.get("/session/config", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
     res.status(503).json({
       error: { code: "USER_AUTH_NOT_CONFIGURED", message: "User authentication is not configured." },
     });
     return;
   }
-  res.setHeader("Cache-Control", "no-store");
   res.status(200).json({ data: { supabaseUrl: env.SUPABASE_URL, supabaseAnonKey: env.SUPABASE_ANON_KEY } });
 });
 
