@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, feat/invoice-tax-snapshot-binding, chore/monorepo-frontend-backend-structure]
   pull_request:
-    branches: [main, feat/invoice-tax-snapshot-binding]
+    branches: [main, feat/invoice-tax-snapshot-binding, chore/monorepo-frontend-backend-structure]
 
 permissions:
   contents: read
