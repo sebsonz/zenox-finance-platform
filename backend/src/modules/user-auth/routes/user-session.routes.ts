@@ -21,7 +21,7 @@ function sameOrigin(req: Request): boolean {
   try {
     const parsed = new URL(origin);
     return (parsed.protocol === "https:" || parsed.protocol === "http:") &&
-      parsed.hostname.toLowerCase() === req.hostname.toLowerCase();
+      parsed.host.toLowerCase() === (req.get("host") ?? "").toLowerCase();
   } catch {
     return false;
   }
