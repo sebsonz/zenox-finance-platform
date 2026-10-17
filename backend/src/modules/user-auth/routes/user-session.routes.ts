@@ -20,7 +20,7 @@ function sameOrigin(req: Request): boolean {
   if (!origin) return false;
   try {
     const parsed = new URL(origin);
-    return parsed.protocol === (req.secure ? "https:" : "http:") &&
+    return (parsed.protocol === "https:" || parsed.protocol === "http:") &&
       parsed.hostname.toLowerCase() === req.hostname.toLowerCase();
   } catch {
     return false;
