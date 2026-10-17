@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pool } from "../src/db/pool.js";
 
-const migrationsDir = resolve(process.cwd(), "supabase/migrations");
+const migrationsDir = resolve(process.cwd(), "../supabase/migrations");
 
 async function migrate(): Promise<void> {
   const client = await pool.connect();

@@ -12,7 +12,7 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is required for the read-only migration drift audit");
 }
 
-const migrationsDir = resolve(process.cwd(), "supabase/migrations");
+const migrationsDir = resolve(process.cwd(), "../supabase/migrations");
 const migrationFilename = /^\d{14}_[a-z0-9_-]+\.sql$/;
 
 async function loadLocalMigrations(): Promise<LocalMigration[]> {

@@ -26,6 +26,15 @@ The first milestone is a secure, testable finance foundation that ZENOX FRET V2 
 9. API changes are versioned and documented. Cross-tenant access must fail closed.
 10. No production secret, credential, real customer data, or database dump belongs in this repository.
 
+## Repository layout
+
+- `backend/`: Finance API, domain modules, database access, migrations tooling, and backend tests.
+- `frontend/`: React/Vite application.
+- `supabase/migrations/`: versioned Finance-owned schema changes. These migrations target only the isolated ZENOX Finance database; never run them against ZENOX FRET V2.
+- `docs/`: API contracts, architecture decisions, operational procedures, and checkpoints.
+
+The root `package.json` provides convenience commands. Use `npm run typecheck`, `npm run build`, and `npm test` from the repository root; backend-specific commands are available through `npm run db:migrate`, `npm run db:test:prepare`, and `npm run db:drift-check`.
+
 ## Planned technology baseline
 
 - Node.js 22 LTS line, TypeScript, strict compiler settings
