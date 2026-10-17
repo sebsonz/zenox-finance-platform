@@ -2,10 +2,14 @@ import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const verifyRequestUser = vi.fn();
-const userSessionCookie = vi.fn((token: string) => `zenox_finance_session=${token}; Path=/api/v1/user; Max-Age=3600; HttpOnly; SameSite=Lax`);
-const clearUserSessionCookie = vi.fn(() => "zenox_finance_session=; Path=/api/v1/user; Max-Age=0; HttpOnly; SameSite=Lax");
-const requireUserAuth = vi.fn(() => (req: Request, _res: Response, next: NextFunction) => {
+const mocks = vi.hoisted(() => ({
+  verifyRequestUser: vi.fn(),
+  userSessionCookie: vi.fn((token: string) => `zenox_finance_session=${token}; Path=/api/v1/user; Max-Age=3600; HttpOnly; SameSite=Lax`),
+  clearUserSessionCookie: vi.fn(() => "zenox_finance_session=; Path=/api/v1/user; Max-Age=0; HttpOnly; SameSite=Lax"),
+  requireUserAuth: vi.fn(),
+}));
+const { verifyRequestUser, userSessionCookie, clearUserSessionCookie, requireUserAuth } = mocks;
+requireUserAuth.mockImplementation(() => (req: Request, _res: Response, next: NextFunction) => {
   req.financeUser = { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", issuer: "https://auth.example.test", email: "user@example.test" };
   next();
 });
