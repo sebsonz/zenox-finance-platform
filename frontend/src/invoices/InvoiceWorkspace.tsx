@@ -122,15 +122,21 @@ export function InvoiceWorkspace() {
 
   async function signOut() {
     setBusy(true);
+    let logoutNotice = "Session fermée.";
     try {
-      await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" });
+      const response = await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin", cache: "no-store" });
+      if (!response.ok) {
+        logoutNotice = await responseError(response, "La fermeture de session n’a pas été confirmée par le serveur.");
+      }
+    } catch {
+      logoutNotice = "Le serveur n’a pas confirmé la fermeture de session. Réessayez avant de quitter cet appareil.";
     } finally {
       setUser(null);
       setInvoices([]);
       setTenants([]);
       setTenantId("");
       setBusy(false);
-      setNotice("Session fermée.");
+      setNotice(logoutNotice);
     }
   }
 
