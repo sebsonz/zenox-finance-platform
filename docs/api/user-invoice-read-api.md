@@ -25,6 +25,6 @@ For local development, Vite proxies `/api` to `http://127.0.0.1:4100` by default
 
 ## Deliberate scope boundary
 
-This UI is read-only. Draft creation/editing, issuance, document generation, and credit-note actions remain unavailable to user sessions until the write-actor audit model, CSRF protection for state-changing financial operations, and their authorization tests are implemented. Production database provisioning must explicitly grant the private backend role EXECUTE on `finance_list_my_active_tenants()`; no grant is made to PUBLIC or browser roles. Production deployment configuration remains open.
+This UI is read-only. Draft creation/editing, issuance, document generation, and credit-note actions remain unavailable to user sessions until the write-actor audit model, CSRF protection for state-changing financial operations, and their authorization tests are implemented. Production database provisioning must explicitly grant the private backend role EXECUTE on `finance_list_my_active_tenants()`; no grant is made to PUBLIC or browser roles. The function uses transaction-local identity context populated only by the backend from a verified Supabase identity, returns active memberships for active tenants only, and is covered by a disposable-PostgreSQL least-privilege test. Production deployment configuration remains open.
 
 Validate only through GitHub Actions against disposable PostgreSQL. Do not run migrations or test preparation against the live Finance Supabase project, and never use the ZENOX FRET V2 database.
