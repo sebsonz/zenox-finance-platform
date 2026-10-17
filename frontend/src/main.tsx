@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity, ArrowDownRight, ArrowUpRight, Bell, BookOpen, Building2, ChevronDown,
@@ -105,6 +105,16 @@ type PublicPage = "home" | "features";
 function PublicSite() {
   const [page, setPage] = useState<PublicPage>(window.location.pathname === "/fonctionnalites" ? "features" : "home");
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const syncPageWithLocation = () => {
+      setPage(window.location.pathname === "/fonctionnalites" ? "features" : "home");
+      setMenuOpen(false);
+    };
+    window.addEventListener("popstate", syncPageWithLocation);
+    return () => window.removeEventListener("popstate", syncPageWithLocation);
+  }, []);
+
   const navigate = (next: PublicPage) => {
     setPage(next);
     setMenuOpen(false);
