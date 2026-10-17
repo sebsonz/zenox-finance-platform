@@ -7,6 +7,7 @@ import {
   X
 } from "lucide-react";
 import "./styles.css";
+import { InvoiceWorkspace } from "./invoices/InvoiceWorkspace.js";
 
 type Page = "dashboard" | "tax" | "invoices" | "payments" | "settings";
 const navigation: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
@@ -44,7 +45,7 @@ function App() {
         {notice && <div className="notice"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Fermer"><X size={16}/></button></div>}
         {page === "dashboard" && <Dashboard onNavigate={navigate}/>}
         {page === "tax" && <TaxWorkspace amount={amount} setAmount={setAmount} currency={currency} setCurrency={setCurrency} onSubmit={() => setNotice("Calcul non exécuté : connectez le formulaire à l’API Finance sécurisée avant tout calcul réel.")}/>}
-        {page === "invoices" && <ComingSoon icon={FileText} title="Factures" description="Le cycle de vie des factures, la numérotation et les versions immuables seront gérés par l’API ZENOX Finance."/>}
+        {page === "invoices" && <InvoiceWorkspace/>}
         {page === "payments" && <ComingSoon icon={WalletCards} title="Paiements & allocations" description="Les paiements, affectations et soldes seront servis par le backend Finance, avec idempotence et contrôle multi-tenant."/>}
         {page === "settings" && <ComingSoon icon={Settings2} title="Paramètres Finance" description="La configuration des organisations, devises et intégrations sera reliée aux services authentifiés."/>}
         <footer><span>© 2026 ZENOX Finance</span><span><ShieldCheck size={13}/> Finance indépendante · API-first</span><span>Interface en construction</span></footer>
