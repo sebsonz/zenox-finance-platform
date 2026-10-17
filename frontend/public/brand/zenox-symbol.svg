@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title">
+  <title id="title">ZENOX — symbole infini</title>
+  <defs><linearGradient id="blue" x1="15%" y1="0%" x2="85%" y2="100%"><stop offset="0" stop-color="#2F80FF"/><stop offset="1" stop-color="#0757E8"/></linearGradient></defs>
+  <path fill="url(#blue)" d="M60 5 91 36 60 67 29 36 60 5Z"/>
+  <path fill="url(#blue)" d="M29 36 60 67 91 36 105 50 60 95 15 50 29 36Z"/>
+  <path fill="#FFFFFF" d="M29 36 60 67 46 81 15 50 29 36Z" opacity=".96"/>
+  <path fill="url(#blue)" d="M15 50 46 81 60 95 29 114 5 90 15 50Z"/>
+  <path fill="url(#blue)" d="M60 67 91 36 105 50 60 95 46 81 60 67Z"/>
+</svg>
