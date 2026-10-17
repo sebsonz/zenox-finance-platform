@@ -108,4 +108,10 @@ describe("user BFF session routes", () => {
     expect(response.status).toBe(403);
     expect(clearUserSessionCookie).not.toHaveBeenCalled();
   });
+
+  it("rejects a different port on the same hostname", async () => {
+    const response = await request(app(), "DELETE", "/user/session", { origin: "http://127.0.0.1:12345" });
+    expect(response.status).toBe(403);
+    expect(clearUserSessionCookie).not.toHaveBeenCalled();
+  });
 });
