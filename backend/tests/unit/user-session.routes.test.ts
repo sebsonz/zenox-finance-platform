@@ -21,12 +21,7 @@ vi.mock("../../src/config/env.js", () => ({
     SUPABASE_ANON_KEY: "public-anon-key-for-tests-long-enough",
   },
 }));
-vi.mock("../../src/middleware/require-user-auth.js", () => ({
-  clearUserSessionCookie,
-  requireUserAuth,
-  userSessionCookie,
-  verifyRequestUser,
-}));
+vi.mock("../../src/middleware/require-user-auth.js", () => ({ ...mocks }));
 
 import { userSessionRouter } from "../../src/modules/user-auth/routes/user-session.routes.js";
 
