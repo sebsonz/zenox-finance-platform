@@ -61,3 +61,16 @@ A valid identity-provider session proves who the user is; it does not prove whic
 - Decide whether browser sessions are cookie-based through the BFF or use another explicitly reviewed secure pattern.
 - Define tenant membership source and roles before authorizing real financial data.
 - Confirm production deployment topology and secret management before release.
+## Implementation spike update — 2026-10-17
+
+A first non-production implementation slice now exists on the unmerged `feature/invoice-user-readonly-bff` branch:
+
+- The backend can exchange a Supabase-verified access token for a short-lived `HttpOnly`, `SameSite=Lax` cookie (and adds `Secure` in production).
+- The session exchange and logout routes require an exact same-origin host including port.
+- Protected user routes accept the cookie and re-verify the token with Supabase Auth; tenant membership and permissions remain checked separately.
+- The invoice UI signs in through Supabase Auth, exchanges the token for the cookie, and calls only the read-only user invoice endpoint.
+- Vite proxies `/api` to the local backend during development.
+
+This is an implementation spike, not production approval. The session cookie currently contains the Supabase access token, with a one-hour cookie lifetime; token refresh, explicit revocation behavior, deployment/proxy configuration, rate limiting, and a full CSRF review for future state-changing financial routes remain open. Production must use HTTPS and same-origin hosting. The invoice screen still requires a tenant UUID; tenant discovery is not implemented. No financial write routes are exposed to this session.
+
+The spike must pass GitHub Actions before further UI expansion. All database tests remain confined to disposable PostgreSQL; no live Finance or ZENOX FRET V2 migration is authorized by this work.

@@ -128,6 +128,48 @@ integrationDescribe("PostgreSQL tenant membership RLS and least privilege", () =
     }
   });
 
+
+  it("lists active tenant memberships through the identity-scoped function without direct table grants", async () => {
+    const suffix = randomUUID();
+    const identityIssuer = "https://auth.example.test";
+    const identitySubject = `directory-user-${suffix}`;
+    const admin = await adminPool.connect();
+    try {
+      await admin.query("BEGIN");
+      await admin.query("SELECT set_config('app.tenant_id', $1, true)", [tenantA]);
+      await admin.query(
+        `INSERT INTO public.finance_user_tenant_memberships
+          (tenant_id, identity_issuer, identity_subject, role_code, status, activated_at)
+         VALUES ($1, $2, $3, 'OWNER', 'ACTIVE', now())`,
+        [tenantA, identityIssuer, identitySubject],
+      );
+      await admin.query("COMMIT");
+    } catch (error) {
+      await admin.query("ROLLBACK");
+      throw error;
+    } finally {
+      admin.release();
+    }
+    const runtime = await runtimePool.connect();
+    try {
+      await runtime.query("BEGIN");
+      await runtime.query(
+        "SELECT set_config('app.identity_issuer', $1, true), set_config('app.identity_subject', $2, true)",
+        [identityIssuer, identitySubject],
+      );
+      const result = await runtime.query(
+        "SELECT id, tenant_code, legal_name, role_code FROM public.finance_list_my_active_tenants()",
+      );
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0]).toMatchObject({ id: tenantA, role_code: "OWNER" });
+      await expect(runtime.query("SELECT id FROM public.finance_user_tenant_memberships")).rejects.toMatchObject({ code: "42501" });
+      await runtime.query("ROLLBACK");
+    } finally {
+      runtime.release();
+    }
+  });
+
+
   it("has no membership-table privileges for the ordinary runtime role", async () => {
     const client = await runtimePool.connect();
     try {
