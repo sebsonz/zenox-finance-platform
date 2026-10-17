@@ -128,6 +128,7 @@ describe("GET /user/tenants/:tenantId/invoices", () => {
   it("returns a bounded tenant-scoped invoice list for an authorized user", async () => {
     const response = await getWithExpress(app(), `/user/tenants/${TENANT_ID}/invoices?status=DRAFT&limit=10`);
     expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.body).toMatchObject({
       data: {
         invoices: [{ id: INVOICE_ID, status: "DRAFT" }],
