@@ -154,6 +154,7 @@ async function prepare(): Promise<void> {
     await client.query("REVOKE ALL ON public.finance_invoice_number_sequences FROM finance_runtime_test");
     await client.query("GRANT SELECT, INSERT, UPDATE, DELETE ON public.finance_invoice_lines TO finance_runtime_test");
 
+    await client.query("GRANT EXECUTE ON FUNCTION public.finance_list_my_active_tenants() TO finance_runtime_test");
     await client.query("REVOKE ALL ON TABLE public.finance_user_tenant_memberships FROM finance_runtime_test");
     await client.query("REVOKE ALL ON TABLE public.finance_user_tenant_memberships FROM PUBLIC");
 

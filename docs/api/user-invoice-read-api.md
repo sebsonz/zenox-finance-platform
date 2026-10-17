@@ -8,9 +8,10 @@
 - `POST /api/v1/user/session` — validates an access token through Supabase Auth and exchanges it for an HttpOnly cookie. Requires a same-host `Origin`.
 - `GET /api/v1/user/session` — verifies the cookie-backed session.
 - `DELETE /api/v1/user/session` — clears the cookie and requires a same-host `Origin`.
+- `GET /api/v1/user/tenants` — returns the active tenant directory for the verified identity through a narrowly scoped database function; the backend role has no direct membership-table SELECT grant.
 - `GET /api/v1/user/tenants/:tenantId/invoices` — returns invoices for a specified tenant after server-side membership and permission checks.
 
-The invoice list accepts optional `status` (`DRAFT`, `ISSUED`, or `CANCELLED`), `limit` (1–100, default 25), and `cursor` (invoice UUID). The initial UI requests up to 50 rows and currently asks the operator to supply the tenant UUID; tenant discovery is a separate pending API capability.
+The invoice list accepts optional `status` (`DRAFT`, `ISSUED`, or `CANCELLED`), `limit` (1–100, default 25), and `cursor` (invoice UUID). The UI requests up to 50 rows and populates the organization selector from the identity-scoped tenant directory; the backend still re-checks membership and `invoices:read` for each invoice request.
 
 ## Session and browser boundary
 
@@ -24,6 +25,6 @@ For local development, Vite proxies `/api` to `http://127.0.0.1:4100` by default
 
 ## Deliberate scope boundary
 
-This UI is read-only. Draft creation/editing, issuance, document generation, and credit-note actions remain unavailable to user sessions until the write-actor audit model, CSRF protection for state-changing financial operations, and their authorization tests are implemented. Tenant UUID discovery and production deployment configuration also remain open.
+This UI is read-only. Draft creation/editing, issuance, document generation, and credit-note actions remain unavailable to user sessions until the write-actor audit model, CSRF protection for state-changing financial operations, and their authorization tests are implemented. Production database provisioning must explicitly grant the private backend role EXECUTE on `finance_list_my_active_tenants()`; no grant is made to PUBLIC or browser roles. Production deployment configuration remains open.
 
 Validate only through GitHub Actions against disposable PostgreSQL. Do not run migrations or test preparation against the live Finance Supabase project, and never use the ZENOX FRET V2 database.

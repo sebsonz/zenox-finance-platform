@@ -3,6 +3,7 @@ import { FileText, KeyRound, LogOut, RefreshCw, ShieldCheck } from "lucide-react
 
 type ApiError = { error?: { code?: string; message?: string } };
 type SessionUser = { id: string; email?: string };
+type TenantAccess = { id: string; tenantCode: string; legalName: string; role: string };
 type Invoice = {
   id: string;
   invoiceCode: string | null;
@@ -31,10 +32,30 @@ export function InvoiceWorkspace() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [tenantId, setTenantId] = useState("");
+  const [tenants, setTenants] = useState<TenantAccess[]>([]);
+  const [loadingTenants, setLoadingTenants] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+
+  async function loadTenantDirectory() {
+    setLoadingTenants(true);
+    try {
+      const response = await fetch("/api/v1/user/tenants", { credentials: "same-origin", cache: "no-store" });
+      if (!response.ok) throw new Error(await responseError(response, "Impossible de charger vos organisations."));
+      const payload = await response.json() as { data?: { tenants?: TenantAccess[] } };
+      const available = payload.data?.tenants ?? [];
+      setTenants(available);
+      setTenantId((current) => available.some((tenant) => tenant.id === current) ? current : (available[0]?.id ?? ""));
+    } catch (error) {
+      setTenants([]);
+      setTenantId("");
+      setNotice(error instanceof Error ? error.message : "Impossible de charger vos organisations.");
+    } finally {
+      setLoadingTenants(false);
+    }
+  }
 
   async function checkSession() {
     setChecking(true);
@@ -42,9 +63,12 @@ export function InvoiceWorkspace() {
       const response = await fetch("/api/v1/user/session", { credentials: "same-origin", cache: "no-store" });
       if (response.ok) {
         const payload = await response.json() as { data?: SessionUser };
-        setUser(payload.data ?? null);
+        const sessionUser = payload.data ?? null;
+        setUser(sessionUser);
+        if (sessionUser) await loadTenantDirectory();
       } else {
         setUser(null);
+        setTenants([]);
       }
     } catch {
       setUser(null);
@@ -85,6 +109,7 @@ export function InvoiceWorkspace() {
       const session = await exchange.json() as { data?: SessionUser };
       setUser(session.data ?? { id: auth.user?.id ?? "", ...(auth.user?.email ? { email: auth.user.email } : {}) });
       setPassword("");
+      await loadTenantDirectory();
       setNotice("Connexion sécurisée établie.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Une erreur inattendue est survenue.");
@@ -100,6 +125,8 @@ export function InvoiceWorkspace() {
     } finally {
       setUser(null);
       setInvoices([]);
+      setTenants([]);
+      setTenantId("");
       setBusy(false);
       setNotice("Session fermée.");
     }
@@ -155,9 +182,14 @@ export function InvoiceWorkspace() {
       <section className="panel invoice-list-panel">
         <div className="panel-heading"><div><h2>Liste des factures</h2><p>Connecté{user.email ? ` en tant que ${user.email}` : ""} · données chargées depuis l’API</p></div><span className="status-chip"><i/> Session active</span></div>
         <form className="tenant-lookup-form" onSubmit={(event) => void loadInvoices(event)}>
-          <label>Identifiant de l’organisation (UUID)<input value={tenantId} onChange={(event) => setTenantId(event.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required spellCheck={false}/></label>
-          <button className="primary-button" type="submit" disabled={loading}>{loading ? "Chargement…" : "Afficher les factures"} <RefreshCw size={15}/></button>
+          <label>Organisation autorisée
+            <select value={tenantId} onChange={(event) => { setTenantId(event.target.value); setInvoices([]); }} required disabled={loadingTenants || tenants.length === 0}>
+              {tenants.length === 0 ? <option value="">{loadingTenants ? "Chargement des organisations…" : "Aucune organisation accessible"}</option> : tenants.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.legalName} · {tenant.tenantCode} · {tenant.role}</option>)}
+            </select>
+          </label>
+          <button className="primary-button" type="submit" disabled={loading || loadingTenants || !tenantId}>{loading ? "Chargement…" : "Afficher les factures"} <RefreshCw size={15}/></button>
         </form>
+        {tenants.length === 0 && !loadingTenants && <p className="muted-note">Aucune organisation active n’est associée à ce compte. Demandez à un administrateur Finance de vérifier votre invitation et votre rôle.</p>}
         <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Référence</th><th>Client</th><th>Statut</th><th>Devise</th><th>Total</th><th>Reste dû</th><th>Créée le</th></tr></thead>
           <tbody>{invoices.length ? invoices.map((invoice) => <tr key={invoice.id}><td><strong>{invoice.invoiceCode ?? "Brouillon"}</strong><small>{invoice.id.slice(0, 8)}…</small></td><td>{invoice.customerSnapshot?.displayName ?? invoice.customerSnapshot?.legalName ?? "—"}</td><td><span className={`invoice-status ${invoice.status.toLowerCase()}`}>{invoice.status}</span></td><td>{invoice.currencyCode}</td><td>{invoice.grandTotal}</td><td>{invoice.amountDue}</td><td>{invoice.createdAt ? new Date(invoice.createdAt).toLocaleDateString("fr-FR") : "—"}</td></tr>) : <tr><td colSpan={7} className="invoice-empty">{loading ? "Chargement des factures…" : "Aucune facture affichée. Saisissez un identifiant d’organisation autorisée puis chargez les données."}</td></tr>}</tbody>
         </table></div>
