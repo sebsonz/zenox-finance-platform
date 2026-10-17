@@ -56,7 +56,7 @@ async function request(
       method,
       headers: {
         ...(options.body === undefined ? {} : { "content-type": "application/json" }),
-        ...(options.origin === undefined ? {} : { origin: options.origin }),
+        ...(options.origin === undefined ? {} : { origin: options.origin === "SAME_ORIGIN" ? `http://127.0.0.1:${address.port}` : options.origin }),
       },
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
     });
@@ -81,7 +81,7 @@ describe("user BFF session routes", () => {
 
   it("rejects malformed session exchange bodies", async () => {
     const response = await request(app(), "POST", "/user/session", {
-      origin: "http://127.0.0.1",
+      origin: "SAME_ORIGIN",
       body: { accessToken: "short" },
     });
     expect(response.status).toBe(400);
