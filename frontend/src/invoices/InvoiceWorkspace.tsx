@@ -135,7 +135,7 @@ export function InvoiceWorkspace() {
   async function loadInvoices(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tenantId.trim())) {
-      setNotice("Saisissez l’identifiant UUID valide de l’organisation Finance.");
+      setNotice("Sélectionnez une organisation autorisée dans la liste.");
       return;
     }
     setLoading(true);
@@ -191,7 +191,7 @@ export function InvoiceWorkspace() {
         </form>
         {tenants.length === 0 && !loadingTenants && <p className="muted-note">Aucune organisation active n’est associée à ce compte. Demandez à un administrateur Finance de vérifier votre invitation et votre rôle.</p>}
         <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Référence</th><th>Client</th><th>Statut</th><th>Devise</th><th>Total</th><th>Reste dû</th><th>Créée le</th></tr></thead>
-          <tbody>{invoices.length ? invoices.map((invoice) => <tr key={invoice.id}><td><strong>{invoice.invoiceCode ?? "Brouillon"}</strong><small>{invoice.id.slice(0, 8)}…</small></td><td>{invoice.customerSnapshot?.displayName ?? invoice.customerSnapshot?.legalName ?? "—"}</td><td><span className={`invoice-status ${invoice.status.toLowerCase()}`}>{invoice.status}</span></td><td>{invoice.currencyCode}</td><td>{invoice.grandTotal}</td><td>{invoice.amountDue}</td><td>{invoice.createdAt ? new Date(invoice.createdAt).toLocaleDateString("fr-FR") : "—"}</td></tr>) : <tr><td colSpan={7} className="invoice-empty">{loading ? "Chargement des factures…" : "Aucune facture affichée. Saisissez un identifiant d’organisation autorisée puis chargez les données."}</td></tr>}</tbody>
+          <tbody>{invoices.length ? invoices.map((invoice) => <tr key={invoice.id}><td><strong>{invoice.invoiceCode ?? "Brouillon"}</strong><small>{invoice.id.slice(0, 8)}…</small></td><td>{invoice.customerSnapshot?.displayName ?? invoice.customerSnapshot?.legalName ?? "—"}</td><td><span className={`invoice-status ${invoice.status.toLowerCase()}`}>{invoice.status}</span></td><td>{invoice.currencyCode}</td><td>{invoice.grandTotal}</td><td>{invoice.amountDue}</td><td>{invoice.createdAt ? new Date(invoice.createdAt).toLocaleDateString("fr-FR") : "—"}</td></tr>) : <tr><td colSpan={7} className="invoice-empty">{loading ? "Chargement des factures…" : "Aucune facture affichée. Sélectionnez une organisation autorisée puis chargez les données."}</td></tr>}</tbody>
         </table></div>
         <p className="muted-note">Les montants sont affichés tels que renvoyés par le serveur. Cette vue ne crée, ne modifie et n’émet aucune facture.</p>
       </section>
