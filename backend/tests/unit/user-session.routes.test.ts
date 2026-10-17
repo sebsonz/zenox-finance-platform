@@ -85,7 +85,7 @@ describe("user BFF session routes", () => {
   it("verifies the token server-side and sets an HttpOnly cookie", async () => {
     const token = "a".repeat(40);
     const response = await request(app(), "POST", "/user/session", {
-      origin: "http://127.0.0.1",
+      origin: "SAME_ORIGIN",
       body: { accessToken: token },
     });
     expect(response.status).toBe(200);
@@ -96,7 +96,7 @@ describe("user BFF session routes", () => {
   });
 
   it("clears the HttpOnly session cookie on same-origin logout", async () => {
-    const response = await request(app(), "DELETE", "/user/session", { origin: "http://127.0.0.1" });
+    const response = await request(app(), "DELETE", "/user/session", { origin: "SAME_ORIGIN" });
     expect(response.status).toBe(204);
     expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
     expect(clearUserSessionCookie).toHaveBeenCalledOnce();
