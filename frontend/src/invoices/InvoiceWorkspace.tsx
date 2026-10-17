@@ -39,7 +39,7 @@ export function InvoiceWorkspace() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
 
-  async function loadTenantDirectory() {
+  async function loadTenantDirectory(): Promise<boolean> {
     setLoadingTenants(true);
     try {
       const response = await fetch("/api/v1/user/tenants", { credentials: "same-origin", cache: "no-store" });
@@ -48,10 +48,12 @@ export function InvoiceWorkspace() {
       const available = payload.data?.tenants ?? [];
       setTenants(available);
       setTenantId((current) => available.some((tenant) => tenant.id === current) ? current : (available[0]?.id ?? ""));
+      return true;
     } catch (error) {
       setTenants([]);
       setTenantId("");
       setNotice(error instanceof Error ? error.message : "Impossible de charger vos organisations.");
+      return false;
     } finally {
       setLoadingTenants(false);
     }
@@ -109,8 +111,8 @@ export function InvoiceWorkspace() {
       const session = await exchange.json() as { data?: SessionUser };
       setUser(session.data ?? { id: auth.user?.id ?? "", ...(auth.user?.email ? { email: auth.user.email } : {}) });
       setPassword("");
-      await loadTenantDirectory();
-      setNotice("Connexion sécurisée établie.");
+      const directoryLoaded = await loadTenantDirectory();
+      if (directoryLoaded) setNotice("Connexion sécurisée établie.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Une erreur inattendue est survenue.");
     } finally {
