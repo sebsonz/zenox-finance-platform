@@ -57,7 +57,7 @@ async function getWithExpress(server: ReturnType<typeof express>, path: string) 
   if (!address || typeof address === "string") throw new Error("Test server did not bind a TCP port");
   try {
     const response = await fetch(`http://127.0.0.1:${address.port}${path}`);
-    return { status: response.status, body: await response.json() as unknown };
+    return { status: response.status, headers: response.headers, body: await response.json() as unknown };
   } finally {
     await new Promise<void>((resolve, reject) => listener.close((error) => error ? reject(error) : resolve()));
   }
