@@ -12,7 +12,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/src/server.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run",
+    "test": "vitest run --exclude dist/**",
     "test:watch": "vitest",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:test:prepare": "tsx scripts/prepare-integration-db.ts",
