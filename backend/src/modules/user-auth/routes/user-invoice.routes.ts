@@ -78,7 +78,11 @@ userInvoiceRouter.get(
       res.status(200).json({
         data: {
           invoices,
-          page: { limit: parsedQuery.data.limit, count: invoices.length },
+          page: {
+            limit: parsedQuery.data.limit,
+            count: invoices.length,
+            nextCursor: invoices.length === parsedQuery.data.limit ? invoices[invoices.length - 1]?.id ?? null : null,
+          },
           correlationId: String(res.locals["correlationId"] ?? ""),
         },
       });
