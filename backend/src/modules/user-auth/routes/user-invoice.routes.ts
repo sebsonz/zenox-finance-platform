@@ -10,6 +10,11 @@ import { tenantRepository } from "../../tenants/repositories/tenant.repository.j
 
 export const userInvoiceRouter = Router();
 
+userInvoiceRouter.use((_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
+
 const tenantIdSchema = z.string().uuid();
 
 userInvoiceRouter.get(
