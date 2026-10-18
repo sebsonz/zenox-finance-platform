@@ -155,3 +155,38 @@ CREATE INDEX IF NOT EXISTS finance_tax_snapshots_created_actor_idx
   ON public.finance_tax_calculation_snapshots (tenant_id, created_by_actor_type, created_by_actor_ref);
 COMMENT ON COLUMN public.finance_tax_calculation_snapshots.created_by_actor_ref IS
   'Stable actor reference; for USER this is issuer|subject and not an integration principal ID.';
+
+-- Actor type and reference are an inseparable attribution pair.
+ALTER TABLE public.finance_invoices
+  DROP CONSTRAINT IF EXISTS finance_invoices_created_actor_pair_check,
+  DROP CONSTRAINT IF EXISTS finance_invoices_issued_actor_pair_check,
+  DROP CONSTRAINT IF EXISTS finance_invoices_updated_actor_pair_check;
+ALTER TABLE public.finance_invoices
+  ADD CONSTRAINT finance_invoices_created_actor_pair_check
+    CHECK ((created_by_actor_type IS NULL) = (created_by_actor_ref IS NULL)),
+  ADD CONSTRAINT finance_invoices_issued_actor_pair_check
+    CHECK ((issued_by_actor_type IS NULL) = (issued_by_actor_ref IS NULL)),
+  ADD CONSTRAINT finance_invoices_updated_actor_pair_check
+    CHECK ((updated_by_actor_type IS NULL) = (updated_by_actor_ref IS NULL));
+
+ALTER TABLE public.finance_invoice_document_artifacts
+  DROP CONSTRAINT IF EXISTS finance_invoice_document_artifacts_created_actor_pair_check;
+ALTER TABLE public.finance_invoice_document_artifacts
+  ADD CONSTRAINT finance_invoice_document_artifacts_created_actor_pair_check
+    CHECK ((created_by_actor_type IS NULL) = (created_by_actor_ref IS NULL));
+ALTER TABLE public.finance_invoice_pdf_artifacts
+  DROP CONSTRAINT IF EXISTS finance_invoice_pdf_artifacts_created_actor_pair_check;
+ALTER TABLE public.finance_invoice_pdf_artifacts
+  ADD CONSTRAINT finance_invoice_pdf_artifacts_created_actor_pair_check
+    CHECK ((created_by_actor_type IS NULL) = (created_by_actor_ref IS NULL));
+
+ALTER TABLE public.finance_credit_notes
+  DROP CONSTRAINT IF EXISTS finance_credit_notes_issued_actor_pair_check;
+ALTER TABLE public.finance_credit_notes
+  ADD CONSTRAINT finance_credit_notes_issued_actor_pair_check
+    CHECK ((issued_by_actor_type IS NULL) = (issued_by_actor_ref IS NULL));
+ALTER TABLE public.finance_tax_calculation_snapshots
+  DROP CONSTRAINT IF EXISTS finance_tax_snapshots_created_actor_pair_check;
+ALTER TABLE public.finance_tax_calculation_snapshots
+  ADD CONSTRAINT finance_tax_snapshots_created_actor_pair_check
+    CHECK ((created_by_actor_type IS NULL) = (created_by_actor_ref IS NULL));
