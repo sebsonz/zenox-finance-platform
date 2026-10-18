@@ -41,7 +41,7 @@ export const taxSnapshotService = {
 
     try {
       return await withTenantTransaction(context.tenantId, async (client) =>
-        taxSnapshotRepository.create(client, context.tenantId, context.principal.id, currency.minorUnit, input));
+        taxSnapshotRepository.create(client, context, currency.minorUnit, input));
     } catch (error) {
       return mapDatabaseError(error);
     }
