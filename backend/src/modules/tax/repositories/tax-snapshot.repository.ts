@@ -72,7 +72,6 @@ const columns = `id, tenant_id, document_type, document_id, document_version,
 export const taxSnapshotRepository = {
   async create(
     client: PoolClient,
-    tenantId: string,
     context: FinanceInvoiceOperationContext,
     currencyMinorUnit: number,
     input: CreateTaxSnapshotInput,
@@ -88,7 +87,7 @@ export const taxSnapshotRepository = {
        ) VALUES ($1, $2, $3, $4, $5, $6, $7::date, $8, $9, $10, $11::jsonb, $12::jsonb, $13::jsonb, $14, $15, $16)
        RETURNING ${columns}`,
       [
-        tenantId, input.documentType, input.documentId, input.documentVersion,
+        context.tenantId, input.documentType, input.documentId, input.documentVersion,
         input.calculationPolicy, input.engineVersion, input.taxDate, input.currencyCode,
         currencyMinorUnit, input.jurisdictionId ?? null,
         JSON.stringify(input.inputSnapshot), JSON.stringify(input.resultSnapshot),
