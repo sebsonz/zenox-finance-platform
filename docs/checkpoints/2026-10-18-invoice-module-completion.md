@@ -19,6 +19,10 @@ These are historical checks for the exact heads listed; any new commits require 
 - User session BFF, active tenant directory, membership authorization, read-only invoice listing.
 - Existing unit and disposable-PostgreSQL integration tests.
 
+## Work started in this continuation
+- Added `docs/architecture/ADR-001-secure-user-invoice-operations.md` (commit `e222119d6f699de0970ff78dc69bdc0876f396c9`). It records the separate user-BFF boundary, truthful user actor/audit requirements, permission mapping, idempotency/concurrency requirements, and disposable-PostgreSQL-only migration policy.
+- Repository inspection confirmed existing invoice write routes are integration-authenticated, while the browser uses a separate user session and membership permission model. These contexts must not be conflated. No implementation tests have been run in this continuation, and no database has been touched.
+
 ## Required before calling the module complete
 1. Implement user-facing BFF write flows for draft create/update, tax snapshot calculation, invoice issue, and authorized document downloads; add customer lookup/list needed by the invoice form.
 2. Define a first-class, truthful audit actor model for user-initiated writes. Do not impersonate an integration principal or expose integration credentials to the browser.
