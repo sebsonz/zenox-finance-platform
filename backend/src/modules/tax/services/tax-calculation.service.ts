@@ -150,7 +150,6 @@ export const taxCalculationService = {
         const validatedSnapshot = createTaxSnapshotSchema.parse(snapshotInput);
         return taxSnapshotRepository.create(
           client,
-          context.tenantId,
           context,
           currency.minorUnit,
           validatedSnapshot,
