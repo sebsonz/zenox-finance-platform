@@ -46,7 +46,7 @@ ALTER TABLE public.finance_tax_rules
       AND reviewed_by IS NOT NULL
       AND length(trim(reviewed_by)) > 0
     )
-  );
+  ) NOT VALID;
 
 COMMENT ON COLUMN public.finance_tax_rules.accounting_treatment IS
   'Accounting meaning is distinct from calculation mechanics; for example Benin AIB may be classified as ADVANCE_INCOME_TAX rather than ordinary VAT.';
