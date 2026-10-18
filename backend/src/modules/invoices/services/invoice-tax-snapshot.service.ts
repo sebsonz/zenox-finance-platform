@@ -277,7 +277,7 @@ export const invoiceTaxSnapshotService = {
       const snapshot = await taxSnapshotRepository.create(
         client,
         context.tenantId,
-        actor.ref,
+        context,
         currency.minorUnit,
         snapshotInput,
       );
