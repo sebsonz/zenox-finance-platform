@@ -35,6 +35,16 @@ Migration `20261019000100_tax_rule_extensibility.sql` adds:
 
 The migration is committed on this feature branch only. It has NOT been applied to any database. It must be validated on disposable PostgreSQL and must never be run against `zenoxfret_v2`.
 
+## Additional implementation added in this continuation
+
+- Added `tax-applicability.schema.ts`: strict Zod schema for a bounded set of condition fields and EQ/IN operators. Unknown properties/operators are rejected; arbitrary expressions are not supported.
+- Added `tax-applicability.service.ts`: fail-closed condition matching (missing facts do not match), case-normalized string comparisons, and deterministic precedence resolution.
+- Extended the tax calculation request with optional validated `taxFacts` such as transaction type, IFU registration status, customer/supplier country, import/export and goods category.
+- Extended the tax rule repository to load applicability conditions and accounting treatment, and moved override resolution after condition matching so a non-matching tenant override does not shadow a matching global rule.
+- The calculation service filters candidates by validated facts before resolving precedence and records business facts plus accounting/applicability metadata in the immutable snapshot.
+- Added unit tests for matching, missing facts, allow-lists, unsupported/executable-shaped conditions, override precedence, schema bounds and supported business facts.
+- These commits are in GitHub on this branch. CI has not yet been confirmed for this head; do not treat the code as validated until a full workflow passes.
+
 ## Required follow-up before this can be called complete
 
 1. Implement a strict Zod schema for condition fields/operators and reject unknown fields/operators. Never execute arbitrary SQL or JavaScript from rule JSON.
