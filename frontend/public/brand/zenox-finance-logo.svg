@@ -1,11 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" role="img" aria-labelledby="title">
   <title id="title">ZENOX Finance</title>
-  <desc>Logo ZENOX officiel : deux rubans losangés fermés entrelacés, avec le nom Finance.</desc>
+  <desc>Symbole ZENOX reproduit à partir du visuel de référence, accompagné du nom Finance.</desc>
   <g transform="translate(1 9) scale(.13)">
-    <path fill="#064C73" fill-rule="evenodd" d="M239 61 432 254 239 447 46 254Z M239 157 142 254 239 351 336 254Z"/>
-    <path fill="#0797D8" fill-rule="evenodd" d="M384 61 577 254 384 447 190 254Z M384 157 287 254 384 351 481 254Z"/>
-    <path fill="#064C73" d="M239 61 432 254 384 302 239 157 142 254 94 206Z"/>
+    <path fill="#004773" d="M 239,61 47,253 47,255 49,256 51,259 235,442 236,444 240,446 253,432 310,376 310,375 263,328 239,352 141,254 239,156 384,301 431,255 431,253 Z"/>
+    <path fill="#0093DD" d="M 383,61 351,94 312,132 312,133 359,180 383,156 481,254 383,352 238,207 237,207 191,254 311,375 384,446 575,255 575,253 Z"/>
   </g>
-  <text x="88" y="47" font-family="Inter, Arial, sans-serif" font-size="31" font-weight="800" letter-spacing="-.8" fill="#064C73">ZENOX</text>
-  <text x="89" y="75" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="650" letter-spacing="-.4" fill="#0797D8">Finance</text>
+  <text x="91" y="47" font-family="Inter, Arial, sans-serif" font-size="31" font-weight="800" letter-spacing="-.8" fill="#004773">ZENOX</text>
+  <text x="92" y="75" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="650" letter-spacing="-.4" fill="#0093DD">Finance</text>
 </svg>
