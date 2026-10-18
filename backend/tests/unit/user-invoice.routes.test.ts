@@ -33,6 +33,32 @@ vi.mock("../../src/db/transaction.js", () => ({
 vi.mock("../../src/modules/invoices/repositories/invoice.repository.js", () => ({
   invoiceRepository: { list: vi.fn() },
 }));
+
+vi.mock("../../src/modules/invoices/services/invoice-tax-snapshot.service.js", () => ({
+  InvoiceTaxSnapshotServiceError: class InvoiceTaxSnapshotServiceError extends Error {
+    constructor(readonly code: string, message: string) { super(message); }
+  },
+  invoiceTaxSnapshotService: { calculateAndAttach: vi.fn() },
+}));
+vi.mock("../../src/modules/invoices/services/invoice-issuance.service.js", () => ({
+  InvoiceIssuanceServiceError: class InvoiceIssuanceServiceError extends Error {
+    constructor(readonly code: string, message: string) { super(message); }
+  },
+  invoiceIssuanceService: { issue: vi.fn() },
+}));
+vi.mock("../../src/modules/invoices/services/credit-note.service.js", () => ({
+  CreditNoteServiceError: class CreditNoteServiceError extends Error {
+    constructor(readonly code: string, message: string) { super(message); }
+  },
+  creditNoteService: { issueFullReversal: vi.fn(), listForInvoice: vi.fn(), findDocument: vi.fn(), findPdf: vi.fn() },
+}));
+vi.mock("../../src/modules/invoices/services/invoice-document.service.js", () => ({
+  invoiceDocumentService: { findForInvoice: vi.fn(), findPdfForInvoice: vi.fn() },
+}));
+vi.mock("../../src/modules/customers/repositories/customer.repository.js", () => ({
+  customerRepository: { list: vi.fn() },
+}));
+
 vi.mock("../../src/modules/invoices/services/invoice-draft.service.js", () => ({
   InvoiceDraftServiceError: class InvoiceDraftServiceError extends Error {
     constructor(readonly code: string, message: string) { super(message); }
@@ -47,6 +73,9 @@ import { assertActiveMembershipCan } from "../../src/modules/tenants/services/us
 import { withTenantTransaction } from "../../src/db/transaction.js";
 import { invoiceRepository } from "../../src/modules/invoices/repositories/invoice.repository.js";
 import { invoiceDraftService } from "../../src/modules/invoices/services/invoice-draft.service.js";
+import { invoiceTaxSnapshotService } from "../../src/modules/invoices/services/invoice-tax-snapshot.service.js";
+import { invoiceIssuanceService } from "../../src/modules/invoices/services/invoice-issuance.service.js";
+import { creditNoteService } from "../../src/modules/invoices/services/credit-note.service.js";
 import { userInvoiceRouter } from "../../src/modules/user-auth/routes/user-invoice.routes.js";
 
 function app() {
@@ -193,5 +222,56 @@ describe("GET /user/tenants/:tenantId/invoices", () => {
     });
     expect(response.status).toBe(403);
     expect(invoiceDraftService.create).not.toHaveBeenCalled();
+  });
+
+  it("requires tax:manage and passes a verified user context to tax snapshot calculation", async () => {
+    vi.mocked(userTenantMembershipRepository.findActiveMembership).mockResolvedValue(activeMembership("OWNER") as never);
+    vi.mocked(invoiceTaxSnapshotService.calculateAndAttach).mockResolvedValue({
+      snapshot: { id: "ffffffff-ffff-4fff-8fff-ffffffffffff" },
+      invoice: { id: INVOICE_ID, taxStatus: "CALCULATED" },
+    } as never);
+    const response = await getWithExpress(app(), `/user/tenants/${TENANT_ID}/invoices/${INVOICE_ID}/tax-snapshot`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expectedUpdatedAt: "2026-10-16T21:00:00.000Z",
+        taxDate: "2026-10-16", jurisdictionId: TENANT_ID, appliesTo: "FREIGHT",
+      }),
+    });
+    expect(response.status).toBe(201);
+    expect(assertActiveMembershipCan).toHaveBeenCalledWith(expect.objectContaining({ role_code: "OWNER" }), "tax:manage");
+    expect(invoiceTaxSnapshotService.calculateAndAttach).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TENANT_ID, actor: expect.objectContaining({ type: "USER" }),
+    }), INVOICE_ID, expect.objectContaining({ appliesTo: "FREIGHT" }));
+  });
+
+  it("requires invoices:issue and an idempotency key before issuing", async () => {
+    vi.mocked(userTenantMembershipRepository.findActiveMembership).mockResolvedValue(activeMembership("OWNER") as never);
+    vi.mocked(invoiceIssuanceService.issue).mockResolvedValue({ id: INVOICE_ID, status: "ISSUED" } as never);
+    const response = await getWithExpress(app(), `/user/tenants/${TENANT_ID}/invoices/${INVOICE_ID}/issue`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "Idempotency-Key": "invoice-issue-key-001" },
+      body: JSON.stringify({ expectedUpdatedAt: "2026-10-16T21:00:00.000Z" }),
+    });
+    expect(response.status).toBe(200);
+    expect(assertActiveMembershipCan).toHaveBeenCalledWith(expect.objectContaining({ role_code: "OWNER" }), "invoices:issue");
+    expect(invoiceIssuanceService.issue).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TENANT_ID, actor: expect.objectContaining({ type: "USER" }),
+    }), INVOICE_ID, "2026-10-16T21:00:00.000Z", "invoice-issue-key-001");
+  });
+
+  it("requires invoices:credit before creating a full-reversal credit note", async () => {
+    vi.mocked(userTenantMembershipRepository.findActiveMembership).mockResolvedValue(activeMembership("OWNER") as never);
+    vi.mocked(creditNoteService.issueFullReversal).mockResolvedValue({
+      id: "ffffffff-ffff-4fff-8fff-ffffffffffff", creditNoteCode: "CN-2026-000001", status: "ISSUED",
+    } as never);
+    const response = await getWithExpress(app(), `/user/tenants/${TENANT_ID}/invoices/${INVOICE_ID}/credit-notes`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "Annulation commerciale complète" }),
+    });
+    expect(response.status).toBe(201);
+    expect(assertActiveMembershipCan).toHaveBeenCalledWith(expect.objectContaining({ role_code: "OWNER" }), "invoices:credit");
+    expect(creditNoteService.issueFullReversal).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TENANT_ID, actor: expect.objectContaining({ type: "USER" }),
+    }), INVOICE_ID, "Annulation commerciale complète");
   });
 });
