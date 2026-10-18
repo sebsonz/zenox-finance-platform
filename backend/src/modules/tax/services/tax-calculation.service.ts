@@ -3,6 +3,7 @@ import { currencyRepository } from "../../currencies/repositories/currency.repos
 import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
 import { calculateTaxStack } from "../engine/tax-stack.engine.js";
 import { taxRuleRepository } from "../repositories/tax-rule.repository.js";
+import { matchesTaxApplicability, resolveApplicableTaxRulePrecedence } from "./tax-applicability.service.js";
 import { taxSnapshotRepository, type TaxCalculationSnapshot } from "../repositories/tax-snapshot.repository.js";
 import { calculateAndSnapshotTaxSchema, type CalculateAndSnapshotTaxInput } from "../validators/tax-calculation-request.schema.js";
 import { createTaxSnapshotSchema } from "../validators/tax-snapshot.schema.js";
@@ -61,12 +62,16 @@ export const taxCalculationService = {
 
     try {
       return await withTenantTransaction(context.tenantId, async (client) => {
-        const rules = await taxRuleRepository.listEffectiveForJurisdiction(
+        const candidates = await taxRuleRepository.listEffectiveForJurisdiction(
           client,
           input.jurisdictionId,
           input.appliesTo,
           input.taxDate,
         );
+        const matchingCandidates = candidates.filter((rule) =>
+          matchesTaxApplicability(rule.applicabilityConditions, input.taxFacts ?? {}),
+        );
+        const rules = resolveApplicableTaxRulePrecedence(matchingCandidates, input.appliesTo);
         if (rules.length === 0) {
           throw new TaxCalculationServiceError(
             "NO_ACTIVE_TAX_RULES",
@@ -125,6 +130,7 @@ export const taxCalculationService = {
             currencyMinorUnit: currency.minorUnit,
             jurisdictionId: input.jurisdictionId,
             taxDate: input.taxDate,
+            taxFacts: input.taxFacts ?? {},
           },
           resultSnapshot: result as unknown as Record<string, unknown>,
           appliedRulesSnapshot: rules.map((rule) => ({
@@ -145,6 +151,8 @@ export const taxCalculationService = {
             version: rule.version,
             validFrom: rule.validFrom,
             validTo: rule.validTo,
+            accountingTreatment: rule.accountingTreatment,
+            applicabilityConditions: rule.applicabilityConditions,
           })),
         };
         const validatedSnapshot = createTaxSnapshotSchema.parse(snapshotInput);
