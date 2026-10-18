@@ -19,7 +19,6 @@ type Invoice = {
 type CreditNote = { id: string; originalInvoiceId: string; creditNoteCode: string; status: "ISSUED"; reason: string; currencyCode: string; grandTotal: string; amountDue: string; issuedAt: string };
 type DraftForm = { customerId: string; currencyCode: string; dueDate: string; notes: string; lines: InvoiceLine[] };
 type ApiPayload<T> = { data?: T } & ApiError;
-type SupabaseConfig = { data?: { supabaseUrl: string; supabaseAnonKey: string } } & ApiError;
 const emptyLine = (): InvoiceLine => ({ description: "", quantity: "1", unitPrice: "0", discountPercent: "0", taxRatePercent: "0" });
 const emptyForm = (): DraftForm => ({ customerId: "", currencyCode: "XOF", dueDate: "", notes: "", lines: [emptyLine()] });
 
