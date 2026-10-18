@@ -1,7 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 508" role="img" aria-labelledby="title">
-  <title id="title">ZENOX — symbole officiel</title>
-  <desc>Deux rubans losangés fermés entrelacés, bleu marine et bleu électrique, sur fond transparent.</desc>
-  <path fill="#064C73" fill-rule="evenodd" d="M239 61 432 254 239 447 46 254Z M239 157 142 254 239 351 336 254Z"/>
-  <path fill="#0797D8" fill-rule="evenodd" d="M384 61 577 254 384 447 190 254Z M384 157 287 254 384 351 481 254Z"/>
-  <path fill="#064C73" d="M239 61 432 254 384 302 239 157 142 254 94 206Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 612 508" role="img" aria-labelledby="title">
+  <title id="title">Symbole officiel ZENOX</title>
+  <desc>Reproduction vectorielle tracée à partir du visuel de référence fourni : deux rubans entrelacés, bleu marine et bleu électrique.</desc>
+  <path fill="#004773" d="M 239,61 47,253 47,255 49,256 51,259 235,442 236,444 240,446 253,432 310,376 310,375 263,328 239,352 141,254 239,156 384,301 431,255 431,253 Z"/>
+  <path fill="#0093DD" d="M 383,61 351,94 312,132 312,133 359,180 383,156 481,254 383,352 238,207 237,207 191,254 311,375 384,446 575,255 575,253 Z"/>
 </svg>
