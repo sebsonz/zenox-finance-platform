@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" role="img" aria-labelledby="title">
   <title id="title">ZENOX Finance</title>
-  <desc>Symbole officiel composé de deux rubans fermés entrelacés, avec le nom ZENOX Finance.</desc>
+  <desc>Logo ZENOX officiel : deux rubans losangés fermés entrelacés, avec le nom Finance.</desc>
   <g transform="translate(1 9) scale(.13)">
     <path fill="#064C73" fill-rule="evenodd" d="M239 61 432 254 239 447 46 254Z M239 157 142 254 239 351 336 254Z"/>
     <path fill="#0797D8" fill-rule="evenodd" d="M384 61 577 254 384 447 190 254Z M384 157 287 254 384 351 481 254Z"/>
-    <path fill="#064C73" d="M239 157 336 254 384 302 432 254 384 206 287 109Z"/>
+    <path fill="#064C73" d="M239 61 432 254 384 302 239 157 142 254 94 206Z"/>
   </g>
   <text x="88" y="47" font-family="Inter, Arial, sans-serif" font-size="31" font-weight="800" letter-spacing="-.8" fill="#064C73">ZENOX</text>
   <text x="89" y="75" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="650" letter-spacing="-.4" fill="#0797D8">Finance</text>
