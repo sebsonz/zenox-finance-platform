@@ -22,14 +22,10 @@ Ce document est la mémoire durable du projet pour préserver la direction visue
 - Fichiers canoniques :
   - `frontend/public/brand/zenox-symbol.svg` — symbole seul.
   - `frontend/public/brand/zenox-finance-logo.svg` — logo horizontal.
-- Palette de référence :
-  - Bleu nuit `#0B2D6B`
-  - Bleu principal `#2563EB`
-  - Bleu lumineux `#2F80FF`
-  - Cyan `#06B6D4`
-  - Vert `#10B981`
-  - Orange `#F59E0B`
-  - Rouge `#EF4444`
+- Couleurs officielles du symbole ZENOX, confirmées le 18 octobre 2026 :
+  - Bleu marine `#004773`
+  - Bleu électrique `#0093DD`
+- Les couleurs complémentaires de l'interface ne doivent pas être confondues avec les couleurs du logo. Toute modification du symbole ou de ses couleurs nécessite une validation explicite.
 - Typographie de référence : Inter dans le guide de marque, avec une sans-serif système en secours. Le frontend actuel importe DM Sans et Manrope ; ne pas changer les polices existantes dans le cadre d'un simple correctif sans examiner et valider l'impact visuel.
 
 ## 3. Écrans publics à préserver
@@ -82,7 +78,7 @@ Préserver l'espace existant : navigation latérale, barre supérieure, tableaux
 
 ## 6. État de validation au 18 octobre 2026
 
-- CI du commit `4ecc116690f29935655b1dea0159ef53f7e01213` : **réussie**.
+- CI du commit `937fe63e5cf5eea1b96dbb446fef084846d28538` : **réussie** (typecheck et build frontend/backend, tests backend et migrations sur PostgreSQL jetable).
 - Correction de navigation arrière/avant ajoutée au même commit.
 - PR #8 : ouverte, en brouillon, non fusionnée.
 - Le succès de CI confirme les contrôles automatisés, pas un contrôle visuel manuel sur navigateur.
