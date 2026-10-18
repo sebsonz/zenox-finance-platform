@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg";
-import type { CalculatedInvoiceTotals } from "../types/invoice-calculation.types.js";\nimport type { FinanceInvoiceOperationContext } from "../types/invoice-operation-context.js";\nimport { invoiceActor } from "../types/invoice-operation-context.js";
+import type { CalculatedInvoiceTotals } from "../types/invoice-calculation.types.js";
 import type { CreateInvoiceDraftInput, ListInvoiceDraftsQuery, UpdateInvoiceDraftInput } from "../validators/invoice-draft.schema.js";
 
 export interface FinanceInvoice {
@@ -84,7 +84,7 @@ async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow
 
 export const invoiceRepository = {
   async createDraft(
-    client: PoolClient, context: FinanceInvoiceOperationContext, input: CreateInvoiceDraftInput,
+    client: PoolClient, tenantId: string, principalId: string, input: CreateInvoiceDraftInput,
     currencyMinorUnit: number, totals: CalculatedInvoiceTotals,
     calculatedLines: readonly { subtotal: string; discountAmount: string; taxableAmount: string; taxAmount: string; total: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string }[],
     customer: { id: string; legalName: string; displayName: string | null; email: string | null; phone: string | null; countryCode: string; taxIdentifier: string | null; registrationIdentifier: string | null },
@@ -96,12 +96,12 @@ export const invoiceRepository = {
         created_by_principal_id
       ) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11,$12,$13,$14,$15)
       RETURNING ${invoiceColumns}`,
-      [context.tenantId, customer.id, totals.currency, currencyMinorUnit, input.dueDate ?? null,
+      [tenantId, customer.id, totals.currency, currencyMinorUnit, input.dueDate ?? null,
         JSON.stringify({ id: customer.id, legalName: customer.legalName, displayName: customer.displayName,
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
           taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
         totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
-        totals.grandTotal, totals.calculationPolicy, input.notes ?? null, actor.type === "SERVICE" ? actor.ref : null, actor.type, actor.ref],
+        totals.grandTotal, totals.calculationPolicy, input.notes ?? null, principalId],
     );
     const invoice = created.rows[0];
     if (!invoice) throw new Error("INVOICE_INSERT_RETURNED_NO_ROW");
@@ -118,7 +118,7 @@ export const invoiceRepository = {
           calculated.discountAmount, calculated.taxableAmount, calculated.taxAmount, calculated.total],
       );
     }
-    return attachLines(client, context.tenantId, invoice);
+    return attachLines(client, tenantId, invoice);
   },
 
 
@@ -164,7 +164,7 @@ export const invoiceRepository = {
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
           taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
         totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
-        totals.calculationPolicy, input.notes ?? null, actor.type, actor.ref, expectedUpdatedAt],
+        totals.calculationPolicy, input.notes ?? null, expectedUpdatedAt],
     );
     const invoice = updated.rows[0];
     if (!invoice) return null;
