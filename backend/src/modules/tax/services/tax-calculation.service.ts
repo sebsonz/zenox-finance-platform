@@ -151,7 +151,7 @@ export const taxCalculationService = {
         return taxSnapshotRepository.create(
           client,
           context.tenantId,
-          context.principal.id,
+          context,
           currency.minorUnit,
           validatedSnapshot,
         );
