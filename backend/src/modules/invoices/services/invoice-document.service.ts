@@ -1,10 +1,10 @@
 import { withTenantTransaction } from "../../../db/transaction.js";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinanceInvoiceOperationContext } from "../types/invoice-operation-context.js";
 import { invoiceDocumentRepository, type InvoiceDocumentArtifact } from "../repositories/invoice-document.repository.js";
 import { invoicePdfRepository, type InvoicePdfArtifact } from "../repositories/invoice-pdf.repository.js";
 
 export const invoiceDocumentService = {
-  async findForInvoice(context: FinanceRequestContext, invoiceId: string): Promise<InvoiceDocumentArtifact | null> {
+  async findForInvoice(context: FinanceInvoiceOperationContext, invoiceId: string): Promise<InvoiceDocumentArtifact | null> {
     return withTenantTransaction(context.tenantId,
       (client) => invoiceDocumentRepository.findForInvoice(client, context.tenantId, invoiceId));
   },
