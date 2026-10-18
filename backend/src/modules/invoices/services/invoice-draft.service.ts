@@ -1,6 +1,7 @@
 import { withTenantTransaction } from "../../../db/transaction.js";
 import { currencyRepository } from "../../currencies/repositories/currency.repository.js";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinanceInvoiceOperationContext } from "../types/invoice-operation-context.js";
+import { recordInvoiceAudit } from "../repositories/invoice-audit.repository.js";
 import { customerRepository } from "../../customers/repositories/customer.repository.js";
 import { calculateInvoiceTotals } from "../engine/invoice-calculation.engine.js";
 import { invoiceRepository, type FinanceInvoice } from "../repositories/invoice.repository.js";
@@ -14,7 +15,7 @@ export class InvoiceDraftServiceError extends Error {
 }
 
 export const invoiceDraftService = {
-  async create(context: FinanceRequestContext, input: CreateInvoiceDraftInput): Promise<FinanceInvoice> {
+  async create(context: FinanceInvoiceOperationContext, input: CreateInvoiceDraftInput): Promise<FinanceInvoice> {
     const currency = await currencyRepository.findActiveByCode(input.currencyCode);
     if (!currency) throw new InvoiceDraftServiceError("CURRENCY_NOT_SUPPORTED", "The requested currency is not active.");
 
@@ -33,13 +34,20 @@ export const invoiceDraftService = {
           taxRatePercent: line.taxRatePercent,
         })),
       });
-      return invoiceRepository.createDraft(
-        client, context.tenantId, context.principal.id, input, currency.minorUnit, totals, totals.lines, customer,
+      const invoice = await invoiceRepository.createDraft(
+        client, context, input, currency.minorUnit, totals, totals.lines, customer,
       );
+      await recordInvoiceAudit(client, context, "invoice.draft.created", "INVOICE", invoice.id, {
+        status: invoice.status,
+        currencyCode: invoice.currencyCode,
+        lineCount: invoice.lines.length,
+        documentVersion: invoice.documentVersion,
+      });
+      return invoice;
     });
   },
 
-  async updateDraft(context: FinanceRequestContext, invoiceId: string, input: UpdateInvoiceDraftInput): Promise<FinanceInvoice> {
+  async updateDraft(context: FinanceInvoiceOperationContext, invoiceId: string, input: UpdateInvoiceDraftInput): Promise<FinanceInvoice> {
     const currency = await currencyRepository.findActiveByCode(input.currencyCode);
     if (!currency) throw new InvoiceDraftServiceError("CURRENCY_NOT_SUPPORTED", "The requested currency is not active.");
 
@@ -60,7 +68,7 @@ export const invoiceDraftService = {
       });
 
       const invoice = await invoiceRepository.updateDraft(
-        client, context.tenantId, invoiceId, input.expectedUpdatedAt, input, currency.minorUnit,
+        client, context, invoiceId, input.expectedUpdatedAt, input, currency.minorUnit,
         totals, totals.lines, customer,
       );
       if (!invoice) {
@@ -69,15 +77,21 @@ export const invoiceDraftService = {
           "The draft is unavailable, no longer editable, or was changed by another request. Reload it before editing again.",
         );
       }
+      await recordInvoiceAudit(client, context, "invoice.draft.updated", "INVOICE", invoice.id, {
+        status: invoice.status,
+        currencyCode: invoice.currencyCode,
+        lineCount: invoice.lines.length,
+        documentVersion: invoice.documentVersion,
+      });
       return invoice;
     });
   },
 
-  async findById(context: FinanceRequestContext, invoiceId: string): Promise<FinanceInvoice | null> {
+  async findById(context: FinanceInvoiceOperationContext, invoiceId: string): Promise<FinanceInvoice | null> {
     return withTenantTransaction(context.tenantId, (client) => invoiceRepository.findById(client, context.tenantId, invoiceId));
   },
 
-  async list(context: FinanceRequestContext, query: ListInvoiceDraftsQuery): Promise<FinanceInvoice[]> {
+  async list(context: FinanceInvoiceOperationContext, query: ListInvoiceDraftsQuery): Promise<FinanceInvoice[]> {
     return withTenantTransaction(context.tenantId, (client) => invoiceRepository.list(client, context.tenantId, query));
   },
 };
