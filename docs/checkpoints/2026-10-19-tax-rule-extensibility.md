@@ -31,7 +31,7 @@ Migration `20261019000100_tax_rule_extensibility.sql` adds:
 - `accounting_treatment` values including `ADVANCE_INCOME_TAX`, `WITHHOLDING_DEDUCTION`, `RECOVERABLE_CREDIT`, `CUSTOMS_COST`, and generic categories;
 - `applicability_conditions` as versioned JSON with `schemaVersion: 1` and an `all` array;
 - `source_verified_at` and `reviewed_by` metadata;
-- a review-evidence check for activation, introduced NOT VALID to avoid unexpectedly rejecting pre-existing rows during rollout.
+- review-evidence columns for future activation validation. A database-wide activation constraint is deliberately deferred until legacy rules are inventoried/backfilled, avoiding failures when an existing ACTIVE rule is updated.
 
 The migration is committed on this feature branch only. It has NOT been applied to any database. It must be validated on disposable PostgreSQL and must never be run against `zenoxfret_v2`.
 
