@@ -39,3 +39,60 @@ COMMENT ON COLUMN public.finance_invoices.created_by_actor_ref IS
   'Stable actor reference; for USER this is issuer|subject and is not an integration principal ID.';
 COMMENT ON COLUMN public.finance_invoices.issued_by_actor_ref IS
   'Stable actor reference; for USER this is issuer|subject and is not an integration principal ID.';
+
+-- Artifact attribution must follow the same actor model; never invent an integration principal.
+ALTER TABLE public.finance_invoice_document_artifacts
+  ADD COLUMN IF NOT EXISTS created_by_actor_type text,
+  ADD COLUMN IF NOT EXISTS created_by_actor_ref text,
+  ALTER COLUMN created_by_principal_id DROP NOT NULL;
+ALTER TABLE public.finance_invoice_pdf_artifacts
+  ADD COLUMN IF NOT EXISTS created_by_actor_type text,
+  ADD COLUMN IF NOT EXISTS created_by_actor_ref text,
+  ALTER COLUMN created_by_principal_id DROP NOT NULL;
+
+ALTER TABLE public.finance_invoice_document_artifacts
+  DROP CONSTRAINT IF EXISTS finance_invoice_document_artifacts_created_by_actor_type_check;
+ALTER TABLE public.finance_invoice_document_artifacts
+  ADD CONSTRAINT finance_invoice_document_artifacts_created_by_actor_type_check
+    CHECK (created_by_actor_type IS NULL OR created_by_actor_type IN ('USER', 'SERVICE', 'SYSTEM'));
+ALTER TABLE public.finance_invoice_pdf_artifacts
+  DROP CONSTRAINT IF EXISTS finance_invoice_pdf_artifacts_created_by_actor_type_check;
+ALTER TABLE public.finance_invoice_pdf_artifacts
+  ADD CONSTRAINT finance_invoice_pdf_artifacts_created_by_actor_type_check
+    CHECK (created_by_actor_type IS NULL OR created_by_actor_type IN ('USER', 'SERVICE', 'SYSTEM'));
+
+CREATE OR REPLACE FUNCTION public.finance_guard_issued_invoice_immutability()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $function$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.status IN ('ISSUED', 'CANCELLED') THEN
+      RAISE EXCEPTION 'ISSUED_INVOICE_IMMUTABLE' USING ERRCODE = '55000';
+    END IF;
+    RETURN OLD;
+  END IF;
+
+  IF OLD.status IN ('ISSUED', 'CANCELLED') THEN
+    RAISE EXCEPTION 'ISSUED_INVOICE_IMMUTABLE' USING ERRCODE = '55000';
+  END IF;
+
+  IF OLD.status <> NEW.status AND NOT (OLD.status = 'DRAFT' AND NEW.status = 'ISSUED') THEN
+    RAISE EXCEPTION 'INVALID_INVOICE_STATUS_TRANSITION' USING ERRCODE = '23514';
+  END IF;
+
+  IF OLD.status = 'DRAFT' AND NEW.status = 'ISSUED'
+     AND (NEW.tax_status IS DISTINCT FROM 'CALCULATED' OR NEW.tax_snapshot_id IS NULL
+          OR (NEW.issued_by_principal_id IS NULL
+              AND (NEW.issued_by_actor_type IS NULL OR NEW.issued_by_actor_ref IS NULL))) THEN
+    RAISE EXCEPTION 'INVOICE_ISSUANCE_REQUIRES_TAX_SNAPSHOT_AND_ISSUER' USING ERRCODE = '23514';
+  END IF;
+
+  RETURN NEW;
+END;
+$function$;
+
+COMMENT ON COLUMN public.finance_invoice_document_artifacts.created_by_actor_ref IS
+  'Stable actor reference; for USER this is issuer|subject and not an integration principal ID.';
+COMMENT ON COLUMN public.finance_invoice_pdf_artifacts.created_by_actor_ref IS
+  'Stable actor reference; for USER this is issuer|subject and not an integration principal ID.';
