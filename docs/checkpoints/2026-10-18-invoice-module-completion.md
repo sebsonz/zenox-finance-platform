@@ -26,9 +26,9 @@ These are historical checks for the exact heads listed; any new commits require 
 - Extended actor attribution through tax snapshots, invoice issuance, invoice document/PDF artifacts, and credit notes. Integration calls retain their real service principal IDs; user actions do not impersonate an integration principal.
 - Replaced the read-only invoice workspace with an end-to-end draft/tax/issue/download/credit-note interface, with role-aware action disabling and server-side authorization still authoritative.
 - Corrected a malformed actor-attribution migration discovered during review and added migration support for tax snapshots and credit-note/artifact actors. The migration has **not** been executed manually; CI is configured to use disposable PostgreSQL.
-- Added/updated unit coverage for explicit tax snapshot actor attribution. Route-level auth/permission/cross-tenant and full E2E coverage are still required.
+- Added/updated unit coverage for explicit tax snapshot actor attribution and user invoice draft BFF permission checks. PostgreSQL integration tests now verify user-authored draft create/update/audit and user invoice issuance/artifact/audit actor attribution. Additional route-level coverage for tax/issue/credit-note/document endpoints and cross-tenant denial remains desirable.
 - Draft PR #9: https://github.com/sebsonz/zenox-finance-platform/pull/9 (base `feature/invoice-user-readonly-bff`, head `feature/invoice-workflow-completion`). Open, draft, not merged.
-- CI initially failed at backend typecheck due the actor-context refactor. The specific type errors were corrected; validation is running again on newer commits. Do not treat the current implementation as verified until the latest run passes.
+- CI run `39132597250` passed on commit `72b17639fc03d9b1ae6f3f7be10085d9209b6583`: backend typecheck/build, disposable PostgreSQL migrations, runtime-role/fixtures setup, migration drift audit, unit + PostgreSQL integration tests, frontend typecheck and frontend build all succeeded.
 - No production database has been touched; `zenoxfret_v2` has not been accessed.
 
 ## Required before calling the module complete
