@@ -15,6 +15,7 @@ import { calculateInvoiceTaxSnapshotSchema } from "../../invoices/validators/inv
 import { invoiceTaxSnapshotService, InvoiceTaxSnapshotServiceError } from "../../invoices/services/invoice-tax-snapshot.service.js";
 import { invoiceIssuanceService, InvoiceIssuanceServiceError } from "../../invoices/services/invoice-issuance.service.js";
 import { invoiceDocumentService } from "../../invoices/services/invoice-document.service.js";
+import { creditNoteService, CreditNoteServiceError } from "../../invoices/services/credit-note.service.js";
 import { userTenantMembershipRepository } from "../../tenants/repositories/user-tenant-membership.repository.js";
 import { assertActiveMembershipCan } from "../../tenants/services/user-tenant-permissions.service.js";
 import { tenantRepository } from "../../tenants/repositories/tenant.repository.js";
@@ -341,6 +342,113 @@ userInvoiceRouter.get(
       res.setHeader("X-Document-SHA256", artifact.contentSha256);
       res.setHeader("Cache-Control", "private, no-store");
       res.status(200).send(artifact.pdfContent);
+    } catch (error) { next(error); }
+  },
+);
+
+
+const creditNoteRequestSchema = z.object({ reason: z.string().trim().min(3).max(2000) }).strict();
+
+userInvoiceRouter.get(
+  "/:tenantId/invoices/:invoiceId/credit-notes",
+  requireUserAuth(),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const tenant = tenantIdSchema.safeParse(req.params["tenantId"]);
+    const invoiceId = tenantIdSchema.safeParse(req.params["invoiceId"]);
+    if (!tenant.success || !invoiceId.success) {
+      res.status(400).json({ error: { code: "INVALID_RESOURCE_ID", message: "Valid tenant and invoice IDs are required." } });
+      return;
+    }
+    try {
+      const context = await authorizeInvoiceRead(tenant.data, req, res);
+      if (!context) return;
+      const creditNotes = await creditNoteService.listForInvoice(context, invoiceId.data);
+      res.status(200).json({ data: { creditNotes, correlationId: context.correlationId } });
+    } catch (error) { next(error); }
+  },
+);
+
+userInvoiceRouter.post(
+  "/:tenantId/invoices/:invoiceId/credit-notes",
+  requireUserAuth(),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const tenant = tenantIdSchema.safeParse(req.params["tenantId"]);
+    const invoiceId = tenantIdSchema.safeParse(req.params["invoiceId"]);
+    const body = creditNoteRequestSchema.safeParse(req.body);
+    if (!tenant.success || !invoiceId.success) {
+      res.status(400).json({ error: { code: "INVALID_RESOURCE_ID", message: "Valid tenant and invoice IDs are required." } });
+      return;
+    }
+    if (!body.success) {
+      res.status(400).json({ error: { code: "INVALID_CREDIT_NOTE_REQUEST", message: "A valid credit note reason is required." } });
+      return;
+    }
+    try {
+      const context = await resolveInvoiceWriteContext(tenant.data, req, res, "invoices:credit");
+      if (!context) return;
+      const creditNote = await creditNoteService.issueFullReversal(context, invoiceId.data, body.data.reason);
+      res.status(201).json({ data: { creditNote, correlationId: context.correlationId } });
+    } catch (error) {
+      if (error instanceof CreditNoteServiceError) {
+        const status = error.code === "CREDIT_NOTE_ALREADY_EXISTS" || error.code === "SOURCE_INVOICE_NOT_ISSUED" ? 409 : 422;
+        res.status(status).json({ error: { code: error.code, message: error.message, correlationId: String(res.locals["correlationId"] ?? "") } });
+        return;
+      }
+      next(error);
+    }
+  },
+);
+
+userInvoiceRouter.get(
+  "/:tenantId/invoices/credit-notes/:creditNoteId/document",
+  requireUserAuth(),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const tenant = tenantIdSchema.safeParse(req.params["tenantId"]);
+    const id = tenantIdSchema.safeParse(req.params["creditNoteId"]);
+    if (!tenant.success || !id.success) {
+      res.status(400).json({ error: { code: "INVALID_RESOURCE_ID", message: "Valid tenant and credit note IDs are required." } });
+      return;
+    }
+    try {
+      const context = await authorizeInvoiceRead(tenant.data, req, res);
+      if (!context) return;
+      const artifact = await creditNoteService.findDocument(context, id.data);
+      if (!artifact) {
+        res.status(404).json({ error: { code: "CREDIT_NOTE_NOT_FOUND", message: "The credit note document was not found." } });
+        return;
+      }
+      res.setHeader("Content-Type", artifact.contentType);
+      res.setHeader("Content-Disposition", `inline; filename="${artifact.creditNoteCode}.html"`);
+      res.setHeader("ETag", `"sha256-${artifact.sha256}"`);
+      res.setHeader("Cache-Control", "private, no-store");
+      res.status(200).send(artifact.content);
+    } catch (error) { next(error); }
+  },
+);
+
+userInvoiceRouter.get(
+  "/:tenantId/invoices/credit-notes/:creditNoteId/document.pdf",
+  requireUserAuth(),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const tenant = tenantIdSchema.safeParse(req.params["tenantId"]);
+    const id = tenantIdSchema.safeParse(req.params["creditNoteId"]);
+    if (!tenant.success || !id.success) {
+      res.status(400).json({ error: { code: "INVALID_RESOURCE_ID", message: "Valid tenant and credit note IDs are required." } });
+      return;
+    }
+    try {
+      const context = await authorizeInvoiceRead(tenant.data, req, res);
+      if (!context) return;
+      const artifact = await creditNoteService.findPdf(context, id.data);
+      if (!artifact) {
+        res.status(404).json({ error: { code: "CREDIT_NOTE_NOT_FOUND", message: "The credit note PDF was not found." } });
+        return;
+      }
+      res.setHeader("Content-Type", artifact.contentType);
+      res.setHeader("Content-Disposition", `attachment; filename="${artifact.creditNoteCode}.pdf"`);
+      res.setHeader("ETag", `"sha256-${artifact.sha256}"`);
+      res.setHeader("Cache-Control", "private, no-store");
+      res.status(200).send(artifact.content);
     } catch (error) { next(error); }
   },
 );
