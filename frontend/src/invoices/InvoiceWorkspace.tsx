@@ -96,9 +96,15 @@ export function InvoiceWorkspace() {
     async function loadResources() {
       setCheckingResources(true);
       try {
+        const role = tenants.find((tenant) => tenant.id === tenantId)?.role ?? "";
+        const canCreateInvoices = ["OWNER", "ADMIN", "FINANCE_MANAGER", "FINANCE_OPERATOR"].includes(role);
         const [customerData, currencyData, jurisdictionData] = await Promise.all([
-          readData<{ customers?: Customer[] }>(await fetch(`/api/v1/user/tenants/${tenantId}/customers?status=ACTIVE&limit=100`, { credentials: "same-origin", cache: "no-store" }), "Impossible de charger les clients."),
-          readData<{ currencies?: Currency[] }>(await fetch(`/api/v1/user/tenants/${tenantId}/currencies`, { credentials: "same-origin", cache: "no-store" }), "Impossible de charger les devises."),
+          canCreateInvoices
+            ? readData<{ customers?: Customer[] }>(await fetch(`/api/v1/user/tenants/${tenantId}/customers?status=ACTIVE&limit=100`, { credentials: "same-origin", cache: "no-store" }), "Impossible de charger les clients.")
+            : Promise.resolve({ customers: [] as Customer[] }),
+          canCreateInvoices
+            ? readData<{ currencies?: Currency[] }>(await fetch(`/api/v1/user/tenants/${tenantId}/currencies`, { credentials: "same-origin", cache: "no-store" }), "Impossible de charger les devises.")
+            : Promise.resolve({ currencies: [] as Currency[] }),
           readData<{ jurisdictions?: Jurisdiction[] }>(await fetch(`/api/v1/user/tenants/${tenantId}/tax-jurisdictions`, { credentials: "same-origin", cache: "no-store" }), "Impossible de charger les juridictions fiscales."),
         ]);
         if (cancelled) return;
