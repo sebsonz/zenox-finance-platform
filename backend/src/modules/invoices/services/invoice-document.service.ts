@@ -8,7 +8,7 @@ export const invoiceDocumentService = {
     return withTenantTransaction(context.tenantId,
       (client) => invoiceDocumentRepository.findForInvoice(client, context.tenantId, invoiceId));
   },
-  async findPdfForInvoice(context: FinanceRequestContext, invoiceId: string): Promise<InvoicePdfArtifact | null> {
+  async findPdfForInvoice(context: FinanceInvoiceOperationContext, invoiceId: string): Promise<InvoicePdfArtifact | null> {
     return withTenantTransaction(context.tenantId,
       (client) => invoicePdfRepository.findForInvoice(client, context.tenantId, invoiceId));
   },
