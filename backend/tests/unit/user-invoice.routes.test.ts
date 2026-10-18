@@ -6,6 +6,7 @@ const TENANT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const USER_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const USER_ISSUER = "https://qsmairsmgfnlmiltvgvn.supabase.co";
 const INVOICE_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+const CUSTOMER_ID = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 
 vi.mock("../../src/middleware/require-user-auth.js", () => ({
   requireUserAuth: () => (req: Request, _res: Response, next: NextFunction) => {
@@ -18,7 +19,7 @@ vi.mock("../../src/modules/tenants/repositories/user-tenant-membership.repositor
 }));
 vi.mock("../../src/modules/tenants/services/user-tenant-permissions.service.js", () => ({
   assertActiveMembershipCan: vi.fn((membership: { status: string; role_code: string }, permission: string) => {
-    if (membership.status !== "ACTIVE" || permission !== "invoices:read" || membership.role_code === "NO_INVOICE_ACCESS") {
+    if (membership.status !== "ACTIVE" || membership.role_code === "NO_INVOICE_ACCESS" || (permission !== "invoices:read" && !["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(membership.role_code))) {
       throw new Error("User is not authorized");
     }
   }),
@@ -32,16 +33,25 @@ vi.mock("../../src/db/transaction.js", () => ({
 vi.mock("../../src/modules/invoices/repositories/invoice.repository.js", () => ({
   invoiceRepository: { list: vi.fn() },
 }));
+vi.mock("../../src/modules/invoices/services/invoice-draft.service.js", () => ({
+  InvoiceDraftServiceError: class InvoiceDraftServiceError extends Error {
+    constructor(readonly code: string, message: string) { super(message); }
+  },
+  invoiceDraftService: { create: vi.fn(), updateDraft: vi.fn(), findById: vi.fn(), list: vi.fn() },
+}));
+
 
 import { userTenantMembershipRepository } from "../../src/modules/tenants/repositories/user-tenant-membership.repository.js";
 import { tenantRepository } from "../../src/modules/tenants/repositories/tenant.repository.js";
 import { assertActiveMembershipCan } from "../../src/modules/tenants/services/user-tenant-permissions.service.js";
 import { withTenantTransaction } from "../../src/db/transaction.js";
 import { invoiceRepository } from "../../src/modules/invoices/repositories/invoice.repository.js";
+import { invoiceDraftService } from "../../src/modules/invoices/services/invoice-draft.service.js";
 import { userInvoiceRouter } from "../../src/modules/user-auth/routes/user-invoice.routes.js";
 
 function app() {
   const server = express();
+  server.use(express.json());
   server.use("/user/tenants", userInvoiceRouter);
   server.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     res.status(500).json({ error: { code: "INTERNAL_ERROR" } });
@@ -49,14 +59,14 @@ function app() {
   return server;
 }
 
-async function getWithExpress(server: ReturnType<typeof express>, path: string) {
+async function getWithExpress(server: ReturnType<typeof express>, path: string, init?: RequestInit) {
   const listener = await new Promise<ReturnType<typeof import("node:http").createServer>>((resolve) => {
     const httpServer = server.listen(0, "127.0.0.1", () => resolve(httpServer));
   });
   const address = listener.address();
   if (!address || typeof address === "string") throw new Error("Test server did not bind a TCP port");
   try {
-    const response = await fetch(`http://127.0.0.1:${address.port}${path}`);
+    const response = await fetch(`http://127.0.0.1:${address.port}${path}`, init);
     return { status: response.status, headers: response.headers, body: await response.json() as unknown };
   } finally {
     await new Promise<void>((resolve, reject) => listener.close((error) => error ? reject(error) : resolve()));
@@ -145,5 +155,43 @@ describe("GET /user/tenants/:tenantId/invoices", () => {
     const response = await getWithExpress(app(), `/user/tenants/${TENANT_ID}/invoices`);
     expect(response.status).toBe(500);
     expect(response.body).toMatchObject({ error: { code: "INTERNAL_ERROR" } });
+  });
+
+  it("creates a draft only after tenant membership and invoices:create permission checks", async () => {
+    vi.mocked(userTenantMembershipRepository.findActiveMembership).mockResolvedValue(activeMembership("OWNER") as never);
+    vi.mocked(invoiceDraftService.create).mockResolvedValue({
+      id: INVOICE_ID, status: "DRAFT", currencyCode: "XOF", lines: [], grandTotal: "1000",
+    } as never);
+    const response = await getWithExpress(app(), `/user/tenants/${TENANT_ID}/invoices/drafts`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        customerId: CUSTOMER_ID,
+        currencyCode: "XOF",
+        lines: [{ description: "Freight", quantity: "1", unitPrice: "1000", discountPercent: "0", taxRatePercent: "0" }],
+      }),
+    });
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({ data: { invoice: { id: INVOICE_ID, status: "DRAFT" } } });
+    expect(assertActiveMembershipCan).toHaveBeenCalledWith(expect.objectContaining({ role_code: "OWNER" }), "invoices:create");
+    expect(invoiceDraftService.create).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TENANT_ID,
+      actor: expect.objectContaining({ type: "USER", ref: `${USER_ISSUER}|${USER_ID}` }),
+    }), expect.objectContaining({ customerId: CUSTOMER_ID, currencyCode: "XOF" }));
+  });
+
+  it("does not call draft creation for a viewer lacking invoices:create", async () => {
+    vi.mocked(userTenantMembershipRepository.findActiveMembership).mockResolvedValue(activeMembership("VIEWER") as never);
+    const response = await getWithExpress(app(), `/user/tenants/${TENANT_ID}/invoices/drafts`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        customerId: CUSTOMER_ID,
+        currencyCode: "XOF",
+        lines: [{ description: "Freight", quantity: "1", unitPrice: "1000", discountPercent: "0", taxRatePercent: "0" }],
+      }),
+    });
+    expect(response.status).toBe(403);
+    expect(invoiceDraftService.create).not.toHaveBeenCalled();
   });
 });
