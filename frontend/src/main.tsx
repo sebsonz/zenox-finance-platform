@@ -30,7 +30,7 @@ function WorkspaceApp() {
   return <div className="app-shell">
     {mobileOpen && <button className="mobile-scrim" aria-label="Fermer le menu" onClick={() => setMobileOpen(false)} />}
     <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`}>
-      <div className="brand"><div className="brand-mark">Z</div><div><strong>ZENOX<span>FINANCE</span></strong><small>Financial workspace</small></div><button className="close-menu" onClick={() => setMobileOpen(false)} aria-label="Fermer"><X size={18}/></button></div>
+      <div className="brand"><div className="brand-mark"><img src="/brand/zenox-symbol.svg" alt="" /></div><div><strong>ZENOX<span>FINANCE</span></strong><small>Financial workspace</small></div><button className="close-menu" onClick={() => setMobileOpen(false)} aria-label="Fermer"><X size={18}/></button></div>
       <div className="workspace-label">ESPACE DE TRAVAIL</div>
       <button className="workspace-switch"><div className="workspace-avatar"><Building2 size={17}/></div><span><strong>Zenox Finance</strong><small>Organisation principale</small></span><ChevronDown size={15}/></button>
       <div className="nav-label">MENU PRINCIPAL</div>
