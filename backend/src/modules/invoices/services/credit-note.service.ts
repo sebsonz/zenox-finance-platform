@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import { withTenantTransaction } from "../../../db/transaction.js";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinanceInvoiceOperationContext } from "../types/invoice-operation-context.js";
+import { invoiceActor, isUserInvoiceContext } from "../types/invoice-operation-context.js";
+import { recordInvoiceAudit } from "../repositories/invoice-audit.repository.js";
 import { invoiceRepository } from "../repositories/invoice.repository.js";
 import { renderInvoiceHtmlDocument } from "../documents/invoice-html-renderer.js";
 import { renderInvoicePdfDocument } from "../documents/invoice-pdf-renderer.js";
@@ -26,7 +28,7 @@ export interface FinanceCreditNote {
 }
 
 export const creditNoteService = {
-  async findDocument(context: FinanceRequestContext, creditNoteId: string): Promise<{
+  async findDocument(context: FinanceInvoiceOperationContext, creditNoteId: string): Promise<{
     creditNoteCode: string; contentType: "text/html; charset=utf-8"; content: string; sha256: string;
   } | null> {
     return withTenantTransaction(context.tenantId, async (client) => {
@@ -43,7 +45,7 @@ export const creditNoteService = {
     });
   },
 
-  async findPdf(context: FinanceRequestContext, creditNoteId: string): Promise<{
+  async findPdf(context: FinanceInvoiceOperationContext, creditNoteId: string): Promise<{
     creditNoteCode: string; contentType: "application/pdf"; content: Buffer; sha256: string;
   } | null> {
     return withTenantTransaction(context.tenantId, async (client) => {
@@ -60,7 +62,9 @@ export const creditNoteService = {
     });
   },
 
-  async issueFullReversal(context: FinanceRequestContext, invoiceId: string, reason: string): Promise<FinanceCreditNote> {
+  async issueFullReversal(context: FinanceInvoiceOperationContext, invoiceId: string, reason: string): Promise<FinanceCreditNote> {
+    const actor = invoiceActor(context);
+    const legacyPrincipalId = isUserInvoiceContext(context) ? null : context.principal.id;
     return withTenantTransaction(context.tenantId, async (client) => {
       const lock = await client.query<{ status: string; tax_snapshot_id: string | null }>(
         `SELECT status, tax_snapshot_id FROM public.finance_invoices
@@ -137,10 +141,11 @@ export const creditNoteService = {
           id, tenant_id, original_invoice_id, credit_note_code, status, reason, currency_code,
           currency_minor_unit, customer_snapshot, source_tax_snapshot_id, source_tax_snapshot_version,
           document_version, lines_snapshot, subtotal, discount_total, taxable_total, tax_total,
-          grand_total, amount_due, html_content, html_sha256, pdf_content, pdf_sha256, issued_by_principal_id
+          grand_total, amount_due, html_content, html_sha256, pdf_content, pdf_sha256, issued_by_principal_id,
+          issued_by_actor_type, issued_by_actor_ref
         ) VALUES (
           $1,$2,$3,$4,'ISSUED',$5,$6,$7,$8::jsonb,$9,$10,1,$11::jsonb,
-          $12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22
+          $12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24
         )
         RETURNING id, original_invoice_id, credit_note_code, status, reason, currency_code,
           grand_total::text, amount_due::text, html_sha256, pdf_sha256,
@@ -149,11 +154,17 @@ export const creditNoteService = {
           creditNoteId, context.tenantId, source.id, code, reason, source.currencyCode, source.currencyMinorUnit,
           JSON.stringify(source.customerSnapshot), source.taxSnapshotId, source.taxSnapshotVersion,
           JSON.stringify(source.lines), source.subtotal, source.discountTotal, source.taxableTotal, source.taxTotal,
-          source.grandTotal, source.amountDue, htmlContent, htmlSha256, pdfContent, pdfSha256, context.principal.id,
+          source.grandTotal, source.amountDue, htmlContent, htmlSha256, pdfContent, pdfSha256, legacyPrincipalId, actor.type, actor.ref,
         ],
       );
       const row = inserted.rows[0];
       if (!row) throw new Error("CREDIT_NOTE_INSERT_FAILED");
+      await recordInvoiceAudit(client, context, "invoice.credit_note.issued", "CREDIT_NOTE", row.id, {
+        creditNoteCode: row.credit_note_code,
+        originalInvoiceId: row.original_invoice_id,
+        fullReversal: true,
+        currencyCode: row.currency_code.trim(),
+      });
       return {
         id: row.id, originalInvoiceId: row.original_invoice_id, creditNoteCode: row.credit_note_code,
         status: row.status, reason: row.reason, currencyCode: row.currency_code.trim(),
