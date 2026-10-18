@@ -208,14 +208,14 @@ export function InvoiceWorkspace() {
         headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
       });
       const data = await readData<{ invoice: Invoice }>(response, "Impossible d’enregistrer le brouillon.");
-      setNotice(editing ? "Brouillon mis à jour." : "Brouillon créé.");
+      const successMessage = editing ? "Brouillon mis à jour." : "Brouillon créé.";
       setEditing(data.invoice); setSelectedInvoiceId(data.invoice.id);
-      await loadInvoices();
       const refreshed = await fetch(`/api/v1/user/tenants/${tenantId}/invoices?limit=100`, { credentials: "same-origin", cache: "no-store" });
       const refreshedData = await readData<{ invoices?: Invoice[] }>(refreshed, "Impossible d’actualiser les factures.");
       setInvoices(refreshedData.invoices ?? []);
       const saved = (refreshedData.invoices ?? []).find((item) => item.id === data.invoice.id) ?? data.invoice;
       setEditing(saved);
+      setNotice(successMessage);
     } catch (error) { setNotice(error instanceof Error ? error.message : "Erreur d’enregistrement."); }
     finally { setBusy(false); }
   }
