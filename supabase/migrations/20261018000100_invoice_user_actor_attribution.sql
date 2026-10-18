@@ -141,3 +141,17 @@ CREATE INDEX IF NOT EXISTS finance_credit_notes_issued_actor_idx
   ON public.finance_credit_notes (tenant_id, issued_by_actor_type, issued_by_actor_ref);
 COMMENT ON COLUMN public.finance_credit_notes.issued_by_actor_ref IS
   'Stable actor reference; for USER this is issuer|subject and not an integration principal ID.';
+
+-- Tax evidence stores actor attribution separately from the legacy UUID column.
+ALTER TABLE public.finance_tax_calculation_snapshots
+  ADD COLUMN IF NOT EXISTS created_by_actor_type text,
+  ADD COLUMN IF NOT EXISTS created_by_actor_ref text;
+ALTER TABLE public.finance_tax_calculation_snapshots
+  DROP CONSTRAINT IF EXISTS finance_tax_snapshots_created_by_actor_type_check;
+ALTER TABLE public.finance_tax_calculation_snapshots
+  ADD CONSTRAINT finance_tax_snapshots_created_by_actor_type_check
+    CHECK (created_by_actor_type IS NULL OR created_by_actor_type IN ('USER', 'SERVICE', 'SYSTEM'));
+CREATE INDEX IF NOT EXISTS finance_tax_snapshots_created_actor_idx
+  ON public.finance_tax_calculation_snapshots (tenant_id, created_by_actor_type, created_by_actor_ref);
+COMMENT ON COLUMN public.finance_tax_calculation_snapshots.created_by_actor_ref IS
+  'Stable actor reference; for USER this is issuer|subject and not an integration principal ID.';
