@@ -28,6 +28,49 @@ export interface FinanceCreditNote {
 }
 
 export const creditNoteService = {
+  async listForInvoice(context: FinanceInvoiceOperationContext, invoiceId: string): Promise<Array<{
+    id: string;
+    originalInvoiceId: string;
+    creditNoteCode: string;
+    status: "ISSUED";
+    reason: string;
+    currencyCode: string;
+    grandTotal: string;
+    amountDue: string;
+    htmlSha256: string;
+    pdfSha256: string;
+    issuedAt: string;
+  }>> {
+    return withTenantTransaction(context.tenantId, async (client) => {
+      const result = await client.query<{
+        id: string; original_invoice_id: string; credit_note_code: string; status: "ISSUED";
+        reason: string; currency_code: string; grand_total: string; amount_due: string;
+        html_sha256: string; pdf_sha256: string; issued_at: string;
+      }>(
+        `SELECT id, original_invoice_id, credit_note_code, status, reason, currency_code,
+                grand_total::text, amount_due::text, html_sha256, pdf_sha256,
+                to_char(issued_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS issued_at
+           FROM public.finance_credit_notes
+          WHERE tenant_id = $1 AND original_invoice_id = $2
+          ORDER BY issued_at DESC`,
+        [context.tenantId, invoiceId],
+      );
+      return result.rows.map((row) => ({
+        id: row.id,
+        originalInvoiceId: row.original_invoice_id,
+        creditNoteCode: row.credit_note_code,
+        status: row.status,
+        reason: row.reason,
+        currencyCode: row.currency_code.trim(),
+        grandTotal: row.grand_total,
+        amountDue: row.amount_due,
+        htmlSha256: row.html_sha256,
+        pdfSha256: row.pdf_sha256,
+        issuedAt: row.issued_at,
+      }));
+    });
+  },
+
   async findDocument(context: FinanceInvoiceOperationContext, creditNoteId: string): Promise<{
     creditNoteCode: string; contentType: "text/html; charset=utf-8"; content: string; sha256: string;
   } | null> {
