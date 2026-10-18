@@ -55,6 +55,11 @@ export const creditNoteService = {
           ORDER BY issued_at DESC`,
         [context.tenantId, invoiceId],
       );
+      if (isUserInvoiceContext(context)) {
+        await recordInvoiceAudit(client, context, "invoice.credit_note.listed", "INVOICE", invoiceId, {
+          count: result.rows.length,
+        });
+      }
       return result.rows.map((row) => ({
         id: row.id,
         originalInvoiceId: row.original_invoice_id,
@@ -84,6 +89,11 @@ export const creditNoteService = {
       if (!row) return null;
       const hash = createHash("sha256").update(row.html_content, "utf8").digest("hex");
       if (hash !== row.html_sha256) throw new Error("CREDIT_NOTE_HTML_HASH_MISMATCH");
+      if (isUserInvoiceContext(context)) {
+        await recordInvoiceAudit(client, context, "invoice.credit_note.document.read", "CREDIT_NOTE", creditNoteId, {
+          format: "HTML", creditNoteCode: row.credit_note_code, sha256: row.html_sha256,
+        });
+      }
       return { creditNoteCode: row.credit_note_code, contentType: "text/html; charset=utf-8", content: row.html_content, sha256: row.html_sha256 };
     });
   },
@@ -101,6 +111,11 @@ export const creditNoteService = {
       if (!row) return null;
       const hash = createHash("sha256").update(row.pdf_content).digest("hex");
       if (hash !== row.pdf_sha256) throw new Error("CREDIT_NOTE_PDF_HASH_MISMATCH");
+      if (isUserInvoiceContext(context)) {
+        await recordInvoiceAudit(client, context, "invoice.credit_note.document.read", "CREDIT_NOTE", creditNoteId, {
+          format: "PDF", creditNoteCode: row.credit_note_code, sha256: row.pdf_sha256,
+        });
+      }
       return { creditNoteCode: row.credit_note_code, contentType: "application/pdf", content: row.pdf_content, sha256: row.pdf_sha256 };
     });
   },
