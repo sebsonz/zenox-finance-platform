@@ -76,6 +76,7 @@ import { invoiceDraftService } from "../../src/modules/invoices/services/invoice
 import { invoiceTaxSnapshotService } from "../../src/modules/invoices/services/invoice-tax-snapshot.service.js";
 import { invoiceIssuanceService } from "../../src/modules/invoices/services/invoice-issuance.service.js";
 import { creditNoteService } from "../../src/modules/invoices/services/credit-note.service.js";
+import { invoiceDocumentService } from "../../src/modules/invoices/services/invoice-document.service.js";
 import { userInvoiceRouter } from "../../src/modules/user-auth/routes/user-invoice.routes.js";
 
 function app() {
@@ -97,6 +98,27 @@ async function getWithExpress(server: ReturnType<typeof express>, path: string, 
   try {
     const response = await fetch(`http://127.0.0.1:${address.port}${path}`, init);
     return { status: response.status, headers: response.headers, body: await response.json() as unknown };
+  } finally {
+    await new Promise<void>((resolve, reject) => listener.close((error) => error ? reject(error) : resolve()));
+  }
+}
+
+
+async function getRawWithExpress(server: ReturnType<typeof express>, path: string) {
+  const listener = await new Promise<ReturnType<typeof import("node:http").createServer>>((resolve) => {
+    const httpServer = server.listen(0, "127.0.0.1", () => resolve(httpServer));
+  });
+  const address = listener.address();
+  if (!address || typeof address === "string") throw new Error("Test server did not bind a TCP port");
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}${path}`);
+    return {
+      status: response.status,
+      body: await response.text(),
+      contentType: response.headers.get("content-type"),
+      cacheControl: response.headers.get("cache-control"),
+      etag: response.headers.get("etag"),
+    };
   } finally {
     await new Promise<void>((resolve, reject) => listener.close((error) => error ? reject(error) : resolve()));
   }
@@ -273,5 +295,32 @@ describe("GET /user/tenants/:tenantId/invoices", () => {
     expect(creditNoteService.issueFullReversal).toHaveBeenCalledWith(expect.objectContaining({
       tenantId: TENANT_ID, actor: expect.objectContaining({ type: "USER" }),
     }), INVOICE_ID, "Annulation commerciale complète");
+  });
+
+  it("allows an authorized viewer to retrieve the immutable HTML invoice document privately", async () => {
+    vi.mocked(userTenantMembershipRepository.findActiveMembership).mockResolvedValue(activeMembership("VIEWER") as never);
+    vi.mocked(invoiceDocumentService.findForInvoice).mockResolvedValue({
+      id: "ffffffff-ffff-4fff-8fff-ffffffffffff", invoiceId: INVOICE_ID,
+      invoiceCode: "INV-2026-000001", documentVersion: 1,
+      contentType: "text/html; charset=utf-8", contentSha256: "a".repeat(64),
+      htmlContent: "<!doctype html><html><body>INV-2026-000001</body></html>",
+      createdAt: "2026-10-16T21:00:00.000000Z",
+    });
+    const response = await getRawWithExpress(app(), `/user/tenants/${TENANT_ID}/invoices/${INVOICE_ID}/document`);
+    expect(response.status).toBe(200);
+    expect(response.body).toContain("INV-2026-000001");
+    expect(response.contentType).toContain("text/html");
+    expect(response.cacheControl).toBe("private, no-store");
+    expect(response.etag).toBe(`"sha256-${"a".repeat(64)}"`);
+    expect(invoiceDocumentService.findForInvoice).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TENANT_ID, actor: expect.objectContaining({ type: "USER", ref: `${USER_ISSUER}|${USER_ID}` }),
+    }), INVOICE_ID);
+  });
+
+  it("denies document retrieval when the user has no membership in the requested tenant", async () => {
+    vi.mocked(userTenantMembershipRepository.findActiveMembership).mockResolvedValue(null);
+    const response = await getRawWithExpress(app(), `/user/tenants/${TENANT_ID}/invoices/${INVOICE_ID}/document.pdf`);
+    expect(response.status).toBe(403);
+    expect(invoiceDocumentService.findPdfForInvoice).not.toHaveBeenCalled();
   });
 });
