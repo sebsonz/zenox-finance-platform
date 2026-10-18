@@ -33,21 +33,6 @@ ALTER TABLE public.finance_tax_rules
     AND jsonb_typeof(applicability_conditions->'all') = 'array'
   );
 
-ALTER TABLE public.finance_tax_rules
-  DROP CONSTRAINT IF EXISTS finance_tax_rules_reviewed_source_check;
-ALTER TABLE public.finance_tax_rules
-  ADD CONSTRAINT finance_tax_rules_reviewed_source_check
-  CHECK (
-    status <> 'ACTIVE'
-    OR (
-      source_reference IS NOT NULL
-      AND length(trim(source_reference)) > 0
-      AND source_verified_at IS NOT NULL
-      AND reviewed_by IS NOT NULL
-      AND length(trim(reviewed_by)) > 0
-    )
-  ) NOT VALID;
-
 COMMENT ON COLUMN public.finance_tax_rules.accounting_treatment IS
   'Accounting meaning is distinct from calculation mechanics; for example Benin AIB may be classified as ADVANCE_INCOME_TAX rather than ordinary VAT.';
 COMMENT ON COLUMN public.finance_tax_rules.applicability_conditions IS
