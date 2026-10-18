@@ -340,7 +340,7 @@ export function InvoiceWorkspace() {
               <label>Prix unitaire<input inputMode="decimal" value={line.unitPrice} onChange={(event) => updateLine(index, "unitPrice", event.target.value)} required/></label>
               <label>Remise %<input inputMode="decimal" value={line.discountPercent} onChange={(event) => updateLine(index, "discountPercent", event.target.value)} required/></label>
               <label>Taxe provisoire %<input inputMode="decimal" value={line.taxRatePercent} onChange={(event) => updateLine(index, "taxRatePercent", event.target.value)} required/></label>
-              <button className="icon-danger" type="button" title="Supprimer la ligne" disabled={form.lines.length === 1} onClick={() => setForm({ ...form, lines: form.lines.filter((_, i) => i !== index) }}><Trash2 size={15}/></button>
+              <button className="icon-danger" type="button" title="Supprimer la ligne" disabled={form.lines.length === 1} onClick={() => setForm({ ...form, lines: form.lines.filter((_, i) => i !== index) })}><Trash2 size={15}/></button>
             </div>)}
             <button className="primary-button" type="submit" disabled={busy || checkingResources || customers.length === 0 || currencies.length === 0}>{busy ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Créer le brouillon"} <FileText size={15}/></button>
             {customers.length === 0 && <p className="muted-note">Aucun client actif : ajoutez d’abord un client via le module Clients.</p>}
