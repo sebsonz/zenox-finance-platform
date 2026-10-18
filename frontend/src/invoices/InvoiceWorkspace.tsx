@@ -288,6 +288,10 @@ export function InvoiceWorkspace() {
   }
 
   const selectedInvoice = invoices.find((invoice) => invoice.id === selectedInvoiceId) ?? editing;
+  const currentRole = tenants.find((tenant) => tenant.id === tenantId)?.role ?? "";
+  const canIssue = ["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(currentRole);
+  const canManageTax = canIssue;
+  const canCredit = canIssue;
   return <section className="invoice-workspace">
     <div className="invoice-heading">
       <div><div className="eyebrow"><FileText size={14}/> GESTION FINANCIÈRE</div><h1>Factures</h1><p className="subtitle">Brouillons, calcul fiscal, émission et documents immuables.</p></div>
@@ -351,8 +355,8 @@ export function InvoiceWorkspace() {
               <td><span className={`invoice-status ${invoice.status.toLowerCase()}`}>{invoice.status}</span></td><td>{invoice.taxStatus === "CALCULATED" ? "Calculée" : invoice.taxStatus === "REVIEW_REQUIRED" ? "À revoir" : "Provisoire"}</td>
               <td>{invoice.currencyCode}</td><td>{invoice.grandTotal}</td><td><div className="invoice-actions">
                 {invoice.status === "DRAFT" && <button title="Modifier" className="small-action" onClick={() => startEdit(invoice)}><Pencil size={14}/></button>}
-                {invoice.status === "DRAFT" && <button title="Calculer la taxe" className="small-action" disabled={busy || !jurisdictionId} onClick={() => void calculateTax(invoice)}><ShieldCheck size={14}/></button>}
-                {invoice.status === "DRAFT" && invoice.taxStatus === "CALCULATED" && <button title="Émettre" className="small-action" disabled={busy} onClick={() => void issueInvoice(invoice)}><Send size={14}/></button>}
+                {invoice.status === "DRAFT" && <button title="Calculer la taxe" className="small-action" disabled={busy || !jurisdictionId || !canManageTax || invoice.taxStatus === "CALCULATED"} onClick={() => void calculateTax(invoice)}><ShieldCheck size={14}/></button>}
+                {invoice.status === "DRAFT" && invoice.taxStatus === "CALCULATED" && <button title="Émettre" className="small-action" disabled={busy || !canIssue} onClick={() => void issueInvoice(invoice)}><Send size={14}/></button>}
                 {invoice.status === "ISSUED" && <button title="Télécharger PDF" className="small-action" disabled={busy} onClick={() => void downloadDocument(invoice, "document.pdf")}><Download size={14}/></button>}
                 {invoice.status === "ISSUED" && <button title="Historique des avoirs" className="small-action" onClick={() => void loadCreditNotes(invoice)}><ReceiptText size={14}/></button>}
               </div></td></tr>) : <tr><td colSpan={7} className="invoice-empty">{loading ? "Chargement…" : "Aucune facture chargée. Cliquez sur Actualiser."}</td></tr>}</tbody>
@@ -377,7 +381,7 @@ export function InvoiceWorkspace() {
             <button className="outline-button" disabled={busy} onClick={() => void downloadDocument(selectedInvoice, "document.pdf")}><Download size={15}/> PDF</button>
             <button className="outline-button" disabled={busy} onClick={() => void loadCreditNotes(selectedInvoice)}><ReceiptText size={15}/> Charger les avoirs</button>
           </div>
-          <div className="invoice-form-grid credit-note-form"><label>Motif de l’avoir intégral<input value={creditReason} onChange={(event) => setCreditReason(event.target.value)} minLength={3} maxLength={2000}/></label><div className="credit-note-button"><button className="primary-button" disabled={busy || creditReason.trim().length < 3} onClick={() => void issueCreditNote(selectedInvoice)}>Créer un avoir intégral</button></div></div>
+          <div className="invoice-form-grid credit-note-form"><label>Motif de l’avoir intégral<input value={creditReason} onChange={(event) => setCreditReason(event.target.value)} minLength={3} maxLength={2000}/></label><div className="credit-note-button"><button className="primary-button" disabled={busy || !canCredit || creditReason.trim().length < 3} onClick={() => void issueCreditNote(selectedInvoice)}>Créer un avoir intégral</button></div></div>
           {creditNotes.length > 0 && <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Avoir</th><th>Motif</th><th>Montant</th><th>Date</th><th>Documents</th></tr></thead><tbody>{creditNotes.map((note) => <tr key={note.id}><td><strong>{note.creditNoteCode}</strong></td><td>{note.reason}</td><td>{note.currencyCode} {note.grandTotal}</td><td>{new Date(note.issuedAt).toLocaleDateString("fr-FR")}</td><td><div className="invoice-actions"><button className="small-action" title="HTML" onClick={() => void downloadCreditNote(note.id, "document", note.creditNoteCode)}><Download size={14}/></button><button className="small-action" title="PDF" onClick={() => void downloadCreditNote(note.id, "document.pdf", note.creditNoteCode)}><FileText size={14}/></button></div></td></tr>)}</tbody></table></div>}
         </section>}
       </>
