@@ -27,13 +27,13 @@ const ROLE_PERMISSIONS: Readonly<Record<FinanceUserRole, readonly FinanceUserPer
   ],
   ADMIN: [
     "tenant:read", "members:read", "members:manage", "settings:manage",
-    "invoices:read", "invoices:create", "invoices:issue",
+    "invoices:read", "invoices:create", "invoices:issue", "invoices:credit",
     "payments:read", "payments:record", "payments:allocate",
     "tax:read", "tax:manage",
   ],
   FINANCE_MANAGER: [
     "tenant:read", "members:read",
-    "invoices:read", "invoices:create", "invoices:issue",
+    "invoices:read", "invoices:create", "invoices:issue", "invoices:credit",
     "payments:read", "payments:record", "payments:allocate",
     "tax:read", "tax:manage",
   ],
