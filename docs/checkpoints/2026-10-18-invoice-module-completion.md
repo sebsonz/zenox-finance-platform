@@ -19,18 +19,24 @@ These are historical checks for the exact heads listed; any new commits require 
 - User session BFF, active tenant directory, membership authorization, read-only invoice listing.
 - Existing unit and disposable-PostgreSQL integration tests.
 
-## Work started in this continuation
+## Work completed or currently implemented in this continuation
 - Added `docs/architecture/ADR-001-secure-user-invoice-operations.md` (commit `e222119d6f699de0970ff78dc69bdc0876f396c9`). It records the separate user-BFF boundary, truthful user actor/audit requirements, permission mapping, idempotency/concurrency requirements, and disposable-PostgreSQL-only migration policy.
-- Repository inspection confirmed existing invoice write routes are integration-authenticated, while the browser uses a separate user session and membership permission model. These contexts must not be conflated.\n- Added `backend/src/modules/invoices/types/invoice-operation-context.ts` to model USER and SERVICE actors separately, plus `backend/src/modules/invoices/repositories/invoice-audit.repository.ts` for audit writes inside a caller-owned transaction.\n- Added Finance-only migration `supabase/migrations/20261018000100_invoice_user_actor_attribution.sql` for explicit invoice actor attribution columns. This migration has **not** been executed.\n- Added unit coverage for actor discrimination at `backend/tests/unit/invoice-operation-context.test.ts`; it has **not** been run.\n- Important: the actor model is not yet wired through invoice draft/tax/issuance services or user BFF routes. Do not treat this as a completed user-write workflow. No database has been touched.
+- Repository inspection confirmed existing invoice write routes are integration-authenticated, while the browser uses a separate user session and membership permission model. These contexts must not be conflated.\n- Added `backend/src/modules/invoices/types/invoice-operation-context.ts` to model USER and SERVICE actors separately, plus `backend/src/modules/invoices/repositories/invoice-audit.repository.ts` for audit writes inside a caller-owned transaction.\n- Added Finance-only migration `supabase/migrations/20261018000100_invoice_user_actor_attribution.sql` for explicit invoice actor attribution columns. This migration has **not** been executed.\n- Added unit coverage for actor discrimination at `backend/tests/unit/invoice-operation-context.test.ts`; it has **not** been run.\n- Wired actor-aware invoice draft creation/update repositories and services. Draft create/update now write actor attribution and transactionally record audit events.
+- Added user BFF endpoints for draft create/update, customer lookup, currency/tax-jurisdiction lookup, tax snapshot attachment, invoice issuance, HTML/PDF invoice retrieval, full-reversal credit-note creation/history and credit-note HTML/PDF retrieval.
+- Extended actor attribution through tax snapshots, invoice issuance, invoice document/PDF artifacts, and credit notes. Integration calls retain their real service principal IDs; user actions do not impersonate an integration principal.
+- Replaced the read-only invoice workspace with an end-to-end draft/tax/issue/download/credit-note interface, with role-aware action disabling and server-side authorization still authoritative.
+- Corrected a malformed actor-attribution migration discovered during review and added migration support for tax snapshots and credit-note/artifact actors. The migration has **not** been executed manually; CI is configured to use disposable PostgreSQL.
+- Added/updated unit coverage for explicit tax snapshot actor attribution. Route-level auth/permission/cross-tenant and full E2E coverage are still required.
+- Draft PR #9: https://github.com/sebsonz/zenox-finance-platform/pull/9 (base `feature/invoice-user-readonly-bff`, head `feature/invoice-workflow-completion`). Open, draft, not merged.
+- CI initially failed at backend typecheck due the actor-context refactor. The specific type errors were corrected; validation is running again on newer commits. Do not treat the current implementation as verified until the latest run passes.
+- No production database has been touched; `zenoxfret_v2` has not been accessed.
 
 ## Required before calling the module complete
-1. Implement user-facing BFF write flows for draft create/update, tax snapshot calculation, invoice issue, and authorized document downloads; add customer lookup/list needed by the invoice form.
-2. Define a first-class, truthful audit actor model for user-initiated writes. Do not impersonate an integration principal or expose integration credentials to the browser.
-3. Complete frontend workflow: create/edit draft with multiple lines, tax review, issue confirmation/idempotency, list/detail, HTML/PDF download, and credit-note history/action where authorized.
-4. Add route tests for authentication, tenant membership, each relevant permission, invalid input, cross-tenant denial, stale draft, duplicate issue/retry, and document authorization.
-5. Add PostgreSQL integration/E2E coverage for create -> edit -> tax snapshot -> issue -> retrieve HTML/PDF -> credit note, plus concurrency/immutability checks.
-6. Review PDF pagination/long content and customer/tax display; review jurisdiction-specific compliance separately.
-7. Run full CI on final branch head and review migration drift. Use disposable PostgreSQL only.
+1. Complete and verify route-level tests for authentication, tenant membership, each relevant permission, invalid input, cross-tenant denial, stale drafts, duplicate issue/retry, and document/credit-note authorization.
+2. Complete PostgreSQL integration/E2E coverage for create -> edit -> tax snapshot -> issue -> retrieve HTML/PDF -> credit note, plus concurrency/immutability checks.
+3. Run the full CI successfully on the final branch head, including migrations on disposable PostgreSQL, drift audit, unit/integration tests, frontend typecheck and build.
+4. Review PDF pagination/long content and customer/tax display; review jurisdiction-specific compliance separately.
+5. Update this checkpoint with the exact successful CI run and verified coverage. Use disposable PostgreSQL only.
 
 ## Safety constraints
 - Do not merge any PR without explicit user approval.
