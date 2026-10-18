@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { FinanceRequestContext } from "../src/modules/integration-auth/types/authenticated-principal.js";
-import { invoiceActor, isUserInvoiceContext } from "../src/modules/invoices/types/invoice-operation-context.js";
+import type { FinanceRequestContext } from "../../src/modules/integration-auth/types/authenticated-principal.js";
+import { invoiceActor, isUserInvoiceContext } from "../../src/modules/invoices/types/invoice-operation-context.js";
 
 describe("invoice operation actor", () => {
   it("preserves integration principals as service actors", () => {
