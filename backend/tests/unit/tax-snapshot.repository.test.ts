@@ -82,6 +82,26 @@ describe("taxSnapshotRepository", () => {
     });
   });
 
+  it("records a user actor without inventing an integration principal UUID", async () => {
+    const userContext = {
+      tenantId: row.tenant_id,
+      correlationId: "user-correlation",
+      actor: {
+        type: "USER" as const,
+        ref: "https://identity.example|subject-42",
+        membershipId: "f9c2a2c6-6d38-4a4d-bae8-4d5f0e3c2d89",
+        identityIssuer: "https://identity.example",
+        identitySubject: "subject-42",
+      },
+    };
+    const userRow = { ...row, created_by: null, created_by_actor_ref: userContext.actor.ref };
+    const { client, query } = fakeClient([userRow]);
+    const result = await taxSnapshotRepository.create(client, userContext, 0, input);
+    const [, params] = query.mock.calls[0] as unknown as [string, unknown[]];
+    expect(params.slice(-3)).toEqual([null, "USER", userContext.actor.ref]);
+    expect(result.createdBy).toBe(userContext.actor.ref);
+  });
+
   it("reads by document type, ID and version using parameterized values", async () => {
     const { client, query } = fakeClient([row]);
     const result = await taxSnapshotRepository.findByDocumentVersion(
