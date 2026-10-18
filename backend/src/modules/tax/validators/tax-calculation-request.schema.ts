@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { taxBusinessFactsSchema } from "./tax-applicability.schema.js";
 
 export const calculateAndSnapshotTaxSchema = z.object({
   documentType: z.enum(["INVOICE", "CREDIT_NOTE", "DEBIT_NOTE", "RECEIPT", "OTHER"]),
