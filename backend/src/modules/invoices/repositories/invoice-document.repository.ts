@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import type { FinanceInvoice } from "./invoice.repository.js";
+import type { FinanceInvoiceOperationContext } from "../types/invoice-operation-context.js";
+import { invoiceActor, isUserInvoiceContext } from "../types/invoice-operation-context.js";
 import { renderInvoiceHtmlDocument } from "../documents/invoice-html-renderer.js";
 
 export interface InvoiceDocumentArtifact {
@@ -32,7 +34,7 @@ export const invoiceDocumentRepository = {
   async createForIssuedInvoice(
     client: PoolClient,
     tenantId: string,
-    principalId: string,
+    context: FinanceInvoiceOperationContext,
     invoice: FinanceInvoice,
   ): Promise<InvoiceDocumentArtifact> {
     if (invoice.status !== "ISSUED" || !invoice.invoiceCode || !invoice.taxSnapshotId) {
@@ -46,10 +48,12 @@ export const invoiceDocumentRepository = {
          FROM public.finance_tax_calculation_snapshots
         WHERE tenant_id = $1 AND id = $2 AND document_type = 'INVOICE'
           AND document_id = $3 AND document_version = $4`,
-      [tenantId, invoice.taxSnapshotId, invoice.id, invoice.documentVersion],
+      [context.tenantId, invoice.taxSnapshotId, invoice.id, invoice.documentVersion],
     );
     const snapshot = tax.rows[0];
     if (!snapshot) throw new Error("INVOICE_TAX_SNAPSHOT_NOT_FOUND_FOR_DOCUMENT");
+    const actor = invoiceActor(context);
+    const legacyPrincipalId = isUserInvoiceContext(context) ? null : context.principal.id;
     const htmlContent = renderInvoiceHtmlDocument({
       invoice,
       appliedRules: snapshot.applied_rules_snapshot,
@@ -59,10 +63,10 @@ export const invoiceDocumentRepository = {
     const created = await client.query<ArtifactRow>(
       `INSERT INTO public.finance_invoice_document_artifacts
         (tenant_id, invoice_id, document_version, document_type, invoice_code, content_type,
-         html_content, content_sha256, created_by_principal_id)
-       VALUES ($1,$2,$3,'INVOICE',$4,'text/html; charset=utf-8',$5,$6,$7)
+         html_content, content_sha256, created_by_principal_id, created_by_actor_type, created_by_actor_ref)
+       VALUES ($1,$2,$3,'INVOICE',$4,'text/html; charset=utf-8',$5,$6,$7,$8,$9)
        RETURNING ${artifactColumns}`,
-      [tenantId, invoice.id, invoice.documentVersion, invoice.invoiceCode, htmlContent, contentSha256, principalId],
+      [context.tenantId, invoice.id, invoice.documentVersion, invoice.invoiceCode, htmlContent, contentSha256, legacyPrincipalId, actor.type, actor.ref],
     );
     const row = created.rows[0];
     if (!row) throw new Error("INVOICE_DOCUMENT_ARTIFACT_INSERT_FAILED");
