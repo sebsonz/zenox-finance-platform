@@ -4,6 +4,7 @@ import { requireUserAuth } from "../../../middleware/require-user-auth.js";
 import { withTenantTransaction } from "../../../db/transaction.js";
 import { invoiceRepository } from "../../invoices/repositories/invoice.repository.js";
 import { customerRepository } from "../../customers/repositories/customer.repository.js";
+import { currencyRepository } from "../../currencies/repositories/currency.repository.js";
 import { listCustomersQuerySchema } from "../../customers/validators/customer.schema.js";
 import {
   createInvoiceDraftSchema,
@@ -475,6 +476,55 @@ userInvoiceRouter.get(
       if (!context) return;
       const customers = await withTenantTransaction(tenant.data, (client) => customerRepository.list(client, query.data));
       res.status(200).json({ data: { customers, correlationId: context.correlationId } });
+    } catch (error) { next(error); }
+  },
+);
+
+
+userInvoiceRouter.get(
+  "/:tenantId/currencies",
+  requireUserAuth(),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const tenant = tenantIdSchema.safeParse(req.params["tenantId"]);
+    if (!tenant.success) {
+      res.status(400).json({ error: { code: "INVALID_TENANT_ID", message: "A valid tenant ID is required." } });
+      return;
+    }
+    try {
+      const context = await resolveInvoiceWriteContext(tenant.data, req, res, "invoices:create");
+      if (!context) return;
+      const currencies = await currencyRepository.listActive();
+      res.status(200).json({ data: { currencies, correlationId: context.correlationId } });
+    } catch (error) { next(error); }
+  },
+);
+
+userInvoiceRouter.get(
+  "/:tenantId/tax-jurisdictions",
+  requireUserAuth(),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const tenant = tenantIdSchema.safeParse(req.params["tenantId"]);
+    if (!tenant.success) {
+      res.status(400).json({ error: { code: "INVALID_TENANT_ID", message: "A valid tenant ID is required." } });
+      return;
+    }
+    try {
+      const context = await resolveInvoiceWriteContext(tenant.data, req, res, "tax:read");
+      if (!context) return;
+      const jurisdictions = await withTenantTransaction(tenant.data, async (client) => {
+        const result = await client.query<{ id: string; code: string; country_code: string; name: string; jurisdiction_level: string }>(
+          `SELECT id, code, country_code, name, jurisdiction_level
+             FROM public.finance_tax_jurisdictions
+            WHERE is_active = true
+            ORDER BY country_code, jurisdiction_level, name
+            LIMIT 500`,
+        );
+        return result.rows.map((row) => ({
+          id: row.id, code: row.code, countryCode: row.country_code,
+          name: row.name, level: row.jurisdiction_level,
+        }));
+      });
+      res.status(200).json({ data: { jurisdictions, correlationId: context.correlationId } });
     } catch (error) { next(error); }
   },
 );
