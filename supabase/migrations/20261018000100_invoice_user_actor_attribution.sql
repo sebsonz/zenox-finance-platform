@@ -4,17 +4,22 @@ ALTER TABLE public.finance_invoices
   ADD COLUMN IF NOT EXISTS created_by_actor_type text,
   ADD COLUMN IF NOT EXISTS created_by_actor_ref text,
   ADD COLUMN IF NOT EXISTS issued_by_actor_type text,
-  ADD COLUMN IF NOT EXISTS issued_by_actor_ref text,\n  ADD COLUMN IF NOT EXISTS updated_by_actor_type text,\n  ADD COLUMN IF NOT EXISTS updated_by_actor_ref text;
+  ADD COLUMN IF NOT EXISTS issued_by_actor_ref text,
+  ADD COLUMN IF NOT EXISTS updated_by_actor_type text,
+  ADD COLUMN IF NOT EXISTS updated_by_actor_ref text;
 
 ALTER TABLE public.finance_invoices
   DROP CONSTRAINT IF EXISTS finance_invoices_created_by_actor_type_check,
-  DROP CONSTRAINT IF EXISTS finance_invoices_issued_by_actor_type_check,\n  DROP CONSTRAINT IF EXISTS finance_invoices_updated_by_actor_type_check;
+  DROP CONSTRAINT IF EXISTS finance_invoices_issued_by_actor_type_check,
+  DROP CONSTRAINT IF EXISTS finance_invoices_updated_by_actor_type_check;
 
 ALTER TABLE public.finance_invoices
   ADD CONSTRAINT finance_invoices_created_by_actor_type_check
     CHECK (created_by_actor_type IS NULL OR created_by_actor_type IN ('USER', 'SERVICE', 'SYSTEM')),
   ADD CONSTRAINT finance_invoices_issued_by_actor_type_check
-    CHECK (issued_by_actor_type IS NULL OR issued_by_actor_type IN ('USER', 'SERVICE', 'SYSTEM'));
+    CHECK (issued_by_actor_type IS NULL OR issued_by_actor_type IN ('USER', 'SERVICE', 'SYSTEM')),
+  ADD CONSTRAINT finance_invoices_updated_by_actor_type_check
+    CHECK (updated_by_actor_type IS NULL OR updated_by_actor_type IN ('USER', 'SERVICE', 'SYSTEM'));
 
 -- Legacy columns continue to record service principal IDs when the operation
 -- originates from an integration. User operations write only actor_type/ref.
@@ -25,7 +30,9 @@ ALTER TABLE public.finance_invoices
 
 CREATE INDEX IF NOT EXISTS finance_invoices_created_actor_idx
   ON public.finance_invoices (tenant_id, created_by_actor_type, created_by_actor_ref);
-CREATE INDEX IF NOT EXISTS finance_invoices_updated_actor_idx\n  ON public.finance_invoices (tenant_id, updated_by_actor_type, updated_by_actor_ref);\nCREATE INDEX IF NOT EXISTS finance_invoices_issued_actor_idx
+CREATE INDEX IF NOT EXISTS finance_invoices_updated_actor_idx
+  ON public.finance_invoices (tenant_id, updated_by_actor_type, updated_by_actor_ref);
+CREATE INDEX IF NOT EXISTS finance_invoices_issued_actor_idx
   ON public.finance_invoices (tenant_id, issued_by_actor_type, issued_by_actor_ref);
 
 COMMENT ON COLUMN public.finance_invoices.created_by_actor_ref IS
