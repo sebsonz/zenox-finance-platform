@@ -72,7 +72,7 @@ describe("taxSnapshotRepository", () => {
       input.calculationPolicy, input.engineVersion, input.taxDate, "XOF",
       0, input.jurisdictionId,
       JSON.stringify(input.inputSnapshot), JSON.stringify(input.resultSnapshot),
-      JSON.stringify(input.appliedRulesSnapshot), null, "SERVICE", row.created_by,
+      JSON.stringify(input.appliedRulesSnapshot), row.created_by, "SERVICE", row.created_by,
     ]);
     expect(result).toMatchObject({
       id: row.id,
