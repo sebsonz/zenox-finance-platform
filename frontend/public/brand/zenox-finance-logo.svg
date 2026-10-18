@@ -1,13 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" role="img" aria-labelledby="title">
   <title id="title">ZENOX Finance</title>
-  <defs><linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2F80FF"/><stop offset="1" stop-color="#0757E8"/></linearGradient></defs>
-  <g transform="translate(2 2) scale(.78)">
-    <path fill="url(#blue)" d="M60 5 91 36 60 67 29 36 60 5Z"/>
-    <path fill="url(#blue)" d="M29 36 60 67 91 36 105 50 60 95 15 50 29 36Z"/>
-    <path fill="#FFFFFF" d="M29 36 60 67 46 81 15 50 29 36Z"/>
-    <path fill="url(#blue)" d="M15 50 46 81 60 95 29 114 5 90 15 50Z"/>
-    <path fill="url(#blue)" d="M60 67 91 36 105 50 60 95 46 81 60 67Z"/>
+  <desc>Logo officiel ZENOX avec symbole géométrique entrelacé bleu marine et bleu électrique.</desc>
+  <g transform="translate(1 9) scale(.13)">
+    <path fill="#0797D8" fill-rule="evenodd" d="M384 61 577 254 384 447 190 254 239 206 384 351 481 254 336 109Z M384 157 287 254 384 351 481 254Z"/>
+    <path fill="#064C73" fill-rule="evenodd" d="M239 61 432 254 384 302 239 157 142 254 239 351 263 327 311 375 239 447 46 254Z M239 157 142 254 239 351 287 303 239 254 287 206Z"/>
   </g>
-  <text x="100" y="47" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800" letter-spacing="-.8" fill="#0B2D6B">ZENOX</text>
-  <text x="101" y="77" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="650" letter-spacing="-.4" fill="#2563EB">Finance</text>
+  <text x="88" y="47" font-family="Inter, Arial, sans-serif" font-size="31" font-weight="800" letter-spacing="-.8" fill="#064C73">ZENOX</text>
+  <text x="89" y="75" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="650" letter-spacing="-.4" fill="#0797D8">Finance</text>
 </svg>
