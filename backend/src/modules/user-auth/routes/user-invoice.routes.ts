@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireUserAuth } from "../../../middleware/require-user-auth.js";
 import { withTenantTransaction } from "../../../db/transaction.js";
 import { invoiceRepository } from "../../invoices/repositories/invoice.repository.js";
+import { customerRepository } from "../../customers/repositories/customer.repository.js";
+import { listCustomersQuerySchema } from "../../customers/validators/customer.schema.js";
 import {
   createInvoiceDraftSchema,
   listInvoiceDraftsQuerySchema,
@@ -449,6 +451,30 @@ userInvoiceRouter.get(
       res.setHeader("ETag", `"sha256-${artifact.sha256}"`);
       res.setHeader("Cache-Control", "private, no-store");
       res.status(200).send(artifact.content);
+    } catch (error) { next(error); }
+  },
+);
+
+
+userInvoiceRouter.get(
+  "/:tenantId/customers",
+  requireUserAuth(),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const tenant = tenantIdSchema.safeParse(req.params["tenantId"]);
+    if (!tenant.success) {
+      res.status(400).json({ error: { code: "INVALID_TENANT_ID", message: "A valid tenant ID is required." } });
+      return;
+    }
+    const query = listCustomersQuerySchema.safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({ error: { code: "INVALID_CUSTOMER_QUERY", message: "The customer query is invalid." } });
+      return;
+    }
+    try {
+      const context = await resolveInvoiceWriteContext(tenant.data, req, res, "invoices:create");
+      if (!context) return;
+      const customers = await withTenantTransaction(tenant.data, (client) => customerRepository.list(client, query.data));
+      res.status(200).json({ data: { customers, correlationId: context.correlationId } });
     } catch (error) { next(error); }
   },
 );
