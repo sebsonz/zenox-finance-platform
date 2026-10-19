@@ -43,7 +43,7 @@ The migration is committed on this feature branch only. It has NOT been applied 
 - Extended the tax rule repository to load applicability conditions and accounting treatment, and moved override resolution after condition matching so a non-matching tenant override does not shadow a matching global rule.
 - The calculation service filters candidates by validated facts before resolving precedence and records business facts plus accounting/applicability metadata in the immutable snapshot.
 - Added unit tests for matching, missing facts, allow-lists, unsupported/executable-shaped conditions, override precedence, schema bounds and supported business facts.
-- These commits are in GitHub on this branch. CI has not yet been confirmed for this head; do not treat the code as validated until a full workflow passes.
+- These commits are in GitHub on this branch. Draft PR #10 is open against `feature/invoice-workflow-completion`: https://github.com/sebsonz/zenox-finance-platform/pull/10. Initially no workflow run appeared for its head. Review found the CI workflow's `pull_request.branches` filter omitted the PR's base branch, so the PR did not match the workflow trigger. The workflow filter has now been updated on this branch to include `feature/invoice-workflow-completion`, and the tax branch is included in push triggers. CI results still must be checked on the new head; do not treat the code as validated until the full workflow passes.
 
 ## Required follow-up before this can be called complete
 
@@ -56,11 +56,11 @@ The migration is committed on this feature branch only. It has NOT been applied 
 7. Add integration tests for effective-date boundaries, overlapping rules, precedence, tenant isolation, missing/unknown conditions, audit, immutable snapshots, and migration drift.
 8. Add reviewed Benin AIB fixtures from official DGI/CGI sources. Do not seed guessed legal rates as active rules; verify each rate's scope, taxable base, exemptions, taxpayer-registration conditions and effective dates with a qualified local reviewer.
 9. Add France and other jurisdictions only with equivalent reviewed sources and representative tests.
-10. Run CI on this branch and update this checkpoint with actual results.
+10. Confirm CI triggers after the workflow filter correction; fix any typecheck, migration, unit, integration, drift-check or frontend failures and update this checkpoint with actual results.
 
 ## Safety
 
 - No live database was changed.
 - `zenoxfret_v2` was not accessed.
-- No PR has been opened or merged by this checkpoint.
+- Draft PR #10 is open and remains unmerged. No database has been changed.
 - Do not claim any jurisdiction legally compliant based only on schema or passing generic engine tests.
