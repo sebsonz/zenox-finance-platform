@@ -123,3 +123,20 @@ L'ordre des branches/PR exprime des dépendances. Ne pas fusionner ou rebaser au
 Commencer par reconnaître ce checkpoint, puis engager la phase **recherche internationale + rédaction du MVP et du cahier des charges**. Consulter les sources officielles et standards primaires pertinents; construire les livrables dans `docs/product/` ou `docs/compliance/` (structure à confirmer avant création), avec références et dates de vérification. Ensuite auditer les branches/PR #5–#10 et produire la matrice d'écart, sans coder de nouveau module avant que la base produit et ses critères d'acceptation soient validés.
 
 Ne pas demander à l'utilisateur de répéter les décisions présentes dans ce checkpoint.
+
+
+## 10. Livrables recherche internationale et base produit — ajout 2026-10-19
+
+Les documents initiaux suivants ont été créés et relus via GitHub sur la branche `feature/tax-rule-extensibility`. Ils constituent une base de spécification, non une approbation définitive du MVP 1.0 ni une validation juridique finale.
+
+- [Index produit](../product/README.md)
+- [Vision et périmètre MVP](../product/2026-10-19-mvp-scope-fr.md)
+- [Cahier des charges fonctionnel et technique](../product/2026-10-19-functional-technical-spec-fr.md)
+- [Registre international de conformité initial](../compliance/2026-10-19-international-register-fr.md)
+- [Couverture, acceptation et feuille de route](../product/2026-10-19-coverage-acceptance-roadmap-fr.md)
+
+Les nouveaux documents répertorient les sources primaires officielles consultées, notamment OpenPeppol, la Commission européenne, les autorités fiscales française et britannique, la DGI du Bénin, la FTA des Émirats, IRAS à Singapour et des références fiscales de l'Inde et de l'OCDE. Les interprétations locales, les dates et le périmètre exacts restent à confirmer avant d'activer un pack pays.
+
+Les fichiers ont été relus par récupération depuis GitHub. Aucun code applicatif n'a été modifié dans cette opération, aucune PR n'a été fusionnée, aucun déploiement n'a été lancé et aucune base de données n'a été touchée. La CI n'a pas été lancée dans cette étape documentaire.
+
+Prochaine étape : approfondir les pays et profils transactionnels candidats, stabiliser le MVP et les critères d'acceptation, puis auditer les écarts des PR #5–#10 en reliant chaque statut à un SHA et à une preuve. Ne pas interpréter les documents comme une validation juridique ou une preuve d'implémentation.
