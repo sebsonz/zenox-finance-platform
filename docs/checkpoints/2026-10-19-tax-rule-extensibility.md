@@ -64,3 +64,12 @@ The migration is committed on this feature branch only. It has NOT been applied 
 - `zenoxfret_v2` was not accessed.
 - Draft PR #10 is open and remains unmerged. No database has been changed.
 - Do not claim any jurisdiction legally compliant based only on schema or passing generic engine tests.
+
+## Continuity / strategic decision (2026-10-19)
+
+The product-level vision and next-chat instructions are now consolidated in the master checkpoint:
+[docs/checkpoints/2026-10-19-master-continuity-international-mvp.md](./2026-10-19-master-continuity-international-mvp.md).
+
+ZENOX Finance must be an independent international invoicing/financial SaaS from the foundation, not a country-specific product or internal FRET-only tool. ZENOX FRET is the first consumer through a stable, versioned API; independent companies must also be able to use Finance directly. The 10% → 100% goal means measured, staged functional/jurisdictional coverage with evidence, not a claim of partial legal compliance worldwide.
+
+**Next work must begin with research of official primary sources and standards, then a complete MVP and functional/technical/regulatory requirements specification, then a gap matrix against existing repository/branches/CI evidence. Do not start another disconnected code audit or implement new modules before this product baseline is established.** The master checkpoint captures the PR states, architecture rules, known gaps, current CI caveats, safety constraints and first action for a new chat.
