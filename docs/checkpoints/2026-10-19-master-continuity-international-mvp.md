@@ -140,3 +140,17 @@ Les nouveaux documents répertorient les sources primaires officielles consulté
 Les fichiers ont été relus par récupération depuis GitHub. Aucun code applicatif n'a été modifié dans cette opération, aucune PR n'a été fusionnée, aucun déploiement n'a été lancé et aucune base de données n'a été touchée. La CI n'a pas été lancée dans cette étape documentaire.
 
 Prochaine étape : approfondir les pays et profils transactionnels candidats, stabiliser le MVP et les critères d'acceptation, puis auditer les écarts des PR #5–#10 en reliant chaque statut à un SHA et à une preuve. Ne pas interpréter les documents comme une validation juridique ou une preuve d'implémentation.
+
+
+## 11. Sprint de recherche internationale 01 — ajout 2026-10-19
+
+Un premier addendum de recherche a été créé et relu depuis GitHub :
+- [Sprint 01 — recherche internationale et juridictions pilotes](../compliance/2026-10-19-research-sprint-01-pilot-jurisdictions-fr.md)
+- URL : https://github.com/sebsonz/zenox-finance-platform/blob/feature/tax-rule-extensibility/docs/compliance/2026-10-19-research-sprint-01-pilot-jurisdictions-fr.md
+- Contenu : sources primaires sur MECeF/e-MECeF et le CGI béninois 2026, facturation électronique française et plateformes agréées, facturation TVA UE, Peppol BIS Billing 3.0.21, ViDA et GST InvoiceNow à Singapour.
+- Décision de recherche proposée : Bénin comme profil pilote prioritaire ; France comme profil comparatif européen ; Peppol/EN 16931 comme socle technique, non comme juridiction ou autorisation ; Singapour comme référence ultérieure de déploiement progressif.
+- Point non résolu important : le CGI béninois 2026 est référencé mais le PDF n'a pas pu être intégralement extrait pendant le sprint. Les articles applicables, les règles AIB et les textes d'application doivent être vérifiés avant toute configuration fiscale. Aucun taux AIB n'est autorisé par cet addendum.
+- Les exigences transversales REG-001 à REG-007 couvrent la traçabilité des sources, séparation calcul/document/transmission, snapshots immuables, fail-closed, transmission idempotente, activation par périmètre et workflow de changement réglementaire.
+- Cet addendum est une recherche documentaire, pas un avis juridique, une homologation ou une preuve que le code correspondant est implémenté.
+
+**Prochaine étape :** approfondir les textes béninois actuels et le processus d'approbation SFE/e-MECeF, puis établir une matrice article → exigence → règle versionnée → cas de test. Ne pas commencer l'audit de code avant la stabilisation du MVP et des critères d'acceptation.
