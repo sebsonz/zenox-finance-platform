@@ -54,7 +54,7 @@ jobs:
       - name: Unit and PostgreSQL integration tests
         run: npm --prefix backend test
       - name: Install frontend dependencies
-        run: npm --prefix frontend install
+        run: npm --prefix frontend install --include=optional --package-lock=false
       - name: Frontend typecheck
         run: npm --prefix frontend run typecheck
       - name: Frontend build

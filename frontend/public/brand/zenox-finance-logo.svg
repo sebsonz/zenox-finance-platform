@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" role="img" aria-labelledby="title">
+  <title id="title">ZENOX Finance</title>
+  <desc>Symbole ZENOX reproduit à partir du visuel de référence, accompagné du nom Finance.</desc>
+  <g transform="translate(1 9) scale(.13)">
+    <path fill="#004773" d="M 239,61 47,253 47,255 49,256 51,259 235,442 236,444 240,446 253,432 310,376 310,375 263,328 239,352 141,254 239,156 384,301 431,255 431,253 Z"/>
+    <path fill="#0093DD" d="M 383,61 351,94 312,132 312,133 359,180 383,156 481,254 383,352 238,207 237,207 191,254 311,375 384,446 575,255 575,253 Z"/>
+  </g>
+  <text x="91" y="47" font-family="Inter, Arial, sans-serif" font-size="31" font-weight="800" letter-spacing="-.8" fill="#004773">ZENOX</text>
+  <text x="92" y="75" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="650" letter-spacing="-.4" fill="#0093DD">Finance</text>
+</svg>
