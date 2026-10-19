@@ -10,6 +10,7 @@ Checkpoint maître : [2026-10-19](../checkpoints/2026-10-19-master-continuity-in
 2. [Cahier des charges fonctionnel et technique](2026-10-19-functional-technical-spec-fr.md)
 3. [Référentiel international initial](../compliance/2026-10-19-international-register-fr.md)
 4. [Couverture, critères d'acceptation et feuille de route](2026-10-19-coverage-acceptance-roadmap-fr.md)
+5. [Sprint 01 — recherche internationale et juridictions pilotes](../compliance/2026-10-19-research-sprint-01-pilot-jurisdictions-fr.md)
 
 ## Règles de lecture
 
