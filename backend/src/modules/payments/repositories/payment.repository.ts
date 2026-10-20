@@ -323,35 +323,25 @@ export const paymentRepository = {
     }>(
       `SELECT i.id,i.invoice_code,i.status,btrim(i.currency_code) AS currency_code,
         i.grand_total::text,
-        (COALESCE(SUM(a.amount),0)-COALESCE(SUM(r.amount),0))::text AS allocated_amount,
-        (i.grand_total-COALESCE(SUM(a.amount),0)+COALESCE(SUM(r.amount),0))::text AS remaining_balance
-       FROM public.finance_invoices i
-       LEFT JOIN public.finance_payment_allocations a ON a.tenant_id=i.tenant_id AND a.invoice_id=i.id
-       LEFT JOIN public.finance_payment_allocation_reversals r ON r.tenant_id=a.tenant_id AND r.allocation_id=a.id
-       WHERE i.tenant_id=$1 AND i.id=$2
-       GROUP BY i.id,i.invoice_code,i.status,i.currency_code,i.grand_total`,
+        (COALESCE((SELECT SUM(a.amount) FROM public.finance_payment_allocations a
+          WHERE a.tenant_id=i.tenant_id AND a.invoice_id=i.id),0)
+         - COALESCE((SELECT SUM(r.amount) FROM public.finance_payment_allocation_reversals r
+          JOIN public.finance_payment_allocations a ON a.tenant_id=r.tenant_id AND a.id=r.allocation_id
+          WHERE r.tenant_id=i.tenant_id AND a.invoice_id=i.id),0))::text AS allocated_amount,
+        (i.grand_total
+         - COALESCE((SELECT SUM(a.amount) FROM public.finance_payment_allocations a
+          WHERE a.tenant_id=i.tenant_id AND a.invoice_id=i.id),0)
+         + COALESCE((SELECT SUM(r.amount) FROM public.finance_payment_allocation_reversals r
+          JOIN public.finance_payment_allocations a ON a.tenant_id=r.tenant_id AND a.id=r.allocation_id
+          WHERE r.tenant_id=i.tenant_id AND a.invoice_id=i.id),0))::text AS remaining_balance
+       FROM public.finance_invoices i WHERE i.tenant_id=$1 AND i.id=$2`,
       [tenantId,invoiceId],
     );
     const row = result.rows[0];
     if (!row) return null;
-    // The aggregate join above can multiply rows when an allocation has multiple reversals;
-    // recompute with independent correlated sums to avoid overstating either side.
-    const exact = await client.query<{ allocated_amount: string; remaining_balance: string }>(
-      `SELECT
-        (COALESCE((SELECT SUM(a.amount) FROM public.finance_payment_allocations a WHERE a.tenant_id=$1 AND a.invoice_id=$2),0)
-         - COALESCE((SELECT SUM(r.amount) FROM public.finance_payment_allocation_reversals r JOIN public.finance_payment_allocations a
-           ON a.tenant_id=r.tenant_id AND a.id=r.allocation_id WHERE r.tenant_id=$1 AND a.invoice_id=$2),0))::text AS allocated_amount,
-        (i.grand_total
-         - COALESCE((SELECT SUM(a.amount) FROM public.finance_payment_allocations a WHERE a.tenant_id=$1 AND a.invoice_id=$2),0)
-         + COALESCE((SELECT SUM(r.amount) FROM public.finance_payment_allocation_reversals r JOIN public.finance_payment_allocations a
-           ON a.tenant_id=r.tenant_id AND a.id=r.allocation_id WHERE r.tenant_id=$1 AND a.invoice_id=$2),0))::text AS remaining_balance
-       FROM public.finance_invoices i WHERE i.tenant_id=$1 AND i.id=$2`,
-      [tenantId,invoiceId],
-    );
     return { invoiceId: row.id, invoiceCode: row.invoice_code, status: row.status,
       currencyCode: row.currency_code, grandTotal: row.grand_total,
-      allocatedAmount: exact.rows[0]?.allocated_amount ?? "0",
-      remainingBalance: exact.rows[0]?.remaining_balance ?? row.grand_total };
-  },
+      allocatedAmount: row.allocated_amount, remainingBalance: row.remaining_balance };
+  }
 };
 
