@@ -120,19 +120,21 @@ paymentRouter.post(
 );
 
 paymentRouter.post(
-  "/allocations/:allocationId/reversals",
+  "/:paymentId/allocations/:allocationId/reversals",
   requireIntegrationAuth(["payments:reverse_allocation"]),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const context = req.financeContext;
     if (!context) { res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "A verified Finance context is required." } }); return; }
+    const paymentId = z.string().uuid().safeParse(req.params["paymentId"]);
     const id = z.string().uuid().safeParse(req.params["allocationId"]);
+    if (!paymentId.success) { res.status(400).json({ error: { code: "INVALID_PAYMENT_ID", message: "The payment ID must be a UUID." } }); return; }
     if (!id.success) { res.status(400).json({ error: { code: "INVALID_ALLOCATION_ID", message: "The allocation ID must be a UUID." } }); return; }
     const key = idempotencyKey(req, res);
     if (!key) return;
     const parsed = reverseAllocationSchema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: { code: "INVALID_REQUEST", message: "The reversal request is invalid." } }); return; }
     try {
-      const reversal = await paymentService.reverseAllocation(context, id.data, parsed.data, key);
+      const reversal = await paymentService.reverseAllocation(context, paymentId.data, id.data, parsed.data, key);
       res.status(201).json({ data: { reversal, correlationId: context.correlationId } });
     } catch (error) { sendServiceError(error, res, next, context.correlationId); }
   },
