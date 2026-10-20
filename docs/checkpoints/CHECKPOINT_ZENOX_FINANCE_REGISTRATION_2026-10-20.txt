@@ -1,0 +1,163 @@
+CHECKPOINT ZENOX FINANCE — INSCRIPTION / ONBOARDING
+Date: 2026-10-20
+Repository: sebsonz/zenox-finance-platform
+Purpose: avoid repeating completed work and continue from the exact current state.
+
+STATUS LEGEND
+[FAIT] Verified as completed in GitHub or explicitly confirmed.
+[EN COURS] Work has started but is not complete.
+[A FAIRE] Not implemented or not yet verified.
+[BLOQUE] Cannot safely continue until the stated dependency is resolved.
+
+======================================================================
+1. CURRENT SUMMARY
+======================================================================
+
+[EN COURS] Registration module: specification and API contract are documented.
+[A FAIRE] End-to-end registration implementation.
+[A FAIRE] Automated tests and final validation.
+[BLOQUE] Dedicated feature branch is not present / branch creation was blocked by GitHub safety controls.
+[FAIT] No migration was run as part of this work.
+[FAIT] ZENOX FRET V2 database zenoxfret_v2 has not been touched.
+[FAIT] No pull request has been merged by this work.
+
+IMPORTANT: Do not describe registration as implemented or validated yet. Only the documentation is complete so far.
+
+======================================================================
+2. COMPLETED — DO NOT REDO WITHOUT A SPECIFIC REASON
+======================================================================
+
+[FAIT] Inspected backend API v1 route mounting on branch feature/tax-rule-extensibility.
+[FAIT] Confirmed that registration routes are not currently mounted in backend/src/routes/v1/index.ts.
+[FAIT] Inspected frontend/src/main.tsx on feature/tax-rule-extensibility.
+[FAIT] Confirmed that the current React UI is a demonstration and does not yet provide a complete real signup/onboarding flow.
+[FAIT] Inspected backend/src/config/env.ts and backend/src/middleware/require-user-auth.ts.
+[FAIT] Confirmed that backend Supabase token verification/session middleware exists, but this does not by itself implement signup or tenant registration.
+[FAIT] Inspected Finance foundation migration: finance_tenants has PENDING/ACTIVE/SUSPENDED/DISABLED statuses and RLS enabled/forced.
+[FAIT] Reviewed the documented membership model: PENDING/ACTIVE/SUSPENDED/REVOKED, with tenant role codes.
+[FAIT] Created and verified:
+  docs/requirements/TENANT_REGISTRATION_AND_ONBOARDING.md
+  URL: https://github.com/sebsonz/zenox-finance-platform/blob/docs/international-mvp-and-requirements/docs/requirements/TENANT_REGISTRATION_AND_ONBOARDING.md
+[FAIT] Created and fetched back to verify:
+  docs/requirements/TENANT_REGISTRATION_API_CONTRACT.md
+  URL: https://github.com/sebsonz/zenox-finance-platform/blob/docs/international-mvp-and-requirements/docs/requirements/TENANT_REGISTRATION_API_CONTRACT.md
+[FAIT] The API contract describes the proposed endpoints, validation, status handling, security, audit, error envelope, implementation order and required tests.
+[FAIT] Both documents are on branch docs/international-mvp-and-requirements, associated with draft PR #11. They are not merged.
+
+======================================================================
+3. BLOCKER — RESOLVE BEFORE CODE IMPLEMENTATION
+======================================================================
+
+[BLOQUE] GitHub branch feature/finance-tenant-registration was searched for and was not found.
+[BLOQUE] Creating that branch via the GitHub connector was previously blocked by safety controls. Do not circumvent the block by creating refs/trees/commits through lower-level APIs.
+[A FAIRE] Create the branch in GitHub UI from feature/tax-rule-extensibility:
+  feature/finance-tenant-registration
+[A FAIRE] Recheck that the new branch exists and its base is correct before writing code.
+Do not put registration implementation on the documentation branch or an unrelated feature branch.
+
+======================================================================
+4. IMPLEMENTATION PLAN — KEEP THIS ORDER
+======================================================================
+
+PHASE A — SCHEMA AND CONTRACT RECONCILIATION
+[A FAIRE] Inspect all tenant, membership, audit, identity and relevant migration files on the new feature branch.
+[A FAIRE] Confirm whether a dedicated registration-request table is needed. Do not force request lifecycle values APPROVED/REJECTED into tenant or membership columns if the schema does not support them.
+[A FAIRE] Define uniqueness and concurrency behavior for duplicate pending/active requests.
+[A FAIRE] Confirm the configured country/currency reference-data sources.
+[A FAIRE] Determine the email-confirmation policy and how the backend can reliably enforce it.
+[A FAIRE] Decide and document the secure platform-operations role/bootstrap mechanism before building moderation endpoints.
+Gate: schema design and role authorization must be clear before migrations or moderation implementation.
+
+PHASE B — BACKEND REGISTRATION
+[A FAIRE] Add server-side request validation schemas.
+[A FAIRE] Implement transaction-safe tenant + PENDING OWNER membership + audit event creation.
+[A FAIRE] Derive identity issuer/subject only from verified authentication; never trust identity fields from request JSON.
+[A FAIRE] Implement POST /api/v1/registration/organizations.
+[A FAIRE] Implement GET /api/v1/registration/organizations for the current user's requests only.
+[A FAIRE] Implement GET /api/v1/registration/organizations/:requestId with ownership/authorization checks.
+[A FAIRE] Add consistent error envelopes, safe logging, rate limits and duplicate/conflict handling.
+[A FAIRE] Mount routes in backend/src/routes/v1/index.ts.
+[A FAIRE] Implement secure approval/rejection routes only after platform-operations authorization is established.
+[A FAIRE] Ensure approval activates tenant and membership atomically; rejection requires a reason and records an audit event.
+
+PHASE C — AUTHENTICATION AND SESSION UX
+[A FAIRE] Add frontend signup screen using Supabase Auth and configured confirmation redirect.
+[A FAIRE] Handle confirmation-required response when Supabase returns no session.
+[A FAIRE] Add sign-in, sign-out and recoverable session/error states using the approved session boundary.
+[A FAIRE] Review cookie path, Secure/HttpOnly/SameSite and CSRF implications before production.
+[A FAIRE] Never expose service-role keys, database credentials or Finance integration secrets to the browser.
+[A FAIRE] Ensure unconfirmed users cannot submit an organization if the configured policy requires confirmation.
+
+PHASE D — ORGANIZATION ONBOARDING UI
+[A FAIRE] Add organization submission form: legal name, country, default currency, requested tenant code, contact details and terms version.
+[A FAIRE] Show validation and duplicate/conflict errors without leaking sensitive information.
+[A FAIRE] Add request confirmation screen and request-status list/detail.
+[A FAIRE] Add pending/rejected/approved views and next-step guidance.
+[A FAIRE] Add a moderation UI only after the platform-operations permission model is implemented.
+[A FAIRE] Remove misleading demo identity/company data from the registration path.
+
+PHASE E — TESTS AND SECURITY REVIEW
+[A FAIRE] Unit tests for validation, normalization, duplicate requests and state transitions.
+[A FAIRE] Verify tenant/membership/audit transaction rolls back together on failure.
+[A FAIRE] Verify client cannot choose identity subject/issuer, role, status or approval outcome.
+[A FAIRE] Verify tenant OWNER/ADMIN cannot use platform moderation endpoints without platform permission.
+[A FAIRE] Verify self-approval is denied.
+[A FAIRE] API tests for unauthenticated requests, user isolation, submission, request listing/detail and moderation.
+[A FAIRE] Test confirmed/unconfirmed email behavior against the actual configured policy.
+[A FAIRE] Test rate limits, generic errors, no secret leakage and unauthorized request-ID access.
+[A FAIRE] Run migration/schema tests only against disposable Finance PostgreSQL/CI.
+[A FAIRE] Review exact branch, commit SHA, CI run and test output before reporting results.
+NOTE: User asked that the complete test validation may follow implementation. Tests must still be run before claiming the module is validated.
+
+PHASE F — COMPLETION CHECK
+[A FAIRE] Review diff for unrelated changes and secrets.
+[A FAIRE] Confirm migration compatibility and RLS policies; never disable RLS as a workaround.
+[A FAIRE] Update this checkpoint with verified statuses and commit SHA.
+[A FAIRE] Open/update a dedicated PR for review when branch and tooling permit.
+[A FAIRE] Do not merge without explicit user approval.
+
+======================================================================
+5. ACCEPTANCE CHECKLIST — DO NOT MARK COMPLETE UNTIL VERIFIED
+======================================================================
+
+[A FAIRE] A user can sign up and receives clear email-confirmation instructions.
+[A FAIRE] A confirmed user can sign in and submit an organization request.
+[A FAIRE] Tenant is created as PENDING and owner membership as PENDING in one transaction.
+[A FAIRE] The authenticated identity is derived from verified server-side authentication.
+[A FAIRE] The requester can only see their own requests.
+[A FAIRE] Duplicate/concurrent submissions behave deterministically.
+[A FAIRE] A platform moderator with dedicated permission can approve/reject; tenant roles alone cannot.
+[A FAIRE] Approval/rejection transitions are atomic and audited.
+[A FAIRE] Pending/rejected users cannot perform financial operations for an unapproved tenant.
+[A FAIRE] RLS and tenant isolation remain enforced.
+[A FAIRE] Automated tests and CI have passed on the exact implementation commit.
+[A FAIRE] No secrets or unsafe personal data are logged or returned.
+[A FAIRE] No changes were made to ZENOX FRET database zenoxfret_v2.
+[A FAIRE] User has reviewed the result; no merge without explicit approval.
+
+======================================================================
+6. NON-NEGOTIABLE SAFETY RULES
+======================================================================
+
+- Never run Finance migrations against ZENOX FRET V2 or database zenoxfret_v2.
+- Finance migrations may only be tested on disposable Finance PostgreSQL/CI until explicit approval is given for a persistent DB.
+- Do not disable or weaken RLS to make onboarding work.
+- Never expose service-role keys, DB credentials or integration secrets in frontend code.
+- Do not merge any PR without explicit user approval.
+- Do not use destructive git commands or force-push.
+- Do not claim tests/CI passed without checking the exact run and SHA.
+- Do not repeat completed inspections unless code/schema changes create a concrete need.
+- Continue from this checkpoint and the two linked specs; do not restart discovery from zero.
+
+======================================================================
+7. NEXT ACTION WHEN RESUMING
+======================================================================
+
+1. Check whether feature/finance-tenant-registration now exists.
+2. If it does not exist, the user must create it in GitHub UI from feature/tax-rule-extensibility because connector branch creation was blocked.
+3. Fetch the current branch head and inspect the latest schema/migrations.
+4. Start PHASE A only after confirming the correct branch.
+5. Implement registration in phases B-D, then run phase E tests.
+6. Update this checkpoint with actual status and commit SHA after each meaningful milestone.
+
+END OF CHECKPOINT
