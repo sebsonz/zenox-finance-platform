@@ -54,15 +54,15 @@ D3. Snapshot fiscal et émission : [EN COURS] PR #5 feat/invoice-tax-snapshot-bi
 D4. PDF/HTML : [EN COURS] Artefacts HTML/PDF immuables et vérification hash documentés dans PR #5. [A FAIRE] Confirmer stockage privé, droits tenant, conservation et rendu.
 D5. Avoirs/corrections : [EN COURS] Avoir en annulation totale décrit dans PR #5; la facture source reste immuable. [A FAIRE] Décider si avoir partiel, note de débit, remplacement et workflow d'annulation entrent dans le MVP.
 D6. Interface factures : [EN COURS] PR #9 feature/invoice-workflow-completion ouverte en brouillon, annonce UI, BFF utilisateur, émission, documents et avoirs. [A FAIRE] Vérifier l'UI réellement connectée et E2E sur le HEAD courant.
-GATE FACTURATION : [A FAIRE] Ne pas déclarer le module terminé ni commencer l'implémentation paiements avant validation D2-D6, sécurité et CI sur les HEAD exacts.
+GATE FACTURATION POUR MERGE/PRODUCTION : [EN COURS] PR #9 a une CI verte sur le SHA exact 758e131bf5eaf8c2c41de01baef807b7daa7825b, mais reste brouillon; validation manuelle/visuelle et revue finale requises. La branche paiements #12 est bâtie sur cette branche facture, reste brouillon et ne doit pas être fusionnée avant validation des dépendances facture.
 
 ======================================================================
 E. PAIEMENTS ET SOLDES
 ======================================================================
-E1. Paiements/tentatives : [A FAIRE] Définir payment, payment_attempt, statut, devise, fournisseur, tenant, idempotence, audit et callbacks signés. ZENOX Finance ne devient pas automatiquement un établissement de paiement.
-E2. Allocations/soldes : [A FAIRE] Paiements partiels, multi-factures, anti-surallocation sous concurrence, frais, surplus et multi-devises. Utiliser décimaux exacts, jamais float JS.
+E1. Paiements/commandes/événements : [EN COURS] Première tranche implémentée dans PR #12 : paiement manuel, confirmation idempotente, audit et événements, états PENDING/CONFIRMED/SETTLED/FAILED/CANCELLED. Payment attempts, initiation fournisseur et callbacks signés restent [A FAIRE]. ZENOX Finance ne devient pas automatiquement un établissement de paiement.
+E2. Allocations/soldes : [EN COURS] PR #12 : allocations partielles, solde restant dû, contrepassations immuables, décimaux exacts, locks et triggers PostgreSQL contre la surallocation. Tests dédiés concurrence/HTTP et revue multi-devises encore [A FAIRE].
 E3. Remboursements/rapprochement : [A FAIRE] Autorisation, idempotence, événements fournisseur, reconciliation, litiges, retards, doublons et tests PostgreSQL jetable.
-Dépendance : [A FAIRE] L'implémentation paiements démarre après validation de la facturation. Le design peut être préparé en parallèle sans code de production.
+Dépendance : [EN COURS] Le code paiements est développé sur une branche dérivée de feature/invoice-workflow-completion afin d'utiliser le schéma de facture émise; PR #12 reste brouillon. Aucune fusion ni migration persistante avant validation complète des factures et approbation explicite.
 
 ======================================================================
 F. COMPTABILITÉ ET FISCALITÉ AVANCÉE
@@ -101,7 +101,7 @@ J. ORDRE DE PROGRESSION
 2. [EN COURS] Continuer audit documentaire sans répéter les inspections terminées.
 3. [A FAIRE] Sur la branche dédiée, réconcilier le schéma puis implémenter inscription/session/onboarding et autorisation plateforme.
 4. [EN COURS] Auditer PR #5, #9 et #10 sur HEAD/CI exacts, sans les fusionner, pour fermer facturation et fiscalité.
-5. [A FAIRE] Après validation factures, construire paiements, allocations, remboursements et rapprochement.
+5. [EN COURS] PR #12 : paiements manuels, allocations, soldes, contrepassations, workflow de remboursement manuel et schéma de rapprochement. Reste : tests dédiés concurrence/HTTP/RLS, initiation/webhooks fournisseurs, exécution remboursements fournisseurs et API de rapprochement.
 6. [A FAIRE] Notifications internes, portail client et webhooks/outbox.
 7. [A FAIRE] Reporting, intégrations, administration et abonnements.
 8. [A FAIRE] Grand livre/clôture après stabilité de factures/paiements.
@@ -109,7 +109,7 @@ J. ORDRE DE PROGRESSION
 
 TRAVAIL POSSIBLE DEPUIS LA TABLETTE
 - Réauditer les HEAD/CI exacts des PR #5, #9 et #10.
-- Préparer les contrats de conception Paiements et Notifications sans prétendre que le code est implémenté.
+- Continuer la revue PR #12 : tests de concurrence, idempotence remboursements, isolation RLS, et compléter les API fournisseurs/rapprochement sans fusionner.
 - Modifier du code uniquement sur une branche dédiée existante et adaptée; si création de branche bloquée, ne pas contourner le contrôle.
 - Mettre à jour ce fichier à chaque jalon avec statut et SHA vérifiés; ne pas recopier les tâches terminées.
 
