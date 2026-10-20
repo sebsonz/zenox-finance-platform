@@ -21,7 +21,7 @@ export const paymentService = {
       return await withTenantTransaction(context.tenantId, (client) =>
         paymentRepository.createInTransaction(client, context, input, idempotencyKey));
     } catch (error) {
-      if (error instanceof Error && ["CURRENCY_NOT_SUPPORTED", "IDEMPOTENCY_KEY_REUSED"].includes(error.message)) {
+      if (error instanceof Error && ["CURRENCY_NOT_SUPPORTED", "IDEMPOTENCY_KEY_REUSED", "AMOUNT_PRECISION_INVALID"].includes(error.message)) {
         throw new PaymentServiceError(error.message, error.message === "CURRENCY_NOT_SUPPORTED"
           ? "The requested currency is not active." : "This idempotency key was already used with a different request.");
       }
@@ -51,7 +51,7 @@ export const paymentService = {
       if (error instanceof Error && [
         "IDEMPOTENCY_KEY_REUSED", "PAYMENT_NOT_FOUND", "PAYMENT_NOT_CONFIRMED", "INVOICE_NOT_FOUND",
         "INVOICE_NOT_ISSUED", "PAYMENT_CURRENCY_MISMATCH", "INVALID_AMOUNT",
-        "PAYMENT_AMOUNT_EXCEEDED", "INVOICE_BALANCE_EXCEEDED",
+        "PAYMENT_AMOUNT_EXCEEDED", "INVOICE_BALANCE_EXCEEDED", "AMOUNT_PRECISION_INVALID",
       ].includes(error.message)) {
         throw new PaymentServiceError(error.message, error.message);
       }
