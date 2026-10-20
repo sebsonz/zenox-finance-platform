@@ -107,11 +107,14 @@ export const paymentRepository = {
       if (replay) return replay;
       throw new Error("IDEMPOTENCY_RESOURCE_MISSING");
     }
-    const currency = await client.query<{ code: string }>(
-      "SELECT code FROM public.finance_currencies WHERE code=$1 AND is_active=true",
+    const currency = await client.query<{ code: string; minor_unit: number }>(
+      "SELECT code, minor_unit FROM public.finance_currencies WHERE code=$1 AND is_active=true",
       [input.currencyCode],
     );
     if (!currency.rows[0]) throw new Error("CURRENCY_NOT_SUPPORTED");
+    if (!new Decimal(input.amount).eq(new Decimal(input.amount).toDecimalPlaces(currency.rows[0].minor_unit))) {
+      throw new Error("AMOUNT_PRECISION_INVALID");
+    }
     const result = await client.query<PaymentRow>(
       `INSERT INTO public.finance_payments
         (tenant_id,amount,currency_code,status,source,method,external_reference,provider_code,description,
@@ -193,16 +196,19 @@ export const paymentRepository = {
     if (!payment) throw new Error("PAYMENT_NOT_FOUND");
     if (payment.status !== "CONFIRMED" && payment.status !== "SETTLED") throw new Error("PAYMENT_NOT_CONFIRMED");
     const invoiceResult = await client.query<{
-      id: string; status: string; currency_code: string; grand_total: string;
+      id: string; status: string; currency_code: string; grand_total: string; currency_minor_unit: number;
     }>(
-      `SELECT id,status,btrim(currency_code) AS currency_code,grand_total::text
+      `SELECT id,status,btrim(currency_code) AS currency_code,grand_total::text,currency_minor_unit
          FROM public.finance_invoices WHERE tenant_id=$1 AND id=$2 FOR UPDATE`,
       [context.tenantId,input.invoiceId],
     );
     const invoice = invoiceResult.rows[0];
     if (!invoice) throw new Error("INVOICE_NOT_FOUND");
     if (invoice.status !== "ISSUED") throw new Error("INVOICE_NOT_ISSUED");
-    if (payment.currency_code !== invoice.currency_code || input.amount.length === 0) throw new Error("PAYMENT_CURRENCY_MISMATCH");
+    if (payment.currency_code !== invoice.currency_code) throw new Error("PAYMENT_CURRENCY_MISMATCH");
+    if (!new Decimal(input.amount).eq(new Decimal(input.amount).toDecimalPlaces(invoice.currency_minor_unit))) {
+      throw new Error("AMOUNT_PRECISION_INVALID");
+    }
 
     const usedByPayment = await client.query<{ total: string }>(
       `SELECT (COALESCE((SELECT SUM(a.amount) FROM public.finance_payment_allocations a
