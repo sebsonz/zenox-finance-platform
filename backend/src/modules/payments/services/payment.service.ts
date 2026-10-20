@@ -23,7 +23,10 @@ export const paymentService = {
     } catch (error) {
       if (error instanceof Error && ["CURRENCY_NOT_SUPPORTED", "IDEMPOTENCY_KEY_REUSED", "AMOUNT_PRECISION_INVALID"].includes(error.message)) {
         throw new PaymentServiceError(error.message, error.message === "CURRENCY_NOT_SUPPORTED"
-          ? "The requested currency is not active." : "This idempotency key was already used with a different request.");
+          ? "The requested currency is not active."
+          : error.message === "AMOUNT_PRECISION_INVALID"
+            ? "The amount exceeds the currency minor-unit precision."
+            : "This idempotency key was already used with a different request.");
       }
       throw error;
     }
