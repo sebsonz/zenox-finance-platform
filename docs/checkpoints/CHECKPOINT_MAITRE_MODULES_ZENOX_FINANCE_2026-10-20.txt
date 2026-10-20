@@ -1,0 +1,116 @@
+CHECKPOINT MAÎTRE — ROADMAP DES MODULES ZENOX FINANCE
+Date : 2026-10-20
+Dépôt : https://github.com/sebsonz/zenox-finance-platform
+Branche documentaire : docs/international-mvp-and-requirements
+Objectif : suivre chaque module sans refaire les tâches terminées et choisir le prochain travail sur preuves GitHub.
+
+LÉGENDE
+[FAIT] Réalisé avec preuve connue; ne signifie pas forcément que tout le module est fini.
+[EN COURS] Une partie est réalisée ou une PR existe, mais des critères restent ouverts.
+[A FAIRE] Pas encore réalisé ou pas encore vérifié.
+[BLOQUÉ] Une dépendance empêche d'avancer en sécurité.
+[À AUDITER] Le code existe peut-être; vérifier le HEAD actuel avant de conclure.
+
+RÈGLES DE CONTINUITÉ
+- Vérifier branche, PR, HEAD SHA et CI avant chaque tâche.
+- Ne pas refaire un contrôle déjà FAIT sauf si le code a changé ou si un échec l'exige.
+- Ne pas déclarer un module validé sur la seule base d'un document ou d'une PR ouverte.
+- Ne fusionner aucune PR sans autorisation explicite.
+- Les migrations Finance restent limitées à PostgreSQL jetable/CI jusqu'à approbation explicite.
+- Ne jamais toucher à la base ZENOX FRET V2 : zenoxfret_v2.
+- Ne jamais désactiver/affaiblir RLS ni exposer des secrets au navigateur.
+- Un statut VALIDÉ du cahier des charges valide une décision de conception, pas l'implémentation.
+
+======================================================================
+A. FONDATIONS TECHNIQUES ET SÉCURITÉ
+======================================================================
+A1. Monorepo backend/frontend : [EN COURS] PR #6 chore/monorepo-frontend-backend-structure ouverte en brouillon. [A FAIRE] Vérifier CI du HEAD exact et revoir le diff avant toute fusion.
+A2. Migrations, drift et fixtures : [FAIT] Garde-fous de fixtures Finance, audit checksum/drift et tests existent selon le checkpoint historique du 16 octobre. [À AUDITER] Vérifier SHA/CI actuels. Tests DB uniquement sur PostgreSQL jetable.
+A3. Multi-tenant, permissions et RLS : [EN COURS] Fondations tenant, identités d'intégration, grants, memberships, authentification utilisateur et RLS existent. [A FAIRE] Tester cross-tenant pour chaque nouveau module et vérifier les grants/policies.
+A4. Authentification : [EN COURS] Vérification de jeton Supabase côté backend et middleware/session présents. [A FAIRE] Signup, sign-in/out, confirmation e-mail et gestion d'erreurs. [BLOQUÉ] Branche dédiée d'inscription absente au dernier contrôle; création par le connecteur bloquée.
+
+======================================================================
+B. IDENTITÉ, ORGANISATIONS ET ONBOARDING
+======================================================================
+B1. Spécification d'inscription : [FAIT] docs/requirements/TENANT_REGISTRATION_AND_ONBOARDING.md. Contrat API : [FAIT] docs/requirements/TENANT_REGISTRATION_API_CONTRACT.md. Ces documents sont sur la branche documentaire associée à PR #11, qui reste brouillon et non fusionnée.
+B2. Inscription réelle : [A FAIRE] Intégrer Supabase Auth, confirmation e-mail, session sécurisée, formulaire d'organisation et statut de demande.
+B3. Création atomique : [A FAIRE] Créer tenant PENDING + membership OWNER PENDING + audit dans une transaction. Déduire issuer/subject de l'identité vérifiée, jamais du JSON client. Décider après audit si une table de demandes distincte est requise.
+B4. Modération plateforme : [A FAIRE] Définir rôle/bootstrap plateforme, approbation/rejet atomique, motif, audit, anti-auto-approbation. Un rôle OWNER/ADMIN d'un tenant n'est pas un rôle plateforme.
+B5. Dépendance de branche : [BLOQUÉ] Créer feature/finance-tenant-registration depuis feature/tax-rule-extensibility dans l'interface GitHub, puis vérifier sa base et son SHA. Ne pas contourner le blocage via des API Git bas niveau.
+
+======================================================================
+C. RÉFÉRENTIELS ET CLIENTS
+======================================================================
+C1. Clients : [EN COURS] API create/list/detail et isolation tenant documentées comme implémentées et testées en CI. [A FAIRE] Auditer le HEAD actuel, compléter update/archive, UI réelle et E2E.
+C2. Devises : [EN COURS] API de lecture des devises actives documentée comme existante. [A FAIRE] Vérifier source, complétude, rafraîchissement, précision monétaire et UI.
+C3. Juridictions/règles fiscales : [EN COURS] Moteur versionné et snapshots existent; PR #10 feature/tax-rule-extensibility ajoute applicabilité/conditions. [A FAIRE] Vérifier CI sur HEAD exact et provenance officielle avant d'activer une règle nationale.
+
+======================================================================
+D. VENTES ET FACTURATION
+======================================================================
+D1. Devis : [A FAIRE] Auditer le code et définir devis -> acceptation -> facture, statuts, expiration, version, taxes et idempotence.
+D2. Brouillons/lignes/édition : [FAIT] Fondations et édition concurrente ont été documentées comme testées sur les commits historiques cités au checkpoint. [À AUDITER] Confirmer HEAD/CI actuel.
+D3. Snapshot fiscal et émission : [EN COURS] PR #5 feat/invoice-tax-snapshot-binding couvre snapshots, numérotation, émission, documents et avoirs selon son historique. [A FAIRE] Vérifier fonctionnalités et CI sur HEAD actuel.
+D4. PDF/HTML : [EN COURS] Artefacts HTML/PDF immuables et vérification hash documentés dans PR #5. [A FAIRE] Confirmer stockage privé, droits tenant, conservation et rendu.
+D5. Avoirs/corrections : [EN COURS] Avoir en annulation totale décrit dans PR #5; la facture source reste immuable. [A FAIRE] Décider si avoir partiel, note de débit, remplacement et workflow d'annulation entrent dans le MVP.
+D6. Interface factures : [EN COURS] PR #9 feature/invoice-workflow-completion ouverte en brouillon, annonce UI, BFF utilisateur, émission, documents et avoirs. [A FAIRE] Vérifier l'UI réellement connectée et E2E sur le HEAD courant.
+GATE FACTURATION : [A FAIRE] Ne pas déclarer le module terminé ni commencer l'implémentation paiements avant validation D2-D6, sécurité et CI sur les HEAD exacts.
+
+======================================================================
+E. PAIEMENTS ET SOLDES
+======================================================================
+E1. Paiements/tentatives : [A FAIRE] Définir payment, payment_attempt, statut, devise, fournisseur, tenant, idempotence, audit et callbacks signés. ZENOX Finance ne devient pas automatiquement un établissement de paiement.
+E2. Allocations/soldes : [A FAIRE] Paiements partiels, multi-factures, anti-surallocation sous concurrence, frais, surplus et multi-devises. Utiliser décimaux exacts, jamais float JS.
+E3. Remboursements/rapprochement : [A FAIRE] Autorisation, idempotence, événements fournisseur, reconciliation, litiges, retards, doublons et tests PostgreSQL jetable.
+Dépendance : [A FAIRE] L'implémentation paiements démarre après validation de la facturation. Le design peut être préparé en parallèle sans code de production.
+
+======================================================================
+F. COMPTABILITÉ ET FISCALITÉ AVANCÉE
+======================================================================
+F1. Moteur fiscal : [EN COURS] Moteur/snapshots présents, PR #10 en cours. [A FAIRE] Liaison définitive à la révision exacte de facture, provenance et version immuables.
+F2. Grand livre général : [A FAIRE] Plan comptable, périodes, écritures équilibrées, règles de comptabilisation et clôture. Démarrer après stabilisation factures/paiements.
+F3. Clôture : [A FAIRE] Verrouillage période, corrections compensatoires, permissions, audit et tests débit/crédit.
+
+======================================================================
+G. NOTIFICATIONS, PORTAIL ET WEBHOOKS
+======================================================================
+G1. Notifications : [À AUDITER] Vérifier migrations, tables, routes backend et composant frontend. [A FAIRE] Notifications persistantes, destinataire, read_at, pagination, compteur non-lu, marquer lu/tout lu, isolation tenant et tests. E-mail/SMS externes dans une phase ultérieure extensible.
+G2. Portail client : [A FAIRE] Invitations, activation/révocation, permissions minimales, accès limité aux propres factures/documents/soldes/paiements et tests d'isolation client/tenant.
+G3. Webhooks/outbox : [A FAIRE] Outbox transactionnelle, livraison, retries, signature, idempotence, rotation secrets et diagnostic.
+
+======================================================================
+H. INTÉGRATIONS, RAPPORTS ET ADMINISTRATION
+======================================================================
+H1. Intégration ZENOX FRET V2 : [A FAIRE] Contrat API, scopes, grants par tenant, idempotence et pas d'accès SQL direct. Si une organisation liée est suspendue dans FRET, son espace Finance devient lecture seule; les organisations Finance indépendantes ne sont pas affectées. [BLOQUÉ] Ne jamais tester sur/modifier zenoxfret_v2.
+H2. Reporting/Control Tower : [A FAIRE] Métriques sourcées, filtres tenant, période/devise, export et permissions. Aucun chiffre de démo ne doit être présenté comme réel.
+H3. Administration plateforme : [A FAIRE] Tenants, modération, suspension/réactivation, utilisateurs, audit, clés, limites; séparation stricte rôles plateforme/tenant.
+H4. Abonnements/usage : [A FAIRE] Plans, quotas, métriques d'usage et facturation SaaS ZENOX Finance, séparées des factures commerciales des clients.
+
+======================================================================
+I. DOCUMENTS EXISTANTS
+======================================================================
+[FAIT] Cahier des charges MVP international et exigences complètes documentés selon la description de PR #11.
+[FAIT] Spécification et contrat API d'inscription créés et vérifiés sur GitHub.
+[FAIT] Ce checkpoint maître est créé pour éviter les boucles.
+[EN COURS] PR #11 documentation reste brouillon et non fusionnée. Aucun merge sans approbation.
+
+======================================================================
+J. ORDRE DE PROGRESSION
+======================================================================
+1. [BLOQUÉ] Créer la branche dédiée inscription dans l'interface GitHub et confirmer son SHA/base.
+2. [EN COURS] Continuer audit documentaire sans répéter les inspections terminées.
+3. [A FAIRE] Sur la branche dédiée, réconcilier le schéma puis implémenter inscription/session/onboarding et autorisation plateforme.
+4. [EN COURS] Auditer PR #5, #9 et #10 sur HEAD/CI exacts, sans les fusionner, pour fermer facturation et fiscalité.
+5. [A FAIRE] Après validation factures, construire paiements, allocations, remboursements et rapprochement.
+6. [A FAIRE] Notifications internes, portail client et webhooks/outbox.
+7. [A FAIRE] Reporting, intégrations, administration et abonnements.
+8. [A FAIRE] Grand livre/clôture après stabilité de factures/paiements.
+9. [A FAIRE] Audit sécurité transversal, E2E, revue juridictionnelle, readiness production et go/no-go.
+
+TRAVAIL POSSIBLE DEPUIS LA TABLETTE
+- Réauditer les HEAD/CI exacts des PR #5, #9 et #10.
+- Préparer les contrats de conception Paiements et Notifications sans prétendre que le code est implémenté.
+- Modifier du code uniquement sur une branche dédiée existante et adaptée; si création de branche bloquée, ne pas contourner le contrôle.
+- Mettre à jour ce fichier à chaque jalon avec statut et SHA vérifiés; ne pas recopier les tâches terminées.
+
+FIN DU CHECKPOINT
