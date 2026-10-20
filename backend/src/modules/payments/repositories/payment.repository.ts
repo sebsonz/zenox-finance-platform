@@ -254,9 +254,9 @@ export const paymentRepository = {
   },
 
   async reverseAllocationInTransaction(
-    client: PoolClient, context: FinanceRequestContext, allocationId: string, input: ReverseAllocationInput, key: string,
+    client: PoolClient, context: FinanceRequestContext, paymentId: string, allocationId: string, input: ReverseAllocationInput, key: string,
   ): Promise<{ id: string; allocationId: string; amount: string; reason: string; createdAt: string }> {
-    const hash = requestHash({ allocationId, ...input });
+    const hash = requestHash({ paymentId, allocationId, ...input });
     const command = await beginCommand(client, context, "ALLOCATION_REVERSE", key, hash);
     if (command.replayResourceId) {
       const replay = await client.query<{ id: string; allocation_id: string; amount: string; reason: string; created_at: string }>(
@@ -270,8 +270,8 @@ export const paymentRepository = {
     }
     const allocationResult = await client.query<AllocationRow>(
       `SELECT ${allocationColumns} FROM public.finance_payment_allocations
-        WHERE tenant_id=$1 AND id=$2 FOR UPDATE`,
-      [context.tenantId,allocationId],
+        WHERE tenant_id=$1 AND payment_id=$2 AND id=$3 FOR UPDATE`,
+      [context.tenantId,paymentId,allocationId],
     );
     const allocation = allocationResult.rows[0];
     if (!allocation) throw new Error("ALLOCATION_NOT_FOUND");
