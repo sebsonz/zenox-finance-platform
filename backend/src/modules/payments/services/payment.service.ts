@@ -100,6 +100,7 @@ export const paymentService = {
     return withTenantTransaction(context.tenantId, async (client) => {
       const balance = await paymentRepository.balance(client, context.tenantId, invoiceId);
       if (!balance) throw new PaymentServiceError("INVOICE_NOT_FOUND", "The invoice was not found.");
+      if (balance.status !== "ISSUED") throw new PaymentServiceError("INVOICE_NOT_ISSUED", "Only issued invoices have a receivable balance.");
       return balance;
     });
   },
