@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const decimalAmount = z.string().regex(/^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,8})?$/)
+const decimalAmount = z.string().regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,8})?$/)
   .refine((value) => /[1-9]/.test(value), "Amount must be greater than zero");
 
 export const createPaymentSchema = z.object({
