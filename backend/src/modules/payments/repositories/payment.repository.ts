@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { Decimal } from "decimal.js";
 import type { PoolClient } from "pg";
 import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
 import type { AllocatePaymentInput, CreatePaymentInput, ReverseAllocationInput } from "../validators/payment.schema.js";
@@ -94,12 +95,6 @@ export const paymentRepository = {
       [tenantId, paymentId],
     );
     return result.rows[0] ? mapPayment(result.rows[0]) : null;
-  },
-
-  async create(context: FinanceRequestContext, input: CreatePaymentInput, key: string): Promise<PaymentRecord> {
-    const hash = requestHash(input);
-    const command = await beginCommandPlaceholder(context, "PAYMENT_CREATE", key, hash);
-    return command;
   },
 
   async createInTransaction(
@@ -225,9 +220,9 @@ export const paymentRepository = {
            WHERE r.tenant_id=$1 AND a.invoice_id=$2),0))::text AS total`,
       [context.tenantId,input.invoiceId],
     );
-    const available = new (await import("decimal.js")).Decimal(payment.amount).minus(usedByPayment.rows[0]?.total ?? "0").toString();
-    const balance = new (await import("decimal.js")).Decimal(invoice.grand_total).minus(usedByInvoice.rows[0]?.total ?? "0").toString();
-    const requested = new (await import("decimal.js")).Decimal(input.amount);
+    const available = Decimal(payment.amount).minus(usedByPayment.rows[0]?.total ?? "0").toString();
+    const balance = Decimal(invoice.grand_total).minus(usedByInvoice.rows[0]?.total ?? "0").toString();
+    const requested = Decimal(input.amount);
     if (!requested.isFinite() || requested.lte(0)) throw new Error("INVALID_AMOUNT");
     if (requested.gt(available)) throw new Error("PAYMENT_AMOUNT_EXCEEDED");
     if (requested.gt(balance)) throw new Error("INVOICE_BALANCE_EXCEEDED");
@@ -278,9 +273,9 @@ export const paymentRepository = {
       "SELECT COALESCE(SUM(amount),0)::text AS total FROM public.finance_payment_allocation_reversals WHERE tenant_id=$1 AND allocation_id=$2",
       [context.tenantId,allocationId],
     );
-    const remaining = new (await import("decimal.js")).Decimal(allocation.amount)
+    const remaining = Decimal(allocation.amount)
       .minus(reversedResult.rows[0]?.total ?? "0");
-    const requested = new (await import("decimal.js")).Decimal(input.amount);
+    const requested = Decimal(input.amount);
     if (!requested.isFinite() || requested.lte(0)) throw new Error("INVALID_AMOUNT");
     if (requested.gt(remaining)) throw new Error("ALLOCATION_REVERSAL_EXCEEDED");
     const result = await client.query<{ id: string; allocation_id: string; amount: string; reason: string; created_at: string }>(
@@ -354,9 +349,3 @@ export const paymentRepository = {
   },
 };
 
-// This function is intentionally absent from the public service surface; mutations must run inside withTenantTransaction.
-async function beginCommandPlaceholder(
-  _context: FinanceRequestContext, _operation: string, _key: string, _hash: string,
-): Promise<never> {
-  throw new Error("PAYMENT_REPOSITORY_REQUIRES_TENANT_TRANSACTION");
-}
