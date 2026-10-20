@@ -21,6 +21,10 @@ invoiceBalanceRouter.get(
         res.status(404).json({ error: { code: error.code, message: error.message, correlationId: context.correlationId } });
         return;
       }
+      if (error instanceof PaymentServiceError && error.code === "INVOICE_NOT_ISSUED") {
+        res.status(409).json({ error: { code: error.code, message: error.message, correlationId: context.correlationId } });
+        return;
+      }
       next(error);
     }
   },
