@@ -24,6 +24,11 @@ describe("payment schemas", () => {
     }).source).toBe("PROVIDER");
   });
 
+  it("rejects amounts exceeding the database numeric precision", () => {
+    expect(() => createPaymentSchema.parse({ amount: "1.123456789", currencyCode: "XOF", source: "MANUAL", method: "CASH" })).toThrow();
+    expect(() => createPaymentSchema.parse({ amount: "123456789012345678", currencyCode: "XOF", source: "MANUAL", method: "CASH" })).toThrow();
+  });
+
   it("rejects zero allocations and unexpected fields", () => {
     expect(() => allocatePaymentSchema.parse({
       invoiceId: "11111111-1111-4111-8111-111111111111", amount: "0",
