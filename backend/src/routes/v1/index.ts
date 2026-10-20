@@ -12,7 +12,7 @@ import { invoiceTaxSnapshotRouter } from "../../modules/invoices/routes/invoice-
 import { invoiceIssuanceRouter } from "../../modules/invoices/routes/invoice-issuance.routes.js";
 import { invoiceDocumentRouter } from "../../modules/invoices/routes/invoice-document.routes.js";
 import { creditNoteRouter } from "../../modules/invoices/routes/credit-note.routes.js";
-import { invoiceBalanceRouter, paymentRouter } from "../../modules/payments/index.js";
+import { invoiceBalanceRouter, paymentRouter, refundRouter } from "../../modules/payments/index.js";
 
 export const apiV1Router = Router();
 apiV1Router.use("/health", healthRouter);
@@ -28,5 +28,6 @@ apiV1Router.use("/invoices", creditNoteRouter);
 apiV1Router.use("/invoices", invoiceDraftRouter);
 apiV1Router.use("/customers", customerRouter);
 apiV1Router.use("/currencies", currencyRouter);
+apiV1Router.use("/payments", refundRouter);
 apiV1Router.use("/payments", paymentRouter);
 apiV1Router.use("/invoices", invoiceBalanceRouter);
