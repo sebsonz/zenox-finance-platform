@@ -114,3 +114,17 @@ TRAVAIL POSSIBLE DEPUIS LA TABLETTE
 - Mettre à jour ce fichier à chaque jalon avec statut et SHA vérifiés; ne pas recopier les tâches terminées.
 
 FIN DU CHECKPOINT
+======================================================================
+K. JOURNAL DE PROGRESSION — 2026-10-20 (MISE À JOUR)
+======================================================================
+[FAIT] Créé et vérifié le checkpoint maître des modules : docs/checkpoints/CHECKPOINT_MAITRE_MODULES_ZENOX_FINANCE_2026-10-20.txt.
+[FAIT] Créé et vérifié la spécification Paiements/Allocations/Rapprochement : docs/requirements/PAYMENTS_ALLOCATIONS_RECONCILIATION_SPEC.md. C'est une spécification, pas du code implémenté.
+[FAIT] Créé la spécification Notifications internes : docs/requirements/INTERNAL_NOTIFICATIONS_MODULE_SPEC.md. C'est une spécification; le code existant doit encore être audité.
+[FAIT] Audit ciblé du CI de PR #10 : le HEAD antérieur abff7731c718726b957677809f8005f750f7c7d7 échouait au typecheck car le service utilisait input.taxFacts alors que le schéma ne le déclarait pas.
+[FAIT] Correctif poussé sur la branche existante feature/tax-rule-extensibility : 5ff9dce7bf0588575e9ca66a5498326d7a5b7239 ajoute taxFacts optionnel via taxBusinessFactsSchema.
+[FAIT] Tests ajoutés sur cette même branche au commit 67c2344fe71b7e8f9f7c84be69c75e4f1cec1033 pour valider les faits métier autorisés et rejeter les champs arbitraires/codes pays mal formés.
+[EN COURS] CI déclenchée pour le SHA exact 67c2344fe71b7e8f9f7c84be69c75e4f1cec1033; au dernier contrôle, le run 39505015295 était en attente (queued). Ne pas marquer PR #10 verte avant résultat final.
+[À AUDITER] Le bot de revue a signalé des valeurs de connexion PostgreSQL statiques dans le workflow CI de PR #10. Elles semblent être utilisées pour la base jetable CI, mais le signal doit être revu et corrigé proprement sans exposer de secret ni casser les forks. Ne pas afficher les valeurs. Vérifier si ce sont uniquement des identifiants de test; si un vrai secret a été exposé, le révoquer/faire tourner.
+[FAIT] Aucun PR fusionné par cette mise à jour. Aucune migration exécutée. La base zenoxfret_v2 n'a pas été touchée.
+
+Prochaine action immédiate : vérifier le résultat du run 39505015295 sur le SHA 67c2344fe71b7e8f9f7c84be69c75e4f1cec1033; si le typecheck passe, examiner les éventuelles étapes suivantes. Ensuite, auditer le HEAD exact des PR #5 et #9 pour fermer le module Factures. L'implémentation Paiements attend la validation de Factures.
