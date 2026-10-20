@@ -42,8 +42,10 @@ CREATE TABLE IF NOT EXISTS public.finance_payments (
   CHECK (external_reference IS NULL OR length(external_reference) <= 200),
   CHECK (provider_code IS NULL OR provider_code ~ '^[a-z0-9][a-z0-9._-]{1,79}$'),
   CHECK (description IS NULL OR length(description) <= 1000),
-  CHECK ((status IN ('CONFIRMED','SETTLED') AND confirmed_at IS NOT NULL AND confirmed_by_actor_type IS NOT NULL)
-      OR status NOT IN ('CONFIRMED','SETTLED'))
+  CHECK ((status IN ('CONFIRMED','SETTLED') AND confirmed_at IS NOT NULL AND confirmed_by_actor_type IS NOT NULL AND confirmed_by_actor_ref IS NOT NULL)
+      OR status NOT IN ('CONFIRMED','SETTLED')),
+  CHECK ((source='MANUAL' AND method <> 'PROVIDER' AND provider_code IS NULL)
+      OR (source='PROVIDER' AND method='PROVIDER' AND provider_code IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS public.finance_payment_events (
@@ -109,7 +111,7 @@ CREATE INDEX IF NOT EXISTS finance_payment_allocation_reversals_allocation_idx
 CREATE OR REPLACE FUNCTION public.finance_guard_payment_allocation()
 RETURNS trigger
 LANGUAGE plpgsql
-AS $
+AS $function$
 DECLARE
   payment_row public.finance_payments%ROWTYPE;
   invoice_row public.finance_invoices%ROWTYPE;
@@ -158,7 +160,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$function$;
 
 CREATE TRIGGER finance_payment_allocation_guard
 BEFORE INSERT ON public.finance_payment_allocations
@@ -167,7 +169,7 @@ FOR EACH ROW EXECUTE FUNCTION public.finance_guard_payment_allocation();
 CREATE OR REPLACE FUNCTION public.finance_guard_payment_allocation_reversal()
 RETURNS trigger
 LANGUAGE plpgsql
-AS $
+AS $function$
 DECLARE
   allocation_row public.finance_payment_allocations%ROWTYPE;
   already_reversed numeric(24,8);
@@ -183,7 +185,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$function$;
 
 CREATE TRIGGER finance_payment_allocation_reversal_guard
 BEFORE INSERT ON public.finance_payment_allocation_reversals
