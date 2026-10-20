@@ -19,6 +19,14 @@ describe("Finance user tenant role permissions", () => {
     expect(hasFinanceUserPermission("FINANCE_MANAGER", "invoices:issue")).toBe(true);
   });
 
+  it("allows only finance administrators and managers to issue full-reversal credit notes", () => {
+    expect(hasFinanceUserPermission("OWNER", "invoices:credit")).toBe(true);
+    expect(hasFinanceUserPermission("ADMIN", "invoices:credit")).toBe(true);
+    expect(hasFinanceUserPermission("FINANCE_MANAGER", "invoices:credit")).toBe(true);
+    expect(hasFinanceUserPermission("FINANCE_OPERATOR", "invoices:credit")).toBe(false);
+    expect(hasFinanceUserPermission("VIEWER", "invoices:credit")).toBe(false);
+  });
+
   it("requires active membership even when the role has permission", () => {
     expect(() => assertActiveMembershipCan(
       { status: "PENDING", role_code: "OWNER" },

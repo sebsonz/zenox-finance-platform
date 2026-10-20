@@ -1,5 +1,7 @@
 import type { PoolClient } from "pg";
 import type { CalculatedInvoiceTotals } from "../types/invoice-calculation.types.js";
+import type { FinanceInvoiceOperationContext } from "../types/invoice-operation-context.js";
+import { invoiceActor, isUserInvoiceContext } from "../types/invoice-operation-context.js";
 import type { CreateInvoiceDraftInput, ListInvoiceDraftsQuery, UpdateInvoiceDraftInput } from "../validators/invoice-draft.schema.js";
 
 export interface FinanceInvoice {
@@ -84,24 +86,27 @@ async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow
 
 export const invoiceRepository = {
   async createDraft(
-    client: PoolClient, tenantId: string, principalId: string, input: CreateInvoiceDraftInput,
+    client: PoolClient, context: FinanceInvoiceOperationContext, input: CreateInvoiceDraftInput,
     currencyMinorUnit: number, totals: CalculatedInvoiceTotals,
     calculatedLines: readonly { subtotal: string; discountAmount: string; taxableAmount: string; taxAmount: string; total: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string }[],
     customer: { id: string; legalName: string; displayName: string | null; email: string | null; phone: string | null; countryCode: string; taxIdentifier: string | null; registrationIdentifier: string | null },
   ): Promise<FinanceInvoice> {
+    const actor = invoiceActor(context);
+    const legacyPrincipalId = isUserInvoiceContext(context) ? null : context.principal.id;
     const created = await client.query<InvoiceRow>(
       `INSERT INTO public.finance_invoices (
         tenant_id, customer_id, currency_code, currency_minor_unit, due_date, customer_snapshot,
         subtotal, discount_total, taxable_total, tax_total, grand_total, amount_due, calculation_policy, notes,
-        created_by_principal_id
-      ) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        created_by_principal_id, created_by_actor_type, created_by_actor_ref,
+        updated_by_actor_type, updated_by_actor_ref
+      ) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
       RETURNING ${invoiceColumns}`,
-      [tenantId, customer.id, totals.currency, currencyMinorUnit, input.dueDate ?? null,
+      [context.tenantId, customer.id, totals.currency, currencyMinorUnit, input.dueDate ?? null,
         JSON.stringify({ id: customer.id, legalName: customer.legalName, displayName: customer.displayName,
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
           taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
         totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
-        totals.grandTotal, totals.calculationPolicy, input.notes ?? null, principalId],
+        totals.grandTotal, totals.calculationPolicy, input.notes ?? null, legacyPrincipalId, actor.type, actor.ref, actor.type, actor.ref],
     );
     const invoice = created.rows[0];
     if (!invoice) throw new Error("INVOICE_INSERT_RETURNED_NO_ROW");
@@ -113,18 +118,18 @@ export const invoiceRepository = {
           tenant_id, invoice_id, line_number, description, quantity, unit_price, discount_percent,
           tax_rate_percent, subtotal, discount_amount, taxable_amount, tax_amount, total
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-        [tenantId, invoice.id, i + 1, source.description, calculated.quantity, calculated.unitPrice,
+        [context.tenantId, invoice.id, i + 1, source.description, calculated.quantity, calculated.unitPrice,
           calculated.discountPercent, calculated.taxRatePercent, calculated.subtotal,
           calculated.discountAmount, calculated.taxableAmount, calculated.taxAmount, calculated.total],
       );
     }
-    return attachLines(client, tenantId, invoice);
+    return attachLines(client, context.tenantId, invoice);
   },
 
 
   async updateDraft(
     client: PoolClient,
-    tenantId: string,
+    context: FinanceInvoiceOperationContext,
     invoiceId: string,
     expectedUpdatedAt: string,
     input: UpdateInvoiceDraftInput,
@@ -133,6 +138,7 @@ export const invoiceRepository = {
     calculatedLines: readonly { subtotal: string; discountAmount: string; taxableAmount: string; taxAmount: string; total: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string }[],
     customer: { id: string; legalName: string; displayName: string | null; email: string | null; phone: string | null; countryCode: string; taxIdentifier: string | null; registrationIdentifier: string | null },
   ): Promise<FinanceInvoice | null> {
+    const actor = invoiceActor(context);
     const updated = await client.query<InvoiceRow>(
       `UPDATE public.finance_invoices
           SET customer_id = $3,
@@ -152,26 +158,28 @@ export const invoiceRepository = {
               tax_snapshot_id = NULL,
               tax_snapshot_version = NULL,
               tax_status = 'PROVISIONAL',
+              updated_by_actor_type = $15,
+              updated_by_actor_ref = $16,
               updated_at = clock_timestamp()
         WHERE tenant_id = $1
           AND id = $2
           AND status = 'DRAFT'
-          AND updated_at = $15::timestamptz
+          AND updated_at = $17::timestamptz
       RETURNING ${invoiceColumns}`,
-      [tenantId, invoiceId, customer.id, totals.currency, currencyMinorUnit,
+      [context.tenantId, invoiceId, customer.id, totals.currency, currencyMinorUnit,
         input.dueDate ?? null,
         JSON.stringify({ id: customer.id, legalName: customer.legalName, displayName: customer.displayName,
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
           taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
         totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
-        totals.calculationPolicy, input.notes ?? null, expectedUpdatedAt],
+        totals.calculationPolicy, input.notes ?? null, actor.type, actor.ref, expectedUpdatedAt],
     );
     const invoice = updated.rows[0];
     if (!invoice) return null;
 
     await client.query(
       "DELETE FROM public.finance_invoice_lines WHERE tenant_id = $1 AND invoice_id = $2",
-      [tenantId, invoiceId],
+      [context.tenantId, invoiceId],
     );
     for (let i = 0; i < input.lines.length; i += 1) {
       const source = input.lines[i]!;
@@ -181,12 +189,12 @@ export const invoiceRepository = {
           tenant_id, invoice_id, line_number, description, quantity, unit_price, discount_percent,
           tax_rate_percent, subtotal, discount_amount, taxable_amount, tax_amount, total
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-        [tenantId, invoiceId, i + 1, source.description, calculated.quantity, calculated.unitPrice,
+        [context.tenantId, invoiceId, i + 1, source.description, calculated.quantity, calculated.unitPrice,
           calculated.discountPercent, calculated.taxRatePercent, calculated.subtotal,
           calculated.discountAmount, calculated.taxableAmount, calculated.taxAmount, calculated.total],
       );
     }
-    return attachLines(client, tenantId, invoice);
+    return attachLines(client, context.tenantId, invoice);
   },
 
   async findById(client: PoolClient, tenantId: string, invoiceId: string): Promise<FinanceInvoice | null> {

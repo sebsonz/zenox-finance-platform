@@ -2,9 +2,9 @@ name: ZENOX Finance CI
 
 on:
   push:
-    branches: [main, feat/invoice-tax-snapshot-binding, chore/monorepo-frontend-backend-structure]
+    branches: [main, feat/invoice-tax-snapshot-binding, chore/monorepo-frontend-backend-structure, feature/invoice-workflow-completion]
   pull_request:
-    branches: [main, feat/invoice-tax-snapshot-binding]
+    branches: [main, feat/invoice-tax-snapshot-binding, feature/invoice-user-readonly-bff, feature/invoice-workflow-completion]
 
 permissions:
   contents: read

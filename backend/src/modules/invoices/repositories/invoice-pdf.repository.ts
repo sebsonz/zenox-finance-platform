@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import type { FinanceInvoice } from "./invoice.repository.js";
+import type { FinanceInvoiceOperationContext } from "../types/invoice-operation-context.js";
+import { invoiceActor, isUserInvoiceContext } from "../types/invoice-operation-context.js";
 import { renderInvoicePdfDocument } from "../documents/invoice-pdf-renderer.js";
 
 export interface InvoicePdfArtifact {
@@ -32,18 +34,20 @@ function toArtifact(row: PdfRow): InvoicePdfArtifact {
 
 export const invoicePdfRepository = {
   async createForIssuedInvoice(
-    client: PoolClient, tenantId: string, principalId: string, invoice: FinanceInvoice,
+    client: PoolClient, context: FinanceInvoiceOperationContext, invoice: FinanceInvoice,
   ): Promise<InvoicePdfArtifact> {
     if (invoice.status !== "ISSUED" || !invoice.invoiceCode || !invoice.taxSnapshotId) {
       throw new Error("INVOICE_PDF_REQUIRES_ISSUED_TAX_SNAPSHOTTED_INVOICE");
     }
+    const actor = invoiceActor(context);
+    const legacyPrincipalId = isUserInvoiceContext(context) ? null : context.principal.id;
     const pdfContent = renderInvoicePdfDocument(invoice);
     const contentSha256 = createHash("sha256").update(pdfContent).digest("hex");
     const result = await client.query<PdfRow>(
       `INSERT INTO public.finance_invoice_pdf_artifacts
-        (tenant_id, invoice_id, document_version, invoice_code, pdf_content, content_sha256, created_by_principal_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${columns}`,
-      [tenantId, invoice.id, invoice.documentVersion, invoice.invoiceCode, pdfContent, contentSha256, principalId],
+        (tenant_id, invoice_id, document_version, invoice_code, pdf_content, content_sha256, created_by_principal_id, created_by_actor_type, created_by_actor_ref)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING ${columns}`,
+      [context.tenantId, invoice.id, invoice.documentVersion, invoice.invoiceCode, pdfContent, contentSha256, legacyPrincipalId, actor.type, actor.ref],
     );
     const row = result.rows[0];
     if (!row) throw new Error("INVOICE_PDF_ARTIFACT_INSERT_FAILED");

@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import { withTenantTransaction } from "../../../db/transaction.js";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinanceInvoiceOperationContext } from "../types/invoice-operation-context.js";
+import { invoiceActor, isUserInvoiceContext } from "../types/invoice-operation-context.js";
+import { recordInvoiceAudit } from "../repositories/invoice-audit.repository.js";
 import { invoiceRepository } from "../repositories/invoice.repository.js";
 import { renderInvoiceHtmlDocument } from "../documents/invoice-html-renderer.js";
 import { renderInvoicePdfDocument } from "../documents/invoice-pdf-renderer.js";
@@ -26,7 +28,55 @@ export interface FinanceCreditNote {
 }
 
 export const creditNoteService = {
-  async findDocument(context: FinanceRequestContext, creditNoteId: string): Promise<{
+  async listForInvoice(context: FinanceInvoiceOperationContext, invoiceId: string): Promise<Array<{
+    id: string;
+    originalInvoiceId: string;
+    creditNoteCode: string;
+    status: "ISSUED";
+    reason: string;
+    currencyCode: string;
+    grandTotal: string;
+    amountDue: string;
+    htmlSha256: string;
+    pdfSha256: string;
+    issuedAt: string;
+  }>> {
+    return withTenantTransaction(context.tenantId, async (client) => {
+      const result = await client.query<{
+        id: string; original_invoice_id: string; credit_note_code: string; status: "ISSUED";
+        reason: string; currency_code: string; grand_total: string; amount_due: string;
+        html_sha256: string; pdf_sha256: string; issued_at: string;
+      }>(
+        `SELECT id, original_invoice_id, credit_note_code, status, reason, currency_code,
+                grand_total::text, amount_due::text, html_sha256, pdf_sha256,
+                to_char(issued_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS issued_at
+           FROM public.finance_credit_notes
+          WHERE tenant_id = $1 AND original_invoice_id = $2
+          ORDER BY issued_at DESC`,
+        [context.tenantId, invoiceId],
+      );
+      if (isUserInvoiceContext(context)) {
+        await recordInvoiceAudit(client, context, "invoice.credit_note.listed", "INVOICE", invoiceId, {
+          count: result.rows.length,
+        });
+      }
+      return result.rows.map((row) => ({
+        id: row.id,
+        originalInvoiceId: row.original_invoice_id,
+        creditNoteCode: row.credit_note_code,
+        status: row.status,
+        reason: row.reason,
+        currencyCode: row.currency_code.trim(),
+        grandTotal: row.grand_total,
+        amountDue: row.amount_due,
+        htmlSha256: row.html_sha256,
+        pdfSha256: row.pdf_sha256,
+        issuedAt: row.issued_at,
+      }));
+    });
+  },
+
+  async findDocument(context: FinanceInvoiceOperationContext, creditNoteId: string): Promise<{
     creditNoteCode: string; contentType: "text/html; charset=utf-8"; content: string; sha256: string;
   } | null> {
     return withTenantTransaction(context.tenantId, async (client) => {
@@ -39,11 +89,16 @@ export const creditNoteService = {
       if (!row) return null;
       const hash = createHash("sha256").update(row.html_content, "utf8").digest("hex");
       if (hash !== row.html_sha256) throw new Error("CREDIT_NOTE_HTML_HASH_MISMATCH");
+      if (isUserInvoiceContext(context)) {
+        await recordInvoiceAudit(client, context, "invoice.credit_note.document.read", "CREDIT_NOTE", creditNoteId, {
+          format: "HTML", creditNoteCode: row.credit_note_code, sha256: row.html_sha256,
+        });
+      }
       return { creditNoteCode: row.credit_note_code, contentType: "text/html; charset=utf-8", content: row.html_content, sha256: row.html_sha256 };
     });
   },
 
-  async findPdf(context: FinanceRequestContext, creditNoteId: string): Promise<{
+  async findPdf(context: FinanceInvoiceOperationContext, creditNoteId: string): Promise<{
     creditNoteCode: string; contentType: "application/pdf"; content: Buffer; sha256: string;
   } | null> {
     return withTenantTransaction(context.tenantId, async (client) => {
@@ -56,11 +111,18 @@ export const creditNoteService = {
       if (!row) return null;
       const hash = createHash("sha256").update(row.pdf_content).digest("hex");
       if (hash !== row.pdf_sha256) throw new Error("CREDIT_NOTE_PDF_HASH_MISMATCH");
+      if (isUserInvoiceContext(context)) {
+        await recordInvoiceAudit(client, context, "invoice.credit_note.document.read", "CREDIT_NOTE", creditNoteId, {
+          format: "PDF", creditNoteCode: row.credit_note_code, sha256: row.pdf_sha256,
+        });
+      }
       return { creditNoteCode: row.credit_note_code, contentType: "application/pdf", content: row.pdf_content, sha256: row.pdf_sha256 };
     });
   },
 
-  async issueFullReversal(context: FinanceRequestContext, invoiceId: string, reason: string): Promise<FinanceCreditNote> {
+  async issueFullReversal(context: FinanceInvoiceOperationContext, invoiceId: string, reason: string): Promise<FinanceCreditNote> {
+    const actor = invoiceActor(context);
+    const legacyPrincipalId = isUserInvoiceContext(context) ? null : context.principal.id;
     return withTenantTransaction(context.tenantId, async (client) => {
       const lock = await client.query<{ status: string; tax_snapshot_id: string | null }>(
         `SELECT status, tax_snapshot_id FROM public.finance_invoices
@@ -137,10 +199,11 @@ export const creditNoteService = {
           id, tenant_id, original_invoice_id, credit_note_code, status, reason, currency_code,
           currency_minor_unit, customer_snapshot, source_tax_snapshot_id, source_tax_snapshot_version,
           document_version, lines_snapshot, subtotal, discount_total, taxable_total, tax_total,
-          grand_total, amount_due, html_content, html_sha256, pdf_content, pdf_sha256, issued_by_principal_id
+          grand_total, amount_due, html_content, html_sha256, pdf_content, pdf_sha256, issued_by_principal_id,
+          issued_by_actor_type, issued_by_actor_ref
         ) VALUES (
           $1,$2,$3,$4,'ISSUED',$5,$6,$7,$8::jsonb,$9,$10,1,$11::jsonb,
-          $12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22
+          $12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24
         )
         RETURNING id, original_invoice_id, credit_note_code, status, reason, currency_code,
           grand_total::text, amount_due::text, html_sha256, pdf_sha256,
@@ -149,11 +212,17 @@ export const creditNoteService = {
           creditNoteId, context.tenantId, source.id, code, reason, source.currencyCode, source.currencyMinorUnit,
           JSON.stringify(source.customerSnapshot), source.taxSnapshotId, source.taxSnapshotVersion,
           JSON.stringify(source.lines), source.subtotal, source.discountTotal, source.taxableTotal, source.taxTotal,
-          source.grandTotal, source.amountDue, htmlContent, htmlSha256, pdfContent, pdfSha256, context.principal.id,
+          source.grandTotal, source.amountDue, htmlContent, htmlSha256, pdfContent, pdfSha256, legacyPrincipalId, actor.type, actor.ref,
         ],
       );
       const row = inserted.rows[0];
       if (!row) throw new Error("CREDIT_NOTE_INSERT_FAILED");
+      await recordInvoiceAudit(client, context, "invoice.credit_note.issued", "CREDIT_NOTE", row.id, {
+        creditNoteCode: row.credit_note_code,
+        originalInvoiceId: row.original_invoice_id,
+        fullReversal: true,
+        currencyCode: row.currency_code.trim(),
+      });
       return {
         id: row.id, originalInvoiceId: row.original_invoice_id, creditNoteCode: row.credit_note_code,
         status: row.status, reason: row.reason, currencyCode: row.currency_code.trim(),

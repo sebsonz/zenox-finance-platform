@@ -274,4 +274,63 @@ integrationDescribe("PostgreSQL invoice issuance lifecycle", () => {
       verify.release();
     }
   });
+
+  it("attributes user issuance and immutable artifacts to the user, never to an integration principal", async () => {
+    const admin = await pool.connect();
+    let draft: { id: string; updatedAt: string };
+    try {
+      await admin.query("BEGIN");
+      draft = await seedReadyDraft(admin);
+      await admin.query("COMMIT");
+    } catch (error) {
+      await admin.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      admin.release();
+    }
+
+    const userActor = {
+      tenantId,
+      correlationId: `user-issue-${randomUUID()}`,
+      actor: {
+        type: "USER" as const,
+        ref: "https://auth.example.test|invoice-issuer-user",
+        membershipId: randomUUID(),
+        identityIssuer: "https://auth.example.test",
+        identitySubject: "invoice-issuer-user",
+      },
+    };
+    const issued = await invoiceIssuanceService.issue(userActor, draft!.id, draft!.updatedAt, randomUUID());
+    expect(issued.status).toBe("ISSUED");
+
+    const result = await pool.query<{
+      issued_by_principal_id: string | null; issued_by_actor_type: string | null; issued_by_actor_ref: string | null;
+      html_principal_id: string | null; html_actor_type: string | null; html_actor_ref: string | null;
+      pdf_principal_id: string | null; pdf_actor_type: string | null; pdf_actor_ref: string | null;
+      audit_actor_type: string | null; audit_actor_ref: string | null;
+    }>(
+      `SELECT i.issued_by_principal_id, i.issued_by_actor_type, i.issued_by_actor_ref,
+              d.created_by_principal_id AS html_principal_id, d.created_by_actor_type AS html_actor_type,
+              d.created_by_actor_ref AS html_actor_ref,
+              p.created_by_principal_id AS pdf_principal_id, p.created_by_actor_type AS pdf_actor_type,
+              p.created_by_actor_ref AS pdf_actor_ref,
+              a.actor_type AS audit_actor_type, a.actor_ref AS audit_actor_ref
+         FROM public.finance_invoices i
+         JOIN public.finance_invoice_document_artifacts d
+           ON d.tenant_id = i.tenant_id AND d.invoice_id = i.id
+         JOIN public.finance_invoice_pdf_artifacts p
+           ON p.tenant_id = i.tenant_id AND p.invoice_id = i.id
+         JOIN public.finance_audit_events a
+           ON a.tenant_id = i.tenant_id AND a.resource_id = i.id AND a.action = 'invoice.issued'
+        WHERE i.tenant_id = $1 AND i.id = $2`,
+      [tenantId, draft!.id],
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      issued_by_principal_id: null, issued_by_actor_type: "USER", issued_by_actor_ref: userActor.actor.ref,
+      html_principal_id: null, html_actor_type: "USER", html_actor_ref: userActor.actor.ref,
+      pdf_principal_id: null, pdf_actor_type: "USER", pdf_actor_ref: userActor.actor.ref,
+      audit_actor_type: "USER", audit_actor_ref: userActor.actor.ref,
+    });
+  });
 });

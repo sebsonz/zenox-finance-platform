@@ -34,6 +34,19 @@ const row = {
   applied_rules_snapshot: [...input.appliedRulesSnapshot],
   created_at: "2026-10-16T10:00:00.000Z",
   created_by: "b2e9e0b7-1a23-4f4e-b3c5-58c4b4c86a44",
+  created_by_actor_ref: "b2e9e0b7-1a23-4f4e-b3c5-58c4b4c86a44",
+};
+
+const context = {
+  tenantId: row.tenant_id,
+  correlationId: "test-correlation",
+  principal: {
+    id: row.created_by,
+    principalCode: "test-service",
+    displayName: "Test service",
+    scopes: ["tax:snapshot:write"],
+    allowedTenantIds: [row.tenant_id],
+  },
 };
 
 function fakeClient(rows: unknown[]) {
@@ -46,8 +59,7 @@ describe("taxSnapshotRepository", () => {
     const { client, query } = fakeClient([row]);
     const result = await taxSnapshotRepository.create(
       client,
-      row.tenant_id,
-      row.created_by,
+      context,
       0,
       input,
     );
@@ -60,7 +72,7 @@ describe("taxSnapshotRepository", () => {
       input.calculationPolicy, input.engineVersion, input.taxDate, "XOF",
       0, input.jurisdictionId,
       JSON.stringify(input.inputSnapshot), JSON.stringify(input.resultSnapshot),
-      JSON.stringify(input.appliedRulesSnapshot), row.created_by,
+      JSON.stringify(input.appliedRulesSnapshot), row.created_by, "SERVICE", row.created_by,
     ]);
     expect(result).toMatchObject({
       id: row.id,
@@ -68,6 +80,26 @@ describe("taxSnapshotRepository", () => {
       currencyMinorUnit: 0,
       resultSnapshot: { grandTotal: "11800" },
     });
+  });
+
+  it("records a user actor without inventing an integration principal UUID", async () => {
+    const userContext = {
+      tenantId: row.tenant_id,
+      correlationId: "user-correlation",
+      actor: {
+        type: "USER" as const,
+        ref: "https://identity.example|subject-42",
+        membershipId: "f9c2a2c6-6d38-4a4d-bae8-4d5f0e3c2d89",
+        identityIssuer: "https://identity.example",
+        identitySubject: "subject-42",
+      },
+    };
+    const userRow = { ...row, created_by: null, created_by_actor_ref: userContext.actor.ref };
+    const { client, query } = fakeClient([userRow]);
+    const result = await taxSnapshotRepository.create(client, userContext, 0, input);
+    const [, params] = query.mock.calls[0] as unknown as [string, unknown[]];
+    expect(params.slice(-3)).toEqual([null, "USER", userContext.actor.ref]);
+    expect(result.createdBy).toBe(userContext.actor.ref);
   });
 
   it("reads by document type, ID and version using parameterized values", async () => {
@@ -94,7 +126,7 @@ describe("taxSnapshotRepository", () => {
   it("fails closed if INSERT unexpectedly returns no row", async () => {
     const { client } = fakeClient([]);
     await expect(taxSnapshotRepository.create(
-      client, row.tenant_id, row.created_by, 0, input,
+      client, context, 0, input,
     )).rejects.toThrow("TAX_SNAPSHOT_INSERT_RETURNED_NO_ROW");
   });
 });

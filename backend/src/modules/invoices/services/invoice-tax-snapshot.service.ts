@@ -1,6 +1,8 @@
 import { Decimal } from "decimal.js";
 import { withTenantTransaction } from "../../../db/transaction.js";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinanceInvoiceOperationContext } from "../types/invoice-operation-context.js";
+import { invoiceActor } from "../types/invoice-operation-context.js";
+import { recordInvoiceAudit } from "../repositories/invoice-audit.repository.js";
 import { currencyRepository } from "../../currencies/repositories/currency.repository.js";
 import { taxRuleRepository } from "../../tax/repositories/tax-rule.repository.js";
 import { taxSnapshotRepository, type TaxCalculationSnapshot } from "../../tax/repositories/tax-snapshot.repository.js";
@@ -28,11 +30,12 @@ const ENGINE_VERSION = "zenox-finance-tax-engine/1.0.0";
 
 export const invoiceTaxSnapshotService = {
   async calculateAndAttach(
-    context: FinanceRequestContext,
+    context: FinanceInvoiceOperationContext,
     invoiceId: string,
     rawInput: CalculateInvoiceTaxSnapshotInput,
   ): Promise<{ snapshot: TaxCalculationSnapshot; invoice: Record<string, unknown> }> {
     const input = calculateInvoiceTaxSnapshotSchema.parse(rawInput);
+    const actor = invoiceActor(context);
     return withTenantTransaction(context.tenantId, async (client) => {
       // Lock the tenant-owned draft and compare the optimistic version inside the
       // same transaction as rule resolution, immutable snapshot insert and linkage.
@@ -273,8 +276,7 @@ export const invoiceTaxSnapshotService = {
 
       const snapshot = await taxSnapshotRepository.create(
         client,
-        context.tenantId,
-        context.principal.id,
+        context,
         currency.minorUnit,
         snapshotInput,
       );
@@ -287,6 +289,8 @@ export const invoiceTaxSnapshotService = {
                 tax_total = $7,
                 grand_total = $8,
                 amount_due = $9,
+                updated_by_actor_type = $11,
+                updated_by_actor_ref = $12,
                 updated_at = clock_timestamp()
           WHERE tenant_id = $1
             AND id = $2
@@ -304,6 +308,8 @@ export const invoiceTaxSnapshotService = {
           calculatedGrandTotal,
           amountDue,
           invoice.document_version,
+          actor.type,
+          actor.ref,
         ],
       );
       if (linked.rowCount !== 1) {
@@ -312,6 +318,13 @@ export const invoiceTaxSnapshotService = {
           "Invoice changed while tax evidence was being attached; transaction was rolled back.",
         );
       }
+      await recordInvoiceAudit(client, context, "invoice.tax_snapshot.attached", "INVOICE", invoiceId, {
+        taxSnapshotId: snapshot.id,
+        documentVersion: snapshot.documentVersion,
+        jurisdictionId: input.jurisdictionId,
+        taxDate: input.taxDate,
+        currencyCode: currency.code,
+      });
       return {
         snapshot,
         invoice: {

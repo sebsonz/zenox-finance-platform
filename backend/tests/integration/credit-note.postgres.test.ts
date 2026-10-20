@@ -151,4 +151,55 @@ integrationDescribe("PostgreSQL full-reversal credit notes", () => {
       throw error;
     } finally { verify.release(); }
   });
+
+  it("attributes a user-issued credit note and its audit event to the real user actor", async () => {
+    const client = await pool.connect();
+    let draft: { id: string; updatedAt: string };
+    try {
+      await client.query("BEGIN");
+      draft = await seedDraft(client);
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally { client.release(); }
+
+    await invoiceIssuanceService.issue(context(), draft!.id, draft!.updatedAt, randomUUID());
+    const actorRef = "https://auth.example.test|credit-note-user";
+    const userContext = {
+      tenantId,
+      correlationId: `user-credit-${randomUUID()}`,
+      actor: {
+        type: "USER" as const,
+        ref: actorRef,
+        membershipId: randomUUID(),
+        identityIssuer: "https://auth.example.test",
+        identitySubject: "credit-note-user",
+      },
+    };
+    const credit = await creditNoteService.issueFullReversal(userContext, draft!.id, "Avoir intégral demandé par l’utilisateur");
+    const result = await pool.query<{
+      issued_by_principal_id: string | null;
+      issued_by_actor_type: string | null;
+      issued_by_actor_ref: string | null;
+      audit_actor_type: string | null;
+      audit_actor_ref: string | null;
+    }>(
+      `SELECT c.issued_by_principal_id, c.issued_by_actor_type, c.issued_by_actor_ref,
+              a.actor_type AS audit_actor_type, a.actor_ref AS audit_actor_ref
+         FROM public.finance_credit_notes c
+         JOIN public.finance_audit_events a
+           ON a.tenant_id = c.tenant_id AND a.resource_id = c.id AND a.action = 'invoice.credit_note.issued'
+        WHERE c.tenant_id = $1 AND c.id = $2`,
+      [tenantId, credit.id],
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toEqual({
+      issued_by_principal_id: null,
+      issued_by_actor_type: "USER",
+      issued_by_actor_ref: actorRef,
+      audit_actor_type: "USER",
+      audit_actor_ref: actorRef,
+    });
+  });
 });

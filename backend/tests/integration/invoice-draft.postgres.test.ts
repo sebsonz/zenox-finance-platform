@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { invoiceDraftService } from "../../src/modules/invoices/services/invoice-draft.service.js";
 
 const adminUrl = process.env["TEST_DATABASE_URL"];
 const runtimeUrl = process.env["TEST_RUNTIME_DATABASE_URL"];
@@ -233,5 +234,63 @@ integrationDescribe("PostgreSQL invoice draft tenant isolation", () => {
     } finally {
       client.release();
     }
+  });
+
+  it("creates and updates a user-authored draft with truthful actor fields and atomic audit events", async () => {
+    const suffix = randomUUID().replaceAll("-", "").slice(0, 12).toUpperCase();
+    const customerId = await seedCustomer(tenantA, `USER_DRAFT_${suffix}`);
+    const actorRef = "https://auth.example.test|invoice-draft-user";
+    const context = {
+      tenantId: tenantA,
+      correlationId: `user-draft-${suffix}`,
+      actor: {
+        type: "USER" as const,
+        ref: actorRef,
+        membershipId: randomUUID(),
+        identityIssuer: "https://auth.example.test",
+        identitySubject: "invoice-draft-user",
+      },
+    };
+    const created = await invoiceDraftService.create(context, {
+      customerId,
+      currencyCode: "XOF",
+      notes: "User-created draft",
+      lines: [{ description: "Freight", quantity: "2", unitPrice: "1000", discountPercent: "0", taxRatePercent: "0" }],
+    });
+
+    const saved = await adminPool.query<{
+      created_by_principal_id: string | null; created_by_actor_type: string | null; created_by_actor_ref: string | null;
+      updated_by_actor_type: string | null; updated_by_actor_ref: string | null;
+    }>(
+      `SELECT created_by_principal_id, created_by_actor_type, created_by_actor_ref,
+              updated_by_actor_type, updated_by_actor_ref
+         FROM public.finance_invoices WHERE tenant_id = $1 AND id = $2`,
+      [tenantA, created.id],
+    );
+    expect(saved.rows[0]).toMatchObject({
+      created_by_principal_id: null,
+      created_by_actor_type: "USER",
+      created_by_actor_ref: actorRef,
+      updated_by_actor_type: "USER",
+      updated_by_actor_ref: actorRef,
+    });
+
+    const updated = await invoiceDraftService.updateDraft(context, created.id, {
+      customerId,
+      currencyCode: "XOF",
+      expectedUpdatedAt: created.updatedAt,
+      notes: "User-updated draft",
+      lines: [{ description: "Freight", quantity: "3", unitPrice: "1000", discountPercent: "0", taxRatePercent: "0" }],
+    });
+    expect(updated.notes).toBe("User-updated draft");
+
+    const audit = await adminPool.query<{ action: string; actor_type: string; actor_ref: string }>(
+      `SELECT action, actor_type, actor_ref FROM public.finance_audit_events
+        WHERE tenant_id = $1 AND resource_id = $2 AND action IN ('invoice.draft.created','invoice.draft.updated')
+        ORDER BY action`,
+      [tenantA, created.id],
+    );
+    expect(audit.rows).toHaveLength(2);
+    expect(audit.rows.every((row) => row.actor_type === "USER" && row.actor_ref === actorRef)).toBe(true);
   });
 });

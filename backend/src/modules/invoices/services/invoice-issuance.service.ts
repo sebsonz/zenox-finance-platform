@@ -1,5 +1,7 @@
 import { withTenantTransaction } from "../../../db/transaction.js";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinanceInvoiceOperationContext } from "../types/invoice-operation-context.js";
+import { invoiceActor, isUserInvoiceContext } from "../types/invoice-operation-context.js";
+import { recordInvoiceAudit } from "../repositories/invoice-audit.repository.js";
 import { invoiceRepository, type FinanceInvoice } from "../repositories/invoice.repository.js";
 import { invoiceDocumentRepository } from "../repositories/invoice-document.repository.js";
 import { invoicePdfRepository } from "../repositories/invoice-pdf.repository.js";
@@ -16,11 +18,13 @@ export class InvoiceIssuanceServiceError extends Error {
 
 export const invoiceIssuanceService = {
   async issue(
-    context: FinanceRequestContext,
+    context: FinanceInvoiceOperationContext,
     invoiceId: string,
     expectedUpdatedAt: string,
     idempotencyKey: string,
   ): Promise<FinanceInvoice> {
+    const actor = invoiceActor(context);
+    const legacyPrincipalId = isUserInvoiceContext(context) ? null : context.principal.id;
     return withTenantTransaction(context.tenantId, async (client) => {
       await client.query(
         `INSERT INTO public.finance_invoice_issuance_requests
@@ -124,11 +128,15 @@ export const invoiceIssuanceService = {
                 issue_date = (timezone('UTC', clock_timestamp()))::date,
                 issued_at = clock_timestamp(),
                 issued_by_principal_id = $5,
+                issued_by_actor_type = $6,
+                issued_by_actor_ref = $7,
+                updated_by_actor_type = $6,
+                updated_by_actor_ref = $7,
                 updated_at = clock_timestamp()
           WHERE tenant_id = $1 AND id = $2 AND status = 'DRAFT'
             AND updated_at = $3::timestamptz
           RETURNING id`,
-        [context.tenantId, invoiceId, expectedUpdatedAt, invoiceCode, context.principal.id],
+        [context.tenantId, invoiceId, expectedUpdatedAt, invoiceCode, legacyPrincipalId, actor.type, actor.ref],
       );
       if (updated.rowCount !== 1) {
         throw new InvoiceIssuanceServiceError(
@@ -143,15 +151,17 @@ export const invoiceIssuanceService = {
       await invoiceDocumentRepository.createForIssuedInvoice(
         client,
         context.tenantId,
-        context.principal.id,
+        context,
         issued,
       );
-      await invoicePdfRepository.createForIssuedInvoice(
-        client,
-        context.tenantId,
-        context.principal.id,
-        issued,
-      );
+      await invoicePdfRepository.createForIssuedInvoice(client, context, issued);
+      await recordInvoiceAudit(client, context, "invoice.issued", "INVOICE", issued.id, {
+        invoiceCode: issued.invoiceCode,
+        documentVersion: issued.documentVersion,
+        taxSnapshotId: issued.taxSnapshotId,
+        htmlArtifactCreated: true,
+        pdfArtifactCreated: true,
+      });
       await client.query(
         `UPDATE public.finance_invoice_issuance_requests
             SET issued_invoice_code = $3, completed_at = clock_timestamp()

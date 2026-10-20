@@ -11,6 +11,7 @@ export type FinanceUserPermission =
   | "invoices:read"
   | "invoices:create"
   | "invoices:issue"
+  | "invoices:credit"
   | "payments:read"
   | "payments:record"
   | "payments:allocate"
@@ -20,19 +21,19 @@ export type FinanceUserPermission =
 const ROLE_PERMISSIONS: Readonly<Record<FinanceUserRole, readonly FinanceUserPermission[]>> = {
   OWNER: [
     "tenant:read", "members:read", "members:manage", "settings:manage",
-    "invoices:read", "invoices:create", "invoices:issue",
+    "invoices:read", "invoices:create", "invoices:issue", "invoices:credit",
     "payments:read", "payments:record", "payments:allocate",
     "tax:read", "tax:manage",
   ],
   ADMIN: [
     "tenant:read", "members:read", "members:manage", "settings:manage",
-    "invoices:read", "invoices:create", "invoices:issue",
+    "invoices:read", "invoices:create", "invoices:issue", "invoices:credit",
     "payments:read", "payments:record", "payments:allocate",
     "tax:read", "tax:manage",
   ],
   FINANCE_MANAGER: [
     "tenant:read", "members:read",
-    "invoices:read", "invoices:create", "invoices:issue",
+    "invoices:read", "invoices:create", "invoices:issue", "invoices:credit",
     "payments:read", "payments:record", "payments:allocate",
     "tax:read", "tax:manage",
   ],
