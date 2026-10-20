@@ -127,4 +127,23 @@ K. JOURNAL DE PROGRESSION — 2026-10-20 (MISE À JOUR)
 [À AUDITER] Le bot de revue a signalé des valeurs de connexion PostgreSQL statiques dans le workflow CI de PR #10. Elles semblent être utilisées pour la base jetable CI, mais le signal doit être revu et corrigé proprement sans exposer de secret ni casser les forks. Ne pas afficher les valeurs. Vérifier si ce sont uniquement des identifiants de test; si un vrai secret a été exposé, le révoquer/faire tourner.
 [FAIT] Aucun PR fusionné par cette mise à jour. Aucune migration exécutée. La base zenoxfret_v2 n'a pas été touchée.
 
-Prochaine action immédiate : vérifier le résultat du run 39505015295 sur le SHA 67c2344fe71b7e8f9f7c84be69c75e4f1cec1033; si le typecheck passe, examiner les éventuelles étapes suivantes. Ensuite, auditer le HEAD exact des PR #5 et #9 pour fermer le module Factures. L'implémentation Paiements attend la validation de Factures.
+Prochaine action immédiate : continuer l'audit de la PR #12 Paiements/Allocations, surtout les tests dédiés de concurrence, remboursements et isolation. La première tranche est en place et validée par CI sur la branche dédiée; ne pas la déclarer production-ready. Poursuivre ensuite les APIs de rapprochement, les webhooks signés/fournisseurs et la revue sécurité. Garder toutes les PR en brouillon et ne rien fusionner sans approbation.
+
+======================================================================
+L. JOURNAL DE PROGRESSION — PAIEMENTS/ALLOCATIONS (2026-10-20)
+======================================================================
+[FAIT] Branche dédiée créée : feature/payments-allocations-foundation, basée sur feature/invoice-workflow-completion. Aucun contournement de contrôle GitHub.
+[FAIT] PR brouillon #12 ouverte : https://github.com/sebsonz/zenox-finance-platform/pull/12. Base = feature/invoice-workflow-completion. PR non fusionnée.
+[FAIT] Migration Finance 20261020000100_payments_allocations_foundation.sql : paiements, commandes idempotentes, événements, allocations, contrepassations séparées, RLS + FORCE RLS et triggers PostgreSQL de contrôle des allocations.
+[FAIT] Migration Finance 20261020000200_payment_refunds_and_reconciliation.sql : workflow des remboursements manuels, table d'import de rapprochement, politiques RLS et adaptation du garde-fou d'allocation pour tenir compte des remboursements réservés.
+[FAIT] Backend : création et confirmation manuelle idempotentes; allocation sur facture ISSUED et paiement CONFIRMED/SETTLED; limites de solde/currency; contrepassation partielle; calcul du solde des factures émises; demande/approbation/validation manuelle/annulation des remboursements.
+[FAIT] API routes montées sous /api/v1/payments et solde sous /api/v1/invoices/:invoiceId/balance. Le lancement des paiements fournisseurs et les webhooks ne sont pas activés.
+[FAIT] Tests unitaires ajoutés pour l'arithmétique décimale et la validation des paiements.
+[FAIT] CI du commit/HEAD PR #12 0f575978d5cb45807eef47321daea110f58faff5 : run 39507556055, conclusion SUCCESS. Backend typecheck/build, migrations sur PostgreSQL jetable, préparation rôle least-privilege, audit de drift, tests unitaires + intégration existants, frontend typecheck/build ont tous réussi.
+[FAIT] PR #10 : run 39505015295 sur SHA 67c2344fe71b7e8f9f7c84be69c75e4f1cec1033, conclusion SUCCESS.
+[FAIT] PR #9 : run 39133819378 sur SHA 758e131bf5eaf8c2c41de01baef807b7daa7825b, conclusion SUCCESS. PR #5 : run 38980590560 sur SHA 21e4a59881d62c13b7422dfcb5d03401606683c1, conclusion SUCCESS. Ces résultats valident uniquement les SHAs exacts indiqués.
+[EN COURS] Compléter des tests dédiés à la concurrence sur allocations, idempotence des remboursements, isolation RLS des nouvelles tables et tests HTTP/API du module paiements.
+[EN COURS] Revue de sécurité restante : garantir que les allocations tiennent compte des remboursements REQUESTED/APPROVED/SUCCEEDED dans les erreurs applicatives; valider les permissions runtime en dehors du rôle de test; ajouter tests de séparation des tâches sur l'approbation des remboursements.
+[A FAIRE] Webhooks de fournisseurs avec vérification de signature, tentative de paiement/provider adapters, exécution des remboursements fournisseurs, import/matching de rapprochement et lecture des événements détaillés.
+[A FAIRE] Revue finale du module, validation migration sur base Finance persistante uniquement après approbation explicite. Aucune migration persistante n'a été exécutée.
+[FAIT] Aucune PR fusionnée; zenoxfret_v2 non touchée.
