@@ -104,6 +104,91 @@ CREATE TABLE IF NOT EXISTS public.finance_payment_allocation_reversals (
 CREATE INDEX IF NOT EXISTS finance_payment_allocation_reversals_allocation_idx
   ON public.finance_payment_allocation_reversals (tenant_id, allocation_id);
 
+-- Database-level guards backstop the service transaction locks. These functions are
+-- SECURITY INVOKER so tenant RLS and least-privilege grants still apply.
+CREATE OR REPLACE FUNCTION public.finance_guard_payment_allocation()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $
+DECLARE
+  payment_row public.finance_payments%ROWTYPE;
+  invoice_row public.finance_invoices%ROWTYPE;
+  payment_allocated numeric(24,8);
+  payment_reversed numeric(24,8);
+  invoice_allocated numeric(24,8);
+  invoice_reversed numeric(24,8);
+BEGIN
+  SELECT * INTO payment_row FROM public.finance_payments
+   WHERE tenant_id=NEW.tenant_id AND id=NEW.payment_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'PAYMENT_NOT_FOUND' USING ERRCODE='23503'; END IF;
+  SELECT * INTO invoice_row FROM public.finance_invoices
+   WHERE tenant_id=NEW.tenant_id AND id=NEW.invoice_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'INVOICE_NOT_FOUND' USING ERRCODE='23503'; END IF;
+  IF payment_row.status NOT IN ('CONFIRMED','SETTLED') THEN
+    RAISE EXCEPTION 'PAYMENT_NOT_CONFIRMED' USING ERRCODE='23514';
+  END IF;
+  IF invoice_row.status <> 'ISSUED' THEN RAISE EXCEPTION 'INVOICE_NOT_ISSUED' USING ERRCODE='23514'; END IF;
+  IF btrim(payment_row.currency_code) <> btrim(invoice_row.currency_code)
+     OR btrim(NEW.currency_code) <> btrim(payment_row.currency_code) THEN
+    RAISE EXCEPTION 'PAYMENT_CURRENCY_MISMATCH' USING ERRCODE='23514';
+  END IF;
+
+  SELECT COALESCE(SUM(a.amount),0) INTO payment_allocated
+    FROM public.finance_payment_allocations a
+   WHERE a.tenant_id=NEW.tenant_id AND a.payment_id=NEW.payment_id;
+  SELECT COALESCE(SUM(r.amount),0) INTO payment_reversed
+    FROM public.finance_payment_allocation_reversals r
+    JOIN public.finance_payment_allocations a
+      ON a.tenant_id=r.tenant_id AND a.id=r.allocation_id
+   WHERE r.tenant_id=NEW.tenant_id AND a.payment_id=NEW.payment_id;
+  SELECT COALESCE(SUM(a.amount),0) INTO invoice_allocated
+    FROM public.finance_payment_allocations a
+   WHERE a.tenant_id=NEW.tenant_id AND a.invoice_id=NEW.invoice_id;
+  SELECT COALESCE(SUM(r.amount),0) INTO invoice_reversed
+    FROM public.finance_payment_allocation_reversals r
+    JOIN public.finance_payment_allocations a
+      ON a.tenant_id=r.tenant_id AND a.id=r.allocation_id
+   WHERE r.tenant_id=NEW.tenant_id AND a.invoice_id=NEW.invoice_id;
+
+  IF NEW.amount > payment_row.amount - payment_allocated + payment_reversed THEN
+    RAISE EXCEPTION 'PAYMENT_AMOUNT_EXCEEDED' USING ERRCODE='23514';
+  END IF;
+  IF NEW.amount > invoice_row.grand_total - invoice_allocated + invoice_reversed THEN
+    RAISE EXCEPTION 'INVOICE_BALANCE_EXCEEDED' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$;
+
+CREATE TRIGGER finance_payment_allocation_guard
+BEFORE INSERT ON public.finance_payment_allocations
+FOR EACH ROW EXECUTE FUNCTION public.finance_guard_payment_allocation();
+
+CREATE OR REPLACE FUNCTION public.finance_guard_payment_allocation_reversal()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $
+DECLARE
+  allocation_row public.finance_payment_allocations%ROWTYPE;
+  already_reversed numeric(24,8);
+BEGIN
+  SELECT * INTO allocation_row FROM public.finance_payment_allocations
+   WHERE tenant_id=NEW.tenant_id AND id=NEW.allocation_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'ALLOCATION_NOT_FOUND' USING ERRCODE='23503'; END IF;
+  SELECT COALESCE(SUM(amount),0) INTO already_reversed
+    FROM public.finance_payment_allocation_reversals
+   WHERE tenant_id=NEW.tenant_id AND allocation_id=NEW.allocation_id;
+  IF NEW.amount > allocation_row.amount - already_reversed THEN
+    RAISE EXCEPTION 'ALLOCATION_REVERSAL_EXCEEDED' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$;
+
+CREATE TRIGGER finance_payment_allocation_reversal_guard
+BEFORE INSERT ON public.finance_payment_allocation_reversals
+FOR EACH ROW EXECUTE FUNCTION public.finance_guard_payment_allocation_reversal();
+
 ALTER TABLE public.finance_payment_commands ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_payment_commands FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_payments ENABLE ROW LEVEL SECURITY;
