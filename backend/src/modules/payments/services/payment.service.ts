@@ -63,11 +63,11 @@ export const paymentService = {
   },
 
   async reverseAllocation(
-    context: FinanceRequestContext, allocationId: string, input: ReverseAllocationInput, idempotencyKey: string,
+    context: FinanceRequestContext, paymentId: string, allocationId: string, input: ReverseAllocationInput, idempotencyKey: string,
   ) {
     try {
       return await withTenantTransaction(context.tenantId, (client) =>
-        paymentRepository.reverseAllocationInTransaction(client, context, allocationId, input, idempotencyKey));
+        paymentRepository.reverseAllocationInTransaction(client, context, paymentId, allocationId, input, idempotencyKey));
     } catch (error) {
       if (error instanceof Error && [
         "IDEMPOTENCY_KEY_REUSED", "ALLOCATION_NOT_FOUND", "INVALID_AMOUNT", "ALLOCATION_REVERSAL_EXCEEDED",
