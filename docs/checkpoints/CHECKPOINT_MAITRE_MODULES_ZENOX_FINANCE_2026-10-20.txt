@@ -127,7 +127,7 @@ K. JOURNAL DE PROGRESSION — 2026-10-20 (MISE À JOUR)
 [À AUDITER] Le bot de revue a signalé des valeurs de connexion PostgreSQL statiques dans le workflow CI de PR #10. Elles semblent être utilisées pour la base jetable CI, mais le signal doit être revu et corrigé proprement sans exposer de secret ni casser les forks. Ne pas afficher les valeurs. Vérifier si ce sont uniquement des identifiants de test; si un vrai secret a été exposé, le révoquer/faire tourner.
 [FAIT] Aucun PR fusionné par cette mise à jour. Aucune migration exécutée. La base zenoxfret_v2 n'a pas été touchée.
 
-Prochaine action immédiate : poursuivre les tests de succès HTTP authentifiés et les contrats/API de rapprochement; ensuite construire les adaptateurs fournisseurs et webhooks signés. La CI actuelle est verte sur le SHA exact de PR #12, mais le module reste en cours et la PR reste brouillon. Garder toutes les PR en brouillon et ne rien fusionner sans approbation.
+Prochaine action immédiate : définir puis implémenter les contrats/API d'import et de matching du rapprochement, ensuite construire les adaptateurs fournisseurs et webhooks signés. Les tests HTTP authentifiés de création, confirmation, allocation, remboursement, approbation distincte, succès manuel et lecture du solde sont maintenant verts en CI. Le module reste en cours et la PR reste brouillon. Garder toutes les PR en brouillon et ne rien fusionner sans approbation.
 
 ======================================================================
 L. JOURNAL DE PROGRESSION — PAIEMENTS/ALLOCATIONS (2026-10-20)
@@ -165,3 +165,17 @@ M. JOURNAL DE PROGRESSION — PAIEMENTS/ALLOCATIONS (2026-10-21)
 [A FAIRE] API d'import/matching rapprochement, adaptateurs de paiement, tentatives, webhooks signés et exécution de remboursements fournisseurs.
 [A FAIRE] Revue finale des permissions runtime de production et des garde-fous de compteurs; aucune migration persistante autorisée sans approbation explicite.
 [FAIT] Aucun merge; aucune migration persistante exécutée; zenoxfret_v2 non touchée.
+
+ 
+======================================================================
+N. VALIDATION HTTP AUTHENTIFIÉE — PAIEMENTS (2026-10-21)
+======================================================================
+[FAIT] Le test backend/tests/integration/payments-http.test.ts a été étendu à un parcours HTTP authentifié complet, avec deux principals de test et secrets synthétiques générés au runtime.
+[FAIT] Parcours validé : création paiement MANUAL -> confirmation -> allocation à une facture ISSUED -> lecture solde -> demande de remboursement -> refus d'auto-approbation (403) -> approbation par un autre principal -> enregistrement du succès manuel -> lecture liste des paiements.
+[FAIT] Les routes sans authentification restent refusées (401) pour création paiement, demande remboursement et lecture solde.
+[FAIT] CI verte sur SHA exact PR #12 52c3294815cc307b3ceb70931146dc344cff7e2d : run 39681382071. Tests unitaires/PostgreSQL/HTTP : 43 fichiers, 200 tests; backend typecheck/build, migrations jetables, rôle least-privilege, drift, frontend typecheck/build : SUCCESS.
+[EN COURS] PR #12 reste draft et non fusionnée. Le socle paiements/allocations/remboursements manuels a maintenant les tests de succès HTTP; ne pas confondre cela avec une intégration de fournisseurs ou une validation de production.
+[A FAIRE] API de rapprochement (import idempotent, matching explicite, conflits, audit, sécurité tenant, validation de devise/montant, batch import et tests).
+[A FAIRE] Adaptateurs fournisseurs, payment attempts, webhooks avec vérification de signature et anti-rejeu, exécution de remboursements fournisseurs, API lecture d'événements.
+[A FAIRE] Revue finale des permissions runtime de production, monitoring/alerting, opérations de rapprochement et validation de déploiement. Migrations persistantes uniquement avec approbation explicite.
+[FAIT] Aucune PR fusionnée; aucune migration persistante exécutée; zenoxfret_v2 non touchée.
