@@ -149,6 +149,7 @@ export const refundRepository = {
     const current = found.rows[0];
     if (!current) throw new Error("REFUND_NOT_FOUND");
     if (current.status !== "REQUESTED") throw new Error("REFUND_NOT_REQUESTED");
+    if (current.requested_by_actor_ref === context.principal.id) throw new Error("REFUND_SELF_APPROVAL_FORBIDDEN");
     const updated = await client.query<RefundRow>(
       `UPDATE public.finance_payment_refunds SET status='APPROVED',approved_by_actor_type='SERVICE',
         approved_by_actor_ref=$4,approved_at=clock_timestamp(),updated_at=clock_timestamp()
