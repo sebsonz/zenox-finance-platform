@@ -187,6 +187,11 @@ integrationDescribe("PostgreSQL payment refund and allocation controls", () => {
     const requester = context(tenantA,randomUUID());
     const refund = await adminTransaction(tenantA,(client) =>
       refundRepository.request(client,requester,paymentId,{amount:"60",reason:"Customer requested refund"},"refund-request-" + randomUUID()));
+    const reservedBefore = await adminPool.query<{ refund_reserved_amount: string }>(
+      "SELECT refund_reserved_amount::text FROM public.finance_payments WHERE tenant_id=$1 AND id=$2",
+      [tenantA,paymentId],
+    );
+    expect(reservedBefore.rows[0]?.refund_reserved_amount).toBe("60.00000000");
 
     await expect(adminTransaction(tenantA,(client) =>
       paymentRepository.allocateInTransaction(client,requester,paymentId,{invoiceId,amount:"50"},"allocation-" + randomUUID()))
