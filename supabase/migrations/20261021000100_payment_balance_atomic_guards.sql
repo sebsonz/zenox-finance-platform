@@ -137,10 +137,10 @@ BEGIN
    RETURNING id INTO payment_id;
   IF payment_id IS NULL THEN RAISE EXCEPTION 'PAYMENT_BALANCE_INVARIANT' USING ERRCODE='23514'; END IF;
 
-  UPDATE public.finance_payment_invoice_balances
-     SET allocated_amount=allocated_amount-NEW.amount,updated_at=clock_timestamp()
-   WHERE tenant_id=NEW.tenant_id AND invoice_id=allocation_row.invoice_id AND allocated_amount >= NEW.amount
-   RETURNING invoice_id INTO invoice_id;
+  UPDATE public.finance_payment_invoice_balances AS balance
+     SET allocated_amount=balance.allocated_amount-NEW.amount,updated_at=clock_timestamp()
+   WHERE balance.tenant_id=NEW.tenant_id AND balance.invoice_id=allocation_row.invoice_id AND balance.allocated_amount >= NEW.amount
+   RETURNING balance.invoice_id INTO invoice_id;
   IF invoice_id IS NULL THEN RAISE EXCEPTION 'INVOICE_BALANCE_INVARIANT' USING ERRCODE='23514'; END IF;
   RETURN NEW;
 END;
