@@ -184,6 +184,11 @@ BEGIN
 END;
 $function$;
 
+DROP TRIGGER IF EXISTS finance_payment_refund_guard ON public.finance_payment_refunds;
+CREATE TRIGGER finance_payment_refund_guard
+BEFORE INSERT ON public.finance_payment_refunds
+FOR EACH ROW EXECUTE FUNCTION public.finance_guard_payment_refund();
+
 CREATE OR REPLACE FUNCTION public.finance_guard_payment_refund_update()
 RETURNS trigger
 LANGUAGE plpgsql
