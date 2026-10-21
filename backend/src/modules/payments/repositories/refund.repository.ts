@@ -6,7 +6,7 @@ import type { CreateRefundInput, RecordManualRefundSuccessInput } from "../valid
 import type { RefundRecord, RefundStatus } from "../types/refund.types.js";
 
 interface RefundRow {
-  id: string; payment_id: string; amount: string; currency_code: string; status: RefundStatus; reason: string;
+  id: string; payment_id: string; amount: string; currency_code: string; status: RefundStatus; reason: string; requested_by_actor_ref: string;
   external_reference: string | null; approved_at: string | null; completed_at: string | null;
   created_at: string; updated_at: string;
 }
