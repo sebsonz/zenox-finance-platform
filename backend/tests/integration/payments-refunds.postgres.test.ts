@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { refundRepository } from "../../src/modules/payments/repositories/refund.repository.js";
+import { paymentRepository } from "../../src/modules/payments/repositories/payment.repository.js";
 import type { FinanceRequestContext } from "../../src/modules/integration-auth/types/authenticated-principal.js";
 
 const adminUrl = process.env["TEST_DATABASE_URL"];
@@ -181,6 +182,24 @@ integrationDescribe("PostgreSQL payment refund and allocation controls", () => {
     expect(approved.status).toBe("APPROVED");
   });
 
+  it("releases a cancelled refund reservation and keeps active reservations unavailable to allocations", async () => {
+    const { paymentId, invoiceId } = await seedPaymentAndIssuedInvoice(tenantA,"100");
+    const requester = context(tenantA,randomUUID());
+    const refund = await adminTransaction(tenantA,(client) =>
+      refundRepository.request(client,requester,paymentId,{amount:"60",reason:"Customer requested refund"},"refund-request-" + randomUUID()));
+
+    await expect(adminTransaction(tenantA,(client) =>
+      paymentRepository.allocateInTransaction(client,requester,paymentId,{invoiceId,amount:"50"},"allocation-" + randomUUID()))
+    ).rejects.toMatchObject({message:"PAYMENT_AMOUNT_EXCEEDED"});
+
+    const cancelled = await adminTransaction(tenantA,(client) =>
+      refundRepository.cancel(client,requester,paymentId,refund.id,"refund-cancel-" + randomUUID()));
+    expect(cancelled.status).toBe("CANCELLED");
+
+    const allocation = await adminTransaction(tenantA,(client) =>
+      paymentRepository.allocateInTransaction(client,requester,paymentId,{invoiceId,amount:"100"},"allocation-" + randomUUID()));
+    expect(allocation.amount).toBe("100.00000000");
+  });
   it("serializes allocation and refund reservations against the same payment balance", async () => {
     const { paymentId, invoiceId } = await seedPaymentAndIssuedInvoice(tenantA,"100");
     const outcomes = await Promise.allSettled([
