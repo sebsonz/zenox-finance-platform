@@ -226,7 +226,16 @@ export const paymentRepository = {
            WHERE r.tenant_id=$1 AND a.invoice_id=$2),0))::text AS total`,
       [context.tenantId,input.invoiceId],
     );
-    const available = Decimal(payment.amount).minus(usedByPayment.rows[0]?.total ?? "0").toString();
+    const refundReservations = await client.query<{ total: string }>(
+      `SELECT COALESCE(SUM(amount),0)::text AS total
+         FROM public.finance_payment_refunds
+        WHERE tenant_id=$1 AND payment_id=$2 AND status NOT IN ('FAILED','CANCELLED')`,
+      [context.tenantId, paymentId],
+    );
+    const available = Decimal(payment.amount)
+      .minus(usedByPayment.rows[0]?.total ?? "0")
+      .minus(refundReservations.rows[0]?.total ?? "0")
+      .toString();
     const balance = Decimal(invoice.grand_total).minus(usedByInvoice.rows[0]?.total ?? "0").toString();
     const requested = Decimal(input.amount);
     if (!requested.isFinite() || requested.lte(0)) throw new Error("INVALID_AMOUNT");
