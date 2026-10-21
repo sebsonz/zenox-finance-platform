@@ -43,7 +43,7 @@ async function beginCommand(client: PoolClient, context: FinanceRequestContext, 
 async function completeCommand(client: PoolClient, context: FinanceRequestContext, operation: string, key: string, resourceId: string) {
   await client.query(
     `UPDATE public.finance_payment_commands SET state='SUCCEEDED',resource_type='PAYMENT_REFUND',
-       resource_id=$4,response_body=jsonb_build_object('resourceType','PAYMENT_REFUND','resourceId',$4),completed_at=clock_timestamp()
+       resource_id=$4::uuid,response_body=jsonb_build_object('resourceType','PAYMENT_REFUND','resourceId',$4::text),completed_at=clock_timestamp()
       WHERE tenant_id=$1 AND operation=$2 AND idempotency_key=$3 AND state='IN_PROGRESS'`,
     [context.tenantId,operation,key,resourceId],
   );
