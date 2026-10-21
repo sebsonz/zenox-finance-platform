@@ -33,6 +33,10 @@ SET allocated_amount = COALESCE((
       WHERE r.tenant_id=p.tenant_id AND r.payment_id=p.id AND r.status NOT IN ('FAILED','CANCELLED')
     ),0);
 
+ALTER TABLE public.finance_payments
+  ADD CONSTRAINT finance_payments_reserved_balance_check
+  CHECK (allocated_amount + refund_reserved_amount <= amount);
+
 INSERT INTO public.finance_payment_invoice_balances (tenant_id,invoice_id,invoice_total,allocated_amount)
 SELECT i.tenant_id,i.id,i.grand_total,
        COALESCE(SUM(a.amount),0) - COALESCE((
@@ -204,6 +208,23 @@ BEGIN
     RAISE EXCEPTION 'REFUND_INVALID_TRANSITION' USING ERRCODE='23514';
   ELSIF OLD.status IN ('SUCCEEDED','FAILED','CANCELLED') THEN
     RAISE EXCEPTION 'REFUND_TERMINAL_STATE' USING ERRCODE='23514';
+  END IF;
+
+  IF (NEW.approved_by_actor_type IS DISTINCT FROM OLD.approved_by_actor_type
+      OR NEW.approved_by_actor_ref IS DISTINCT FROM OLD.approved_by_actor_ref
+      OR NEW.approved_at IS DISTINCT FROM OLD.approved_at)
+     AND NOT (OLD.status='REQUESTED' AND NEW.status='APPROVED') THEN
+    RAISE EXCEPTION 'REFUND_APPROVAL_METADATA_IMMUTABLE' USING ERRCODE='23514';
+  END IF;
+  IF (NEW.completed_by_actor_type IS DISTINCT FROM OLD.completed_by_actor_type
+      OR NEW.completed_by_actor_ref IS DISTINCT FROM OLD.completed_by_actor_ref
+      OR NEW.completed_at IS DISTINCT FROM OLD.completed_at)
+     AND NOT (OLD.status='APPROVED' AND NEW.status IN ('SUCCEEDED','FAILED')) THEN
+    RAISE EXCEPTION 'REFUND_COMPLETION_METADATA_IMMUTABLE' USING ERRCODE='23514';
+  END IF;
+  IF NEW.external_reference IS DISTINCT FROM OLD.external_reference
+     AND NOT (OLD.status='APPROVED' AND NEW.status='SUCCEEDED') THEN
+    RAISE EXCEPTION 'REFUND_EXTERNAL_REFERENCE_IMMUTABLE' USING ERRCODE='23514';
   END IF;
 
   IF NEW.status IN ('CANCELLED','FAILED') AND OLD.status IN ('REQUESTED','APPROVED') THEN
