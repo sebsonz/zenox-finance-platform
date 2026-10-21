@@ -14,9 +14,9 @@ function key(req: Request,res: Response): string | null {
 function errorResponse(error: unknown,res: Response,next: NextFunction,correlationId: string): void {
   if(error instanceof RefundServiceError){
     const notFound=new Set(["PAYMENT_NOT_FOUND","REFUND_NOT_FOUND"]);
-    const conflict=new Set(["IDEMPOTENCY_KEY_REUSED","PAYMENT_NOT_CONFIRMED","REFUND_AMOUNT_EXCEEDED","REFUND_NOT_REQUESTED","REFUND_NOT_APPROVED","REFUND_NOT_CANCELLABLE"]);
+    const conflict=new Set(["IDEMPOTENCY_KEY_REUSED","PAYMENT_NOT_CONFIRMED","REFUND_AMOUNT_EXCEEDED","REFUND_NOT_REQUESTED","REFUND_NOT_APPROVED","REFUND_NOT_CANCELLABLE","REFUND_SELF_APPROVAL_FORBIDDEN"]);
     const forbidden=new Set(["PROVIDER_REFUND_REQUIRES_PROVIDER_ADAPTER"]);
-    const status=notFound.has(error.code)?404:conflict.has(error.code)?409:forbidden.has(error.code)?403:422;
+    const status=notFound.has(error.code)?404:conflict.has(error.code)?409:(forbidden.has(error.code)||error.code==="REFUND_SELF_APPROVAL_FORBIDDEN")?403:422;
     res.status(status).json({error:{code:error.code,message:error.message,correlationId}});
     return;
   }
