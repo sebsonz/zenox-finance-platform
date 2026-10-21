@@ -11,7 +11,7 @@ interface RefundRow {
   created_at: string; updated_at: string;
 }
 interface PaymentRow { id: string; amount: string; currency_code: string; status: string; source: string; }
-const refundColumns = `id,payment_id,amount::text,btrim(currency_code) AS currency_code,status,reason,external_reference,
+const refundColumns = `id,payment_id,amount::text,btrim(currency_code) AS currency_code,status,reason,requested_by_actor_ref,external_reference,
   CASE WHEN approved_at IS NULL THEN NULL ELSE to_char(approved_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') END AS approved_at,
   CASE WHEN completed_at IS NULL THEN NULL ELSE to_char(completed_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') END AS completed_at,
   to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at,
