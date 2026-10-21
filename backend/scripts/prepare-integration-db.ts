@@ -156,8 +156,9 @@ async function prepare(): Promise<void> {
     await client.query("GRANT SELECT, INSERT, UPDATE ON public.finance_payment_commands, public.finance_payments TO finance_runtime_test");
     await client.query("GRANT SELECT, INSERT ON public.finance_payment_events, public.finance_payment_allocations, public.finance_payment_allocation_reversals TO finance_runtime_test");
     await client.query("GRANT SELECT, INSERT, UPDATE ON public.finance_payment_refunds, public.finance_payment_reconciliation_items TO finance_runtime_test");
+    await client.query("GRANT SELECT, INSERT, UPDATE ON public.finance_payment_invoice_balances TO finance_runtime_test");
     await client.query("REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.finance_payment_events, public.finance_payment_allocations, public.finance_payment_allocation_reversals FROM finance_runtime_test");
-    await client.query("REVOKE DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.finance_payment_refunds, public.finance_payment_reconciliation_items FROM finance_runtime_test");
+    await client.query("REVOKE DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.finance_payment_refunds, public.finance_payment_reconciliation_items, public.finance_payment_invoice_balances FROM finance_runtime_test");
 
     await client.query("GRANT EXECUTE ON FUNCTION public.finance_list_my_active_tenants() TO finance_runtime_test");
     await client.query("REVOKE ALL ON TABLE public.finance_user_tenant_memberships FROM finance_runtime_test");
