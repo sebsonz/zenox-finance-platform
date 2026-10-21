@@ -127,7 +127,7 @@ K. JOURNAL DE PROGRESSION — 2026-10-20 (MISE À JOUR)
 [À AUDITER] Le bot de revue a signalé des valeurs de connexion PostgreSQL statiques dans le workflow CI de PR #10. Elles semblent être utilisées pour la base jetable CI, mais le signal doit être revu et corrigé proprement sans exposer de secret ni casser les forks. Ne pas afficher les valeurs. Vérifier si ce sont uniquement des identifiants de test; si un vrai secret a été exposé, le révoquer/faire tourner.
 [FAIT] Aucun PR fusionné par cette mise à jour. Aucune migration exécutée. La base zenoxfret_v2 n'a pas été touchée.
 
-Prochaine action immédiate : continuer l'audit de la PR #12 Paiements/Allocations, surtout les tests dédiés de concurrence, remboursements et isolation. La première tranche est en place et validée par CI sur la branche dédiée; ne pas la déclarer production-ready. Poursuivre ensuite les APIs de rapprochement, les webhooks signés/fournisseurs et la revue sécurité. Garder toutes les PR en brouillon et ne rien fusionner sans approbation.
+Prochaine action immédiate : poursuivre les tests de succès HTTP authentifiés et les contrats/API de rapprochement; ensuite construire les adaptateurs fournisseurs et webhooks signés. La CI actuelle est verte sur le SHA exact de PR #12, mais le module reste en cours et la PR reste brouillon. Garder toutes les PR en brouillon et ne rien fusionner sans approbation.
 
 ======================================================================
 L. JOURNAL DE PROGRESSION — PAIEMENTS/ALLOCATIONS (2026-10-20)
@@ -147,3 +147,21 @@ L. JOURNAL DE PROGRESSION — PAIEMENTS/ALLOCATIONS (2026-10-20)
 [A FAIRE] Webhooks de fournisseurs avec vérification de signature, tentative de paiement/provider adapters, exécution des remboursements fournisseurs, import/matching de rapprochement et lecture des événements détaillés.
 [A FAIRE] Revue finale du module, validation migration sur base Finance persistante uniquement après approbation explicite. Aucune migration persistante n'a été exécutée.
 [FAIT] Aucune PR fusionnée; zenoxfret_v2 non touchée.
+
+ 
+======================================================================
+M. JOURNAL DE PROGRESSION — PAIEMENTS/ALLOCATIONS (2026-10-21)
+======================================================================
+[FAIT] Correction du calcul d'allocation : les remboursements REQUESTED/APPROVED/SUCCEEDED sont réservés et soustraits des fonds allouables; CANCELLED/FAILED libèrent la réservation.
+[FAIT] Correction du workflow remboursement : identifiant du demandeur présent dans la projection SQL, séparation demandeur/approbateur appliquée et erreurs de séparation des tâches correctement propagées.
+[FAIT] Découverte/correction d'un garde-fou manquant : le trigger INSERT des remboursements n'était pas attaché dans la migration précédente. Migration suivante 20261021000100_payment_balance_atomic_guards.sql attache le trigger.
+[FAIT] Ajout de compteurs atomiques sur finance_payments (allocated_amount, refund_reserved_amount) et table finance_payment_invoice_balances, avec upsert atomique pour protéger la concurrence des allocations sur une facture. Contrepassations mettent à jour les compteurs; annulation/échec de remboursement libère les fonds.
+[FAIT] Ajout des garde-fous de transitions/immutabilité sur remboursements et précision monétaire dans les triggers PostgreSQL.
+[FAIT] Tests ajoutés : backend/tests/integration/payments-refunds.postgres.test.ts (idempotence, approbation distincte, réservations et libération, concurrence allocation/remboursement, RLS); backend/tests/integration/payments-http.test.ts (routes exigeant l'authentification); backend/tests/unit/refund.schema.test.ts.
+[FAIT] Une première CI a révélé des erreurs réelles; elles ont été corrigées (casts UUID/text dans completeCommand; requester field manquant dans RefundRow/SELECT; garde-fou self-approval; trigger de réservation absent). Ne pas compter les runs précédents échoués comme validation.
+[FAIT] CI complète réussie sur SHA exact PR #12 dd6f35b5b2ee8d999ab127a260f7b6b684d6d07e : run 39680936141. Backend typecheck/build, migrations Finance sur PostgreSQL jetable, setup rôle least-privilege, migration drift, tests unitaires/intégration (43 fichiers, 201 tests), frontend typecheck et build : SUCCESS.
+[EN COURS] PR #12 reste draft/non fusionnée. Les tests HTTP couvrent le refus sans authentification, mais pas encore le parcours de succès avec authentification valide.
+[A FAIRE] Tests HTTP authentifiés end-to-end pour création/confirmation paiement, allocation, remboursement/approbation/annulation et solde facture.
+[A FAIRE] API d'import/matching rapprochement, adaptateurs de paiement, tentatives, webhooks signés et exécution de remboursements fournisseurs.
+[A FAIRE] Revue finale des permissions runtime de production et des garde-fous de compteurs; aucune migration persistante autorisée sans approbation explicite.
+[FAIT] Aucun merge; aucune migration persistante exécutée; zenoxfret_v2 non touchée.
