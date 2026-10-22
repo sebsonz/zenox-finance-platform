@@ -116,8 +116,31 @@ export const reconciliationRepository = {
           [context.tenantId, item.providerCode, item.externalReference],
         );
         if (concurrent.rows[0]) {
+          const concurrentRow = concurrent.rows[0];
           duplicates += 1;
-          imported.push(concurrent.rows[0]);
+          const samePayload =
+            normalizeAmount(concurrentRow.amount) === normalizeAmount(item.amount) &&
+            concurrentRow.currency_code.trim() === item.currencyCode &&
+            ((concurrentRow.transaction_date === null && item.transactionDate === undefined) ||
+              (concurrentRow.transaction_date !== null && item.transactionDate !== undefined &&
+                Date.parse(concurrentRow.transaction_date) === Date.parse(item.transactionDate)));
+          if (!samePayload && concurrentRow.status !== "MATCHED" && concurrentRow.status !== "IGNORED") {
+            const marked = await client.query<ReconciliationRow>(
+              `UPDATE public.finance_payment_reconciliation_items
+                  SET status = 'CONFLICT', updated_at = now()
+                WHERE tenant_id = $1 AND id = $2
+                RETURNING ${columns}`,
+              [context.tenantId, concurrentRow.id],
+            );
+            if (marked.rows[0]) {
+              conflicts += 1;
+              imported.push(marked.rows[0]);
+            } else {
+              imported.push(concurrentRow);
+            }
+          } else {
+            imported.push(concurrentRow);
+          }
         }
       }
     }
