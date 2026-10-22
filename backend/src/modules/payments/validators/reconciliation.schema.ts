@@ -14,7 +14,7 @@ export const reconciliationImportRowSchema = z.object({
   amount: decimalAmount,
   currencyCode,
   transactionDate: z.string().datetime({ offset: true }).optional(),
-  safeMetadata: z.record(z.unknown()).optional(),
+  safeMetadata: z.record(z.string(), z.unknown()).optional(),
 }).strict();
 
 export const reconciliationImportSchema = z.object({
