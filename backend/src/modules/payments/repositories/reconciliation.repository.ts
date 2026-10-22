@@ -74,7 +74,9 @@ export const reconciliationRepository = {
         const samePayload =
           normalizeAmount(prior.amount) === normalizeAmount(item.amount) &&
           prior.currency_code.trim() === item.currencyCode &&
-          prior.transaction_date === (item.transactionDate ?? null);
+          (prior.transaction_date === null && item.transactionDate === undefined) ||
+          (prior.transaction_date !== null && item.transactionDate !== undefined &&
+            Date.parse(prior.transaction_date) === Date.parse(item.transactionDate));
         if (!samePayload && prior.status !== "MATCHED" && prior.status !== "IGNORED") {
           const updated = await client.query<ReconciliationRow>(
             `UPDATE public.finance_payment_reconciliation_items
@@ -175,7 +177,7 @@ export const reconciliationRepository = {
       normalizeAmount(payment.amount) === normalizeAmount(item.amount) &&
       payment.currency_code.trim() === item.currency_code.trim(),
     );
-    const status = exact.length === 1 ? "MATCHED" : "CONFLICT";
+    const status = exact.length === 1 ? "MATCHED" : payments.rows.length === 0 && !input.paymentId ? "UNMATCHED" : "CONFLICT";
     const paymentId = status === "MATCHED" ? exact[0]?.id ?? null : null;
     const updated = await client.query<ReconciliationRow>(
       `UPDATE public.finance_payment_reconciliation_items
