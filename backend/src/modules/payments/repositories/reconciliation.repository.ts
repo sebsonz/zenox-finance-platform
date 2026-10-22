@@ -57,7 +57,7 @@ export const reconciliationRepository = {
     const batchId = batchIdResult.rows[0]?.id;
     if (!batchId) throw new Error("RECONCILIATION_BATCH_ID_FAILED");
 
-    const imported: ReturnType<typeof mapRow>[] = [];
+    const imported: ReconciliationRow[] = [];
     let inserted = 0;
     let duplicates = 0;
     let conflicts = 0;
@@ -86,7 +86,7 @@ export const reconciliationRepository = {
             [context.tenantId, prior.id],
           );
           if (updated.rows[0]) {
-            imported.push(updated.rows[0] as ReturnType<typeof mapRow> extends never ? never : ReconciliationRow);
+            imported.push(updated.rows[0]);
             conflicts += 1;
           }
         } else {
