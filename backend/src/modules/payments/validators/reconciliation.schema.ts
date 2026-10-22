@@ -36,7 +36,7 @@ export const reconciliationImportSchema = z.object({
 
 export const reconciliationListQuerySchema = z.object({
   status: z.enum(["UNMATCHED", "MATCHED", "CONFLICT", "IGNORED"]).optional(),
-  providerCode,
+  providerCode: providerCode.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   cursor: z.string().uuid().optional(),
 }).strict();
