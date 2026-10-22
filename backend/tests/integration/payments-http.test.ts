@@ -12,7 +12,8 @@ const principalCodeA = "payments.http.test.a";
 const principalCodeB = "payments.http.test.b";
 const scopes = [
   "payments:create","payments:confirm_manual","payments:allocate","payments:read",
-  "invoice:read","refunds:request","refunds:approve","refunds:record_manual","refunds:cancel",
+  "invoice:read","refunds:request","refunds:approve","refunds:record_manual","refunds:cancel","refunds:read",
+  "reconciliation:manage","reconciliation:read",
 ];
 
 describe("payments HTTP security and authenticated workflows", () => {
