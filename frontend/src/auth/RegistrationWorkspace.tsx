@@ -111,7 +111,7 @@ export function RegistrationWorkspace({
           ? current : (data.currencies?.[0]?.code ?? ""));
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Le référentiel des devises est indisponible."));
-  }, [user?.id]);
+  }, [user?.id, user?.emailConfirmedAt]);
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
