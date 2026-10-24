@@ -110,8 +110,10 @@ function App() {
 
   if (entryChecking) return <main className="entry-loading"><div className="brand-mark">Z</div><p>Vérification sécurisée de votre espace…</p></main>;
   if (!sessionUser || (!activeTenant && !isPlatformOperator)) {
-    const showAuth = new URLSearchParams(window.location.search).get("auth") === "1";
-    return <>{showAuth ? <RegistrationWorkspace user={sessionUser} onSessionChanged={refreshEntry} /> : <LandingPage onLogin={() => { window.location.href = "/?auth=1"; }} onCreateAccount={() => { window.location.href = "/?auth=1#signup"; }} />}{entryError && <div className="entry-error">{entryError}</div>}</>;
+    const query = new URLSearchParams(window.location.search);
+    const showAuth = query.get("auth") === "1";
+    const initialMode = query.get("mode") === "signup" ? "signup" : "login";
+    return <>{showAuth ? <RegistrationWorkspace user={sessionUser} onSessionChanged={refreshEntry} initialMode={initialMode} /> : <LandingPage onLogin={() => { window.location.href = "/?auth=1&mode=login"; }} onCreateAccount={() => { window.location.href = "/?auth=1&mode=signup"; }} />}{entryError && <div className="entry-error">{entryError}</div>}</>;
   }
 
   async function signOut() {
