@@ -37,6 +37,23 @@ describe("Supabase access token verifier", () => {
     );
   });
 
+  it("returns the authoritative email confirmation timestamp from Auth", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({
+        id: userId,
+        email: "verified@example.test",
+        email_confirmed_at: "2026-10-20T10:00:00.000Z",
+      }), { status: 200, headers: { "content-type": "application/json" } }),
+    );
+    await expect(verifySupabaseAccessToken({
+      supabaseUrl, anonKey, accessToken: token, fetchImpl,
+    })).resolves.toEqual({
+      id: userId,
+      email: "verified@example.test",
+      emailConfirmedAt: "2026-10-20T10:00:00.000Z",
+    });
+  });
+
   it("rejects invalid and expired access tokens", async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response("{}", { status: 401 }));
     await expect(verifySupabaseAccessToken({

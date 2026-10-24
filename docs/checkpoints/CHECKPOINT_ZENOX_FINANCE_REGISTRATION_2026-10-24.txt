@@ -1,0 +1,86 @@
+CHECKPOINT ZENOX FINANCE — INSCRIPTION RÉELLE ET ONBOARDING
+Date: 2026-10-24
+Repository: sebsonz/zenox-finance-platform
+Branch: feature/tenant-registration-onboarding
+PR: https://github.com/sebsonz/zenox-finance-platform/pull/14
+PR base: feature/tax-rule-extensibility
+Last validated implementation commit: e6acdc87e1cfe0acbe9793bb5876f064c68c41e2
+Status: OPEN / DRAFT / NOT MERGED
+
+1. OBJECTIF UTILISATEUR
+Remplacer l'écran de démonstration par un parcours réel :
+- création d'un compte Supabase Auth et confirmation d'e-mail ;
+- connexion, déconnexion, récupération et réinitialisation du mot de passe ;
+- soumission d'une organisation et suivi de la demande ;
+- examen par un opérateur de plateforme autorisé ;
+- activation atomique de l'organisation et du propriétaire après approbation ;
+- refus avec motif, désactivation de l'organisation et révocation de l'adhésion ;
+- accès au workspace financier uniquement lorsqu'un tenant et une adhésion sont ACTIVE ;
+- indicateurs de facturation chargés depuis une API authentifiée et tenant-scoped.
+
+2. IMPLÉMENTÉ SUR LA BRANCHE
+- Migration 20261024000100_tenant_registration_onboarding.sql :
+  - table finance_registration_requests avec RLS ENABLED + FORCED ;
+  - fonctions SECURITY DEFINER pour soumission, liste et détail des demandes du propriétaire ;
+  - création atomique du tenant PENDING, de l'adhésion OWNER PENDING, de la demande et de l'événement d'audit ;
+  - validation de la devise active et index unique pour une seule demande PENDING par identité.
+- Migration 20261024000200_platform_registration_review.sql :
+  - allowlist finance_platform_operators, RLS ENABLED + FORCED ;
+  - aucun accès direct aux tables pour PUBLIC, anon, authenticated ou service_role ;
+  - fonctions de vérification d'opérateur, liste des demandes en attente et décision atomique ;
+  - APPROVE active le tenant et l'adhésion OWNER ; REJECT désactive le tenant, révoque l'adhésion et conserve le motif ;
+  - interdiction pour un opérateur d'examiner sa propre demande ;
+  - chaque décision est auditée dans la même transaction ;
+  - exécution autorisée uniquement par fonctions étroites côté serveur.
+- Backend routes d'inscription :
+  - GET /api/v1/user/registration/currencies
+  - POST /api/v1/user/registration/organizations
+  - GET /api/v1/user/registration/organizations
+  - GET /api/v1/user/registration/organizations/:requestId
+- Backend routes d'administration :
+  - GET /api/v1/user/platform/me
+  - GET /api/v1/user/platform/registration-requests
+  - POST /api/v1/user/platform/registration-requests/:requestId/decision
+- L'auth middleware vérifie l'identité auprès de Supabase Auth et expose le timestamp de confirmation d'e-mail. La soumission et les décisions exigent une session confirmée et un POST same-origin.
+- Frontend RegistrationWorkspace : inscription, connexion, gestion des liens de confirmation, récupération/réinitialisation, renvoi de confirmation, soumission d'organisation et suivi de statut.
+- Frontend PlatformReviewWorkspace : écran de revue visible uniquement si l'API confirme le rôle d'opérateur de plateforme.
+- Le workspace financier est protégé par session et adhésion ACTIVE. Le dashboard charge depuis le backend le nombre de factures émises, les brouillons et le total brut des factures émises ; les montants restent des chaînes décimales exactes.
+- Runbook d'amorçage du premier opérateur : docs/runbooks/bootstrap-first-platform-operator.md.
+- Décisions d'autorisation : docs/architecture/PLATFORM_REGISTRATION_REVIEW_AUTHORIZATION.md.
+- Tests ajoutés : tests de routes d'inscription et de revue, tests PostgreSQL d'intégration, test du timestamp de confirmation Auth.
+
+3. VALIDATION CI
+GitHub Actions run #517 a réussi sur le commit d'implémentation e6acdc87e1cfe0acbe9793bb5876f064c68c41e2 :
+- backend typecheck et build : réussis ;
+- PostgreSQL jetable : 21 migrations du dépôt appliquées, 21 appliquées, 0 pending, 0 drift ;
+- 44 fichiers de tests, 205 tests réussis ;
+- frontend typecheck et build de production : réussis.
+Le PR a été temporairement ciblé vers feature/invoice-workflow-completion pour déclencher le CI, puis restauré à feature/tax-rule-extensibility. Aucun merge n'a été effectué.
+Le commit de checkpoint qui suit est documentaire ; le code applicatif validé n'a pas changé depuis e6acdc8.
+
+4. GARDE-FOUS — À RESPECTER
+- Ne jamais accéder ou modifier la base ZENOX FRET V2 zenoxfret_v2.
+- Aucune migration Finance n'a été exécutée sur une base persistante pendant ce travail.
+- Ne pas fusionner le PR #14 sans approbation explicite.
+- Ne jamais exposer DATABASE_URL, les secrets Finance ou la clé Supabase service-role au frontend.
+- Les fonctions SECURITY DEFINER et les tables concernent uniquement la base dédiée ZENOX Finance.
+- Aucun opérateur de plateforme par défaut n'est créé. Il faut amorcer le premier opérateur manuellement et de façon contrôlée, après vérification de l'identité réelle.
+
+5. BLOCAGES AVANT OUVERTURE PUBLIQUE
+- Le premier opérateur n'est pas encore provisionné dans un environnement Finance réel. Après création et confirmation du compte opérateur, vérifier son subject et suivre le runbook DBA. Ne pas deviner l'identité.
+- Le pays est actuellement validé au format ISO-2, mais pas encore par un référentiel pays exhaustif et autoritatif.
+- Le rôle DB runtime de production et ses grants doivent être vérifiés explicitement ; les grants finance_runtime_test sont validés en CI.
+- Ajouter une limitation de débit distribuée pour l'inscription et les décisions avant ouverture publique.
+- Configurer et tester les URL de redirection Supabase, les modèles d'e-mail, le domaine expéditeur et le parcours de récupération sur le projet Finance réel.
+- Les conditions d'utilisation et la politique de confidentialité sont encore en version de travail ; elles doivent être validées avant acceptation publique.
+- Le cookie de session dure une heure ; le renouvellement de session doit être traité avant production.
+- Les encaissements restent non disponibles dans le dashboard tant que le module paiements n'est pas intégré. La liste détaillée d'activité et les autres métriques ne sont pas encore branchées.
+- Ne pas revendiquer une mise en production, une conformité fiscale ou une validation juridique.
+
+6. PROCHAINES ÉTAPES
+1. Vérifier le CI du dernier commit documentaire si nécessaire ; ne pas confondre le résultat du commit applicatif validé et celui du checkpoint.
+2. Confirmer les réglages réels Supabase Auth (confirmation, reset, redirect allowlist, e-mails) sur le projet Finance.
+3. Une fois l'identité du premier opérateur vérifiée, faire le bootstrap DBA uniquement sur la base dédiée ZENOX Finance, puis tester l'écran d'administration.
+4. Tester avec deux identités distinctes : utilisateur ordinaire (403 pour l'administration), opérateur autorisé (liste/décisions), propriétaire en attente (aucun accès aux factures), propriétaire approuvé (accès actif), propriétaire refusé (aucun accès).
+5. Compléter référentiel pays, limitation de débit, renouvellement de session et textes juridiques.
+6. Aucun merge n'est autorisé par ce checkpoint ; respecter l'ordre de dépendance des PRs après approbation explicite.
