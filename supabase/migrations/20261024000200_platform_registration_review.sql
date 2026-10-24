@@ -154,42 +154,42 @@ BEGIN
   END IF;
 
   IF p_decision = 'APPROVE' THEN
-    UPDATE public.finance_tenants
+    UPDATE public.finance_tenants AS t
        SET status = 'ACTIVE', updated_at = now()
-     WHERE id = v_tenant_id AND status = 'PENDING';
+     WHERE t.id = v_tenant_id AND t.status = 'PENDING';
     GET DIAGNOSTICS v_rows = ROW_COUNT;
     IF v_rows <> 1 THEN
       RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'TENANT_NOT_PENDING';
     END IF;
 
-    UPDATE public.finance_user_tenant_memberships
+    UPDATE public.finance_user_tenant_memberships AS m
        SET status = 'ACTIVE', activated_at = now(), updated_at = now()
-     WHERE tenant_id = v_tenant_id
-       AND identity_issuer = v_request_issuer
-       AND identity_subject = v_request_subject
-       AND role_code = 'OWNER'
-       AND status = 'PENDING';
+     WHERE m.tenant_id = v_tenant_id
+       AND m.identity_issuer = v_request_issuer
+       AND m.identity_subject = v_request_subject
+       AND m.role_code = 'OWNER'
+       AND m.status = 'PENDING';
     GET DIAGNOSTICS v_rows = ROW_COUNT;
     IF v_rows <> 1 THEN
       RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'OWNER_MEMBERSHIP_NOT_PENDING';
     END IF;
     v_final_status := 'APPROVED';
   ELSE
-    UPDATE public.finance_tenants
+    UPDATE public.finance_tenants AS t
        SET status = 'DISABLED', updated_at = now()
-     WHERE id = v_tenant_id AND status = 'PENDING';
+     WHERE t.id = v_tenant_id AND t.status = 'PENDING';
     GET DIAGNOSTICS v_rows = ROW_COUNT;
     IF v_rows <> 1 THEN
       RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'TENANT_NOT_PENDING';
     END IF;
 
-    UPDATE public.finance_user_tenant_memberships
+    UPDATE public.finance_user_tenant_memberships AS m
        SET status = 'REVOKED', updated_at = now()
-     WHERE tenant_id = v_tenant_id
-       AND identity_issuer = v_request_issuer
-       AND identity_subject = v_request_subject
-       AND role_code = 'OWNER'
-       AND status = 'PENDING';
+     WHERE m.tenant_id = v_tenant_id
+       AND m.identity_issuer = v_request_issuer
+       AND m.identity_subject = v_request_subject
+       AND m.role_code = 'OWNER'
+       AND m.status = 'PENDING';
     GET DIAGNOSTICS v_rows = ROW_COUNT;
     IF v_rows <> 1 THEN
       RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'OWNER_MEMBERSHIP_NOT_PENDING';
@@ -198,13 +198,13 @@ BEGIN
   END IF;
 
   v_decided_at := now();
-  UPDATE public.finance_registration_requests
+  UPDATE public.finance_registration_requests AS r
      SET status = v_final_status,
          rejection_reason = CASE WHEN v_final_status = 'REJECTED' THEN v_reason ELSE NULL END,
          decided_at = v_decided_at,
          decision_actor = p_operator_issuer || '|' || p_operator_subject,
          updated_at = v_decided_at
-   WHERE id = p_request_id AND status = 'PENDING';
+   WHERE r.id = p_request_id AND r.status = 'PENDING';
   GET DIAGNOSTICS v_rows = ROW_COUNT;
   IF v_rows <> 1 THEN
     RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REGISTRATION_NOT_PENDING';
