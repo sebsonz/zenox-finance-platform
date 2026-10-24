@@ -4,7 +4,7 @@ Repository: sebsonz/zenox-finance-platform
 Branch: feature/tenant-registration-onboarding
 Base: feature/tax-rule-extensibility
 PR: https://github.com/sebsonz/zenox-finance-platform/pull/14
-Latest branch commit at checkpoint: 0d5f421d13d04a24eac7c2e90f6fda7d9bac7cfb
+Latest branch commit at checkpoint: 3376df4a93cb5262b0e1956d0a0fc8c23204e3c8
 Status: OPEN / DRAFT / NOT MERGED
 
 1. USER GOAL
@@ -30,7 +30,7 @@ Turn the demo UI into a real-user application:
   - GET /api/v1/user/registration/organizations/:requestId
   - submission requires a verified session, same-origin POST, and email confirmation timestamp verified from Supabase Auth
   - request list/detail scope to issuer + subject derived by backend middleware, never body-supplied identity
-- Auth verifier now exposes email_confirmed_at/confirmed_at when returned by Supabase Auth.
+- Auth verifier now exposes email_confirmed_at/confirmed_at when returned by Supabase Auth; session endpoint exposes the verified confirmation timestamp, and the UI blocks organization submission until it is present, with a resend-confirmation action.
 - Disposable integration role setup grants EXECUTE on the three registration functions to finance_runtime_test.
 - Frontend RegistrationWorkspace:
   - signup, login, email confirmation token handling, forgot password/reset
