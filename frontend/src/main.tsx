@@ -62,6 +62,8 @@ function App() {
       if (!sessionResponse.ok) {
         setSessionUser(null);
         setActiveTenant(null);
+        setIsPlatformOperator(false);
+        setPage("dashboard");
         return;
       }
       const session = await readEntryData<SessionUser>(sessionResponse);
@@ -69,10 +71,22 @@ function App() {
       const tenantData = await readEntryData<{ tenants: ActiveTenant[] }>(
         await fetch("/api/v1/user/tenants", { credentials: "same-origin", cache: "no-store" }),
       );
-      setActiveTenant(tenantData.tenants?.[0] ?? null);
+      const nextTenant = tenantData.tenants?.[0] ?? null;
+      setActiveTenant(nextTenant);
+      const platformResponse = await fetch("/api/v1/user/platform/me", { credentials: "same-origin", cache: "no-store" });
+      let nextIsPlatformOperator = false;
+      if (platformResponse.ok) {
+        const platformData = await readEntryData<{ isPlatformOperator: boolean }>(platformResponse);
+        nextIsPlatformOperator = platformData.isPlatformOperator;
+      }
+      setIsPlatformOperator(nextIsPlatformOperator);
+      if (!nextTenant && nextIsPlatformOperator) setPage("platform");
+      else if (page === "platform" && !nextIsPlatformOperator) setPage("dashboard");
     } catch (error) {
       setSessionUser(null);
       setActiveTenant(null);
+      setIsPlatformOperator(false);
+      setPage("dashboard");
       setEntryError(error instanceof Error ? error.message : "L’API Finance est inaccessible.");
     } finally {
       setEntryChecking(false);
