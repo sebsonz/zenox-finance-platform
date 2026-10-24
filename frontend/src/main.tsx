@@ -7,6 +7,7 @@ import {
   X
 } from "lucide-react";
 import "./styles.css";
+import { LandingPage } from "./public/LandingPage.js";
 import { RegistrationWorkspace } from "./auth/RegistrationWorkspace.js";
 import { InvoiceWorkspace } from "./invoices/InvoiceWorkspace.js";
 import { PlatformReviewWorkspace } from "./platform/PlatformReviewWorkspace.js";
@@ -108,7 +109,10 @@ function App() {
   const title = visibleNavigation.find((item) => item.id === page)?.label ?? "Vue d’ensemble";
 
   if (entryChecking) return <main className="entry-loading"><div className="brand-mark">Z</div><p>Vérification sécurisée de votre espace…</p></main>;
-  if (!sessionUser || (!activeTenant && !isPlatformOperator)) return <><RegistrationWorkspace user={sessionUser} onSessionChanged={refreshEntry}/>{entryError && <div className="entry-error">{entryError}</div>}</>;
+  if (!sessionUser || (!activeTenant && !isPlatformOperator)) {
+    const showAuth = new URLSearchParams(window.location.search).get("auth") === "1";
+    return <>{showAuth ? <RegistrationWorkspace user={sessionUser} onSessionChanged={refreshEntry} /> : <LandingPage onLogin={() => { window.location.href = "/?auth=1"; }} onCreateAccount={() => { window.location.href = "/?auth=1#signup"; }} />}{entryError && <div className="entry-error">{entryError}</div>}</>;
+  }
 
   async function signOut() {
     await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" });
