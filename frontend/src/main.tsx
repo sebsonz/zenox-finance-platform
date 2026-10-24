@@ -102,10 +102,13 @@ function App() {
   const [notice, setNotice] = useState("");
 
   const navigate = (next: Page) => { setPage(next); setMobileOpen(false); setNotice(""); };
-  const title = navigation.find((item) => item.id === page)?.label ?? "Vue d’ensemble";
+  const visibleNavigation = isPlatformOperator
+    ? (activeTenant ? navigation : navigation.filter((item) => item.id === "platform"))
+    : navigation.filter((item) => item.id !== "platform");
+  const title = visibleNavigation.find((item) => item.id === page)?.label ?? "Vue d’ensemble";
 
   if (entryChecking) return <main className="entry-loading"><div className="brand-mark">Z</div><p>Vérification sécurisée de votre espace…</p></main>;
-  if (!sessionUser || !activeTenant) return <><RegistrationWorkspace user={sessionUser} onSessionChanged={refreshEntry}/>{entryError && <div className="entry-error">{entryError}</div>}</>;
+  if (!sessionUser || (!activeTenant && !isPlatformOperator)) return <><RegistrationWorkspace user={sessionUser} onSessionChanged={refreshEntry}/>{entryError && <div className="entry-error">{entryError}</div>}</>;
 
   async function signOut() {
     await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" });
@@ -117,21 +120,22 @@ function App() {
     <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`}>
       <div className="brand"><div className="brand-mark">Z</div><div><strong>ZENOX<span>FINANCE</span></strong><small>Financial workspace</small></div><button className="close-menu" onClick={() => setMobileOpen(false)} aria-label="Fermer"><X size={18}/></button></div>
       <div className="workspace-label">ESPACE DE TRAVAIL</div>
-      <button className="workspace-switch"><div className="workspace-avatar"><Building2 size={17}/></div><span><strong>{activeTenant.legalName}</strong><small>{activeTenant.role}</small></span><ChevronDown size={15}/></button>
+      <button className="workspace-switch"><div className="workspace-avatar"><Building2 size={17}/></div><span><strong>{activeTenant?.legalName ?? "Administration plateforme"}</strong><small>{activeTenant?.role ?? "Opérateur plateforme"}</small></span><ChevronDown size={15}/></button>
       <div className="nav-label">MENU PRINCIPAL</div>
-      <nav>{navigation.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => navigate(id)} className={`nav-item ${page === id ? "active" : ""}`}><Icon size={18}/><span>{label}</span>{id === "tax" && <span className="nav-tag">BETA</span>}</button>)}</nav>
-      <div className="sidebar-bottom"><div className="security-card"><ShieldCheck size={19}/><strong>Finance sécurisé</strong><p>Isolation des données et journalisation des opérations.</p><span><i/> Architecture multi-tenant</span></div><button className="nav-item help-link" onClick={() => setNotice("Le centre d’aide sera connecté dans une prochaine étape.")}><CircleHelp size={18}/> Centre d’aide</button><div className="user-row"><div className="user-avatar">{(sessionUser.email ?? "ZF").slice(0, 2).toUpperCase()}</div><span><strong>{sessionUser.email ?? "Utilisateur"}</strong><small>{activeTenant.role}</small></span><ChevronDown size={15}/></div></div>
+      <nav>{visibleNavigation.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => navigate(id)} className={`nav-item ${page === id ? "active" : ""}`}><Icon size={18}/><span>{label}</span>{id === "tax" && <span className="nav-tag">BETA</span>}</button>)}</nav>
+      <div className="sidebar-bottom"><div className="security-card"><ShieldCheck size={19}/><strong>Finance sécurisé</strong><p>Isolation des données et journalisation des opérations.</p><span><i/> Architecture multi-tenant</span></div><button className="nav-item help-link" onClick={() => setNotice("Le centre d’aide sera connecté dans une prochaine étape.")}><CircleHelp size={18}/> Centre d’aide</button><div className="user-row"><div className="user-avatar">{(sessionUser.email ?? "ZF").slice(0, 2).toUpperCase()}</div><span><strong>{sessionUser.email ?? "Utilisateur"}</strong><small>{activeTenant?.role ?? "Opérateur plateforme"}</small></span><ChevronDown size={15}/></div></div>
     </aside>
 
     <main className="main-area">
       <header className="topbar"><button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Ouvrir le menu"><Menu size={20}/></button><div className="breadcrumbs">Workspace <span>/</span> <strong>{title}</strong></div><div className="top-actions"><div className="environment"><i/> Espace connecté</div><button className="icon-button" aria-label="Rechercher" onClick={() => setNotice("La recherche globale sera activée avec les modules de données.")}><Search size={18}/></button><button className="icon-button notification-button" aria-label="Notifications" onClick={() => setNotice("Aucune notification réelle : l’API n’est pas encore connectée.")}><Bell size={18}/><i/></button><button className="top-avatar" type="button" aria-label="Se déconnecter" title={sessionUser.email ?? "Se déconnecter"} onClick={() => void signOut()}>{(sessionUser.email ?? "ZF").slice(0, 2).toUpperCase()}</button></div></header>
       <div className="page-content">
         {notice && <div className="notice"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Fermer"><X size={16}/></button></div>}
-        {page === "dashboard" && <Dashboard onNavigate={navigate} tenantId={activeTenant.id}/>}
+        {page === "dashboard" && activeTenant && <Dashboard onNavigate={navigate} tenantId={activeTenant.id}/>}
         {page === "tax" && <TaxWorkspace amount={amount} setAmount={setAmount} currency={currency} setCurrency={setCurrency} onSubmit={() => setNotice("Calcul non exécuté : connectez le formulaire à l’API Finance sécurisée avant tout calcul réel.")}/>}
         {page === "invoices" && <InvoiceWorkspace/>}
         {page === "payments" && <ComingSoon icon={WalletCards} title="Paiements & allocations" description="Les paiements, affectations et soldes seront servis par le backend Finance, avec idempotence et contrôle multi-tenant."/>}
         {page === "settings" && <ComingSoon icon={Settings2} title="Paramètres Finance" description="La configuration des organisations, devises et intégrations sera reliée aux services authentifiés."/>}
+        {page === "platform" && isPlatformOperator && <PlatformReviewWorkspace/>}
         <footer><span>© 2026 ZENOX Finance</span><span><ShieldCheck size={13}/> Finance indépendante · API-first</span><span>Interface en construction</span></footer>
       </div>
     </main>
