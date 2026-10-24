@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.finance_platform_operators (
   CHECK (identity_issuer = btrim(identity_issuer)),
   CHECK (identity_subject = btrim(identity_subject)),
   CHECK (created_by_issuer IS NULL OR (length(created_by_issuer) BETWEEN 1 AND 500 AND created_by_issuer = btrim(created_by_issuer))),
-  CHECK (created_by_subject IS NULL OR (length(created_by_subject) BETWEEN 1 AND 500 AND created_by_subject = btrim(created_by_subject))
+  CHECK (created_by_subject IS NULL OR (length(created_by_subject) BETWEEN 1 AND 500 AND created_by_subject = btrim(created_by_subject)))
 );
 
 ALTER TABLE public.finance_platform_operators ENABLE ROW LEVEL SECURITY;
