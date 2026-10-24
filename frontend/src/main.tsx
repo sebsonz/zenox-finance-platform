@@ -11,7 +11,7 @@ import { RegistrationWorkspace } from "./auth/RegistrationWorkspace.js";
 import { InvoiceWorkspace } from "./invoices/InvoiceWorkspace.js";
 
 type Page = "dashboard" | "tax" | "invoices" | "payments" | "settings";
-type SessionUser = { id: string; email?: string };
+type SessionUser = { id: string; email?: string; emailConfirmedAt?: string | null };
 type ActiveTenant = { id: string; tenantCode: string; legalName: string; role: string };
 type DashboardSummary = {
   issuedInvoiceCount: number;
