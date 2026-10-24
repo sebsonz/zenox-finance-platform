@@ -205,21 +205,25 @@ export function RegistrationWorkspace({
     setError("");
     setNotice("");
     try {
-      const data = await readData<{ request: { id: string; status: string; submittedAt: string } }>(
-        await fetch("/api/v1/user/registration/organizations", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            legalName: legalName.trim(),
-            countryCode: countryCode.trim().toUpperCase(),
-            defaultCurrency,
-            acceptedTermsVersion: TERMS_VERSION,
-          }),
+      const response = await fetch("/api/v1/user/registration/organizations", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          legalName: legalName.trim(),
+          countryCode: countryCode.trim().toUpperCase(),
+          defaultCurrency,
+          acceptedTermsVersion: TERMS_VERSION,
         }),
-        "La demande d’organisation n’a pas pu être soumise.",
-      );
-      setNotice(`Demande envoyée. Référence : ${data.request.id}`);
+      });
+      const payload = await response.json().catch(() => ({})) as {
+        request?: { id: string; status: string; submittedAt: string };
+        error?: { message?: string };
+      };
+      if (!response.ok || !payload.request) {
+        throw new Error(payload.error?.message ?? "La demande d’organisation n’a pas pu être soumise.");
+      }
+      setNotice(`Demande envoyée. Référence : ${payload.request.id}`);
       await loadRequests();
     } catch (e) {
       setError(e instanceof Error ? e.message : "La demande n’a pas pu être envoyée.");
