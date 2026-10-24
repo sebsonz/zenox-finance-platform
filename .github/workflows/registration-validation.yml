@@ -1,0 +1,62 @@
+name: ZENOX Finance Registration Validation
+
+on:
+  push:
+    branches: [feature/tenant-registration-onboarding]
+  pull_request:
+    branches: [feature/tax-rule-extensibility]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-registration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: finance_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d finance_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/finance_test
+      FINANCE_SERVICE_TOKEN: ci-only-test-token-not-for-production-0123456789
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/finance_test
+      TEST_RUNTIME_DATABASE_URL: postgres://finance_runtime_test:zenox_test_runtime_password_2026@localhost:5432/finance_test
+      TEST_RUNTIME_PASSWORD: zenox_test_runtime_password_2026
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install backend dependencies
+        run: npm --prefix backend install
+      - name: Backend typecheck
+        run: npm --prefix backend run typecheck
+      - name: Backend build
+        run: npm --prefix backend run build
+      - name: Apply Finance migrations to disposable PostgreSQL
+        run: npm --prefix backend run db:migrate
+      - name: Prepare least-privilege integration role and fixtures
+        run: npm --prefix backend run db:test:prepare
+      - name: Audit applied migration checksums
+        run: npm --prefix backend run db:drift-check
+      - name: Unit and PostgreSQL integration tests
+        run: npm --prefix backend test
+      - name: Install frontend dependencies
+        run: npm --prefix frontend install
+      - name: Frontend typecheck
+        run: npm --prefix frontend run typecheck
+      - name: Frontend build
+        run: npm --prefix frontend run build
