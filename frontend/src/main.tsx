@@ -9,8 +9,9 @@ import {
 import "./styles.css";
 import { RegistrationWorkspace } from "./auth/RegistrationWorkspace.js";
 import { InvoiceWorkspace } from "./invoices/InvoiceWorkspace.js";
+import { PlatformReviewWorkspace } from "./platform/PlatformReviewWorkspace.js";
 
-type Page = "dashboard" | "tax" | "invoices" | "payments" | "settings";
+type Page = "dashboard" | "tax" | "invoices" | "payments" | "settings" | "platform";
 type SessionUser = { id: string; email?: string; emailConfirmedAt?: string | null };
 type ActiveTenant = { id: string; tenantCode: string; legalName: string; role: string };
 type DashboardSummary = {
@@ -43,12 +44,14 @@ const navigation: { id: Page; label: string; icon: typeof LayoutDashboard }[] = 
   { id: "payments", label: "Paiements", icon: CreditCard },
   { id: "tax", label: "Moteur fiscal", icon: Globe2 },
   { id: "settings", label: "Paramètres", icon: Settings2 },
+  { id: "platform", label: "Demandes d’inscription", icon: ShieldCheck },
 ];
 
 function App() {
   const [entryChecking, setEntryChecking] = useState(true);
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [activeTenant, setActiveTenant] = useState<ActiveTenant | null>(null);
+  const [isPlatformOperator, setIsPlatformOperator] = useState(false);
   const [entryError, setEntryError] = useState("");
 
   async function refreshEntry() {
