@@ -1,6 +1,7 @@
 export interface SupabaseAuthUser {
   id: string;
   email?: string;
+  emailConfirmedAt?: string | null;
 }
 
 export class SupabaseTokenVerificationError extends Error {
@@ -97,5 +98,14 @@ export async function verifySupabaseAccessToken(
   }
 
   const email = "email" in payload && typeof payload.email === "string" ? payload.email : undefined;
-  return email === undefined ? { id: payload.id } : { id: payload.id, email };
+  const emailConfirmedAt = "email_confirmed_at" in payload && typeof payload.email_confirmed_at === "string"
+    ? payload.email_confirmed_at
+    : "confirmed_at" in payload && typeof payload.confirmed_at === "string"
+      ? payload.confirmed_at
+      : null;
+  return {
+    id: payload.id,
+    ...(email === undefined ? {} : { email }),
+    emailConfirmedAt,
+  };
 }
