@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  Activity, ArrowDownRight, ArrowUpRight, Bell, BookOpen, Building2, ChevronDown,
+  Activity, ArrowUpRight, Bell, BookOpen, Building2, ChevronDown,
   CircleHelp, CreditCard, FileCheck2, FileText, Globe2, LayoutDashboard, Menu,
   Plus, Search, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, WalletCards,
   X
@@ -121,15 +121,31 @@ function App() {
   </div>;
 }
 
-function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) {
+function Dashboard({ onNavigate, tenantId }: { onNavigate: (page: Page) => void; tenantId: string }) {
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setSummaryLoading(true);
+    setSummaryError("");
+    void fetch(`/api/v1/user/tenants/${tenantId}/dashboard-summary`, { credentials: "same-origin", cache: "no-store" })
+      .then((response) => readEntryData<DashboardSummary>(response))
+      .then((data) => { if (!cancelled) setSummary(data); })
+      .catch((error: unknown) => { if (!cancelled) setSummaryError(error instanceof Error ? error.message : "Impossible de charger les indicateurs."); })
+      .finally(() => { if (!cancelled) setSummaryLoading(false); });
+    return () => { cancelled = true; };
+  }, [tenantId]);
+
   return <>
     <div className="welcome-row"><div><div className="eyebrow"><Sparkles size={14}/> VOTRE ESPACE FINANCIER</div><h1>Bonjour, bienvenue 👋</h1><p className="subtitle">Une vue claire sur les opérations financières de votre organisation.</p></div><button className="primary-button" onClick={() => onNavigate("invoices")}><Plus size={17}/> Nouvelle facture</button></div>
     <div className="demo-banner"><div className="demo-icon"><Activity size={19}/></div><div><strong>Données de votre organisation</strong><p>Les indicateurs de facturation sont chargés depuis l’API Finance authentifiée, dans le périmètre de votre organisation.</p>{summaryError && <p role="alert">{summaryError}</p>}</div><span className="demo-pill">CONNECTÉ</span></div>
     <section className="metrics-grid">
-      <Metric title="Factures émises" value="—" hint="En attente de connexion API" icon={FileText} tone="blue" trend="Données non disponibles"/>
-      <Metric title="Encaissements" value="—" hint="En attente de connexion API" icon={WalletCards} tone="green" trend="Données non disponibles"/>
-      <Metric title="Solde à recevoir" value="—" hint="En attente de connexion API" icon={ArrowDownRight} tone="amber" trend="Données non disponibles"/>
-      <Metric title="Règles fiscales" value="—" hint="Référentiel non chargé" icon={Globe2} tone="violet" trend="À configurer"/>
+      <Metric title="Factures émises" value={summaryLoading ? "…" : String(summary?.issuedInvoiceCount ?? "—")} hint="Factures au statut Émise" icon={FileText} tone="blue" trend="Source : API Finance"/>
+      <Metric title="Total facturé" value={summaryLoading ? "…" : summary?.currencyCode ? formatMoneyString(summary.issuedTotal, summary.currencyCode, summary.minorUnit) : "—"} hint="Montant brut des factures émises" icon={ArrowUpRight} tone="green" trend="Calcul agrégé côté serveur"/>
+      <Metric title="Brouillons" value={summaryLoading ? "…" : String(summary?.draftInvoiceCount ?? "—")} hint="Factures non encore émises" icon={FileCheck2} tone="amber" trend="Source : API Finance"/>
+      <Metric title="Encaissements" value="—" hint="Indicateur indisponible à ce stade" icon={WalletCards} tone="violet" trend="À connecter au module Paiements"/>
     </section>
     <div className="content-grid">
       <section className="panel activity-panel"><div className="panel-heading"><div><h2>Activité financière</h2><p>Suivi des opérations récentes</p></div><button className="text-button" onClick={() => onNavigate("invoices")}>Voir les factures <ArrowUpRight size={15}/></button></div><div className="empty-state"><div className="empty-illustration"><FileCheck2 size={27}/></div><strong>Suivi des opérations</strong><p>Les indicateurs ci-dessus sont réels. La liste détaillée des dernières opérations sera ajoutée à cette vue dans la prochaine étape.</p><button className="outline-button" onClick={() => onNavigate("invoices")}>Explorer les factures</button></div></section>
