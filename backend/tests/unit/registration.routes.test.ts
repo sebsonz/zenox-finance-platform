@@ -14,7 +14,8 @@ const mocks = vi.hoisted(() => ({
   findMine: vi.fn(),
   listActive: vi.fn(),
   requireUserAuth: vi.fn(() => (req: Request, _res: Response, next: NextFunction) => {
-    req.financeUser = mocks.user;
+    if (mocks.user) req.financeUser = mocks.user;
+    else delete req.financeUser;
     next();
   }),
 }));
