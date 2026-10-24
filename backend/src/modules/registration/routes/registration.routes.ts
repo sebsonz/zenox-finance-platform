@@ -2,10 +2,30 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { requireUserAuth } from "../../../middleware/require-user-auth.js";
 import { registrationRepository } from "../repositories/registration.repository.js";
+import { currencyRepository } from "../../currencies/repositories/currency.repository.js";
 
 export const registrationRouter = Router();
 
 const uuidSchema = z.string().uuid();
+
+registrationRouter.get("/currencies", requireUserAuth(), async (_req, res, next) => {
+  try {
+    const currencies = await currencyRepository.listActive();
+    res.setHeader("Cache-Control", "no-store");
+    res.status(200).json({
+      data: {
+        currencies: currencies.map((currency) => ({
+          code: currency.code,
+          name: currency.name,
+          minorUnit: currency.minorUnit,
+        })),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 const submitSchema = z.object({
   legalName: z.string().trim().min(2).max(200),
   countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/),
