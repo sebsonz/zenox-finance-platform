@@ -13,6 +13,7 @@ import { invoiceIssuanceRouter } from "../../modules/invoices/routes/invoice-iss
 import { invoiceDocumentRouter } from "../../modules/invoices/routes/invoice-document.routes.js";
 import { creditNoteRouter } from "../../modules/invoices/routes/credit-note.routes.js";
 import { registrationRouter } from "../../modules/registration/routes/registration.routes.js";
+import { platformRegistrationRouter } from "../../modules/registration/routes/platform-registration.routes.js";
 
 export const apiV1Router = Router();
 apiV1Router.use("/health", healthRouter);
@@ -21,6 +22,7 @@ apiV1Router.use("/user", userTenantDirectoryRouter);
 apiV1Router.use("/user", userTenantAccessRouter);
 apiV1Router.use("/user", userSessionRouter);
 apiV1Router.use("/user/registration", registrationRouter);
+apiV1Router.use("/user/platform", platformRegistrationRouter);
 apiV1Router.use("/user/tenants", userInvoiceRouter);
 apiV1Router.use("/invoices", invoiceTaxSnapshotRouter);
 apiV1Router.use("/invoices", invoiceIssuanceRouter);
