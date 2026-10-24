@@ -179,3 +179,97 @@ N. VALIDATION HTTP AUTHENTIFIÉE — PAIEMENTS (2026-10-21)
 [A FAIRE] Adaptateurs fournisseurs, payment attempts, webhooks avec vérification de signature et anti-rejeu, exécution de remboursements fournisseurs, API lecture d'événements.
 [A FAIRE] Revue finale des permissions runtime de production, monitoring/alerting, opérations de rapprochement et validation de déploiement. Migrations persistantes uniquement avec approbation explicite.
 [FAIT] Aucune PR fusionnée; aucune migration persistante exécutée; zenoxfret_v2 non touchée.
+
+
+======================================================================
+O. REPRISE DE CONTINUITÉ — RÉCUPÉRATION GITHUB ET TESTS RÉELS (2026-10-24)
+======================================================================
+
+OBJECTIF DE REPRISE
+La prochaine session doit commencer par récupérer l'état réel de GitHub (PR, branches, commits, fichiers et workflows), puis organiser les tests sur les HEAD exacts. Ne pas commencer par coder une nouvelle fonctionnalité ni modifier la CI avant cette récupération. Distinguer :
+- validation CI GitHub sur un SHA précis;
+- test local réellement exécuté dans le clone de travail;
+- revue sécurité;
+- validation de production.
+Ces niveaux ne sont pas interchangeables.
+
+ÉTAT GITHUB RÉCUPÉRÉ LE 2026-10-24 — ZENOX FINANCE
+Dépôt : https://github.com/sebsonz/zenox-finance-platform
+
+PR encore ouvertes (toutes en brouillon selon la récupération actuelle) :
+- PR #5 — feat(invoices): multi-line invoices, idempotent issuance, PDFs and credit notes.
+  URL : https://github.com/sebsonz/zenox-finance-platform/pull/5
+  HEAD vérifié : 21e4a59881d62c13b7422dfcb5d03401606683c1.
+  CI run 38980590560 : SUCCESS. Les logs confirment typecheck/build backend, migrations sur PostgreSQL jetable, rôle least-privilege, drift audit, 34 fichiers de tests / 147 tests, typecheck/build frontend.
+- PR #6 — chore: separate Finance backend and frontend workspaces.
+  URL : https://github.com/sebsonz/zenox-finance-platform/pull/6
+  État : ouverte en brouillon au dernier inventaire. HEAD/CI à récupérer à nouveau avant toute conclusion.
+- PR #7 — feat(invoices): add tenant-authorized user read endpoint.
+  URL : https://github.com/sebsonz/zenox-finance-platform/pull/7
+  État : ouverte en brouillon au dernier inventaire. HEAD/CI à récupérer à nouveau.
+- PR #8 — feat(brand, web): establish ZENOX identity and public site.
+  URL : https://github.com/sebsonz/zenox-finance-platform/pull/8
+  État : ouverte en brouillon au dernier inventaire. HEAD/CI à récupérer à nouveau.
+- PR #9 — feat(invoices): complete authenticated user invoice workflow.
+  URL : https://github.com/sebsonz/zenox-finance-platform/pull/9
+  HEAD vérifié : d3b389ed49bcbbe34c4d373df7dc8ae1ab0be291.
+  CI run 39507254871 : SUCCESS. Les logs confirment backend typecheck/build, migrations PostgreSQL jetable, préparation least-privilege, drift audit, 38 fichiers de tests / 180 tests, frontend typecheck/build.
+- PR #10 — feat(tax): add extensible tax rule conditions and accounting semantics.
+  URL : https://github.com/sebsonz/zenox-finance-platform/pull/10
+  HEAD vérifié : 67c2344fe71b7e8f9f7c84be69c75e4f1cec1033.
+  CI run 39505015295 : SUCCESS. Les logs confirment backend typecheck/build, migrations PostgreSQL jetable, préparation least-privilege, drift audit, 40 fichiers de tests / 190 tests, frontend typecheck/build.
+- PR #11 — docs: define international MVP and full Finance requirements.
+  URL : https://github.com/sebsonz/zenox-finance-platform/pull/11
+  HEAD observé : 976c0b33149fb49dfc8ee5363dca55494fc8a11f.
+  PR documentaire en brouillon; pas de workflow CI retourné lors de la vérification. Ne pas supposer que cela signifie validation de code.
+- PR #12 — feat(payments): payment records and concurrency-safe allocations.
+  URL : https://github.com/sebsonz/zenox-finance-platform/pull/12
+  Branche : feature/payments-allocations-foundation.
+  Base : feature/invoice-workflow-completion.
+  HEAD vérifié : bea88ff12a1c9d23dc58885ee2e47c89f9650401.
+  CI run 39811140978 : SUCCESS. Les logs confirment backend typecheck/build, migrations sur PostgreSQL jetable, rôle least-privilege, drift audit, 44 fichiers de tests / 205 tests, frontend typecheck/build.
+  PR #12 reste en brouillon, non fusionnée. Les APIs d'événements et de rapprochement ont été ajoutées au HEAD actuel; le texte descriptif de la PR est partiellement obsolète sur ces points et doit être mis à jour seulement après revue de code/test.
+- PR #1 à #4 : fermées selon l'inventaire GitHub. Elles ne doivent pas être considérées comme fusionnées sans vérifier le champ merged et les branches/cibles; réexaminer uniquement si nécessaire à la reconstruction du graphe de dépendances.
+
+PREUVES DE TEST CI DISPONIBLES
+- PR #5 / SHA 21e4a59881d62c13b7422dfcb5d03401606683c1 : 34 fichiers de tests, 147 tests réussis.
+- PR #9 / SHA d3b389ed49bcbbe34c4d373df7dc8ae1ab0be291 : 38 fichiers de tests, 180 tests réussis.
+- PR #10 / SHA 67c2344fe71b7e8f9f7c84be69c75e4f1cec1033 : 40 fichiers de tests, 190 tests réussis.
+- PR #12 / SHA bea88ff12a1c9d23dc58885ee2e47c89f9650401 : 44 fichiers de tests, 205 tests réussis.
+- Chaque run a aussi validé le typecheck/build backend, les migrations sur PostgreSQL jetable, le setup du rôle de test least-privilege, l'audit de drift et le typecheck/build frontend.
+- Ces tests sont des preuves CI réelles pour les SHAs cités. Ils ne prouvent pas que le clone local est à jour, que les versions locales passent, que les modules sont complets, ni que le produit est prêt pour la production. Ne pas additionner les comptes de tests entre PRs : les ensembles se recouvrent.
+- PR #12 logs : le drift audit indique « Migration drift audit passed; no applied-source mismatch or unknown applied migration found ». Le test backend rapporte 44 test files / 205 tests passed.
+- Les logs PostgreSQL contiennent aussi des messages attendus/observés de rejet RLS sur finance_tax_calculation_snapshots pendant certains tests. Ne pas les déclarer comme des échecs de suite sans examiner le résultat global et les tests associés.
+
+POINT DE SÉCURITÉ À TRAITER — NE PAS MASQUER
+- Le bot d'audit associé au SHA PR #12 bea88ff12a1c9d23dc58885ee2e47c89f9650401 a émis des alertes action_required : absence de preuve de scanner/revue sécurité explicite et détection de chaîne de connexion PostgreSQL avec identifiants codés en dur dans .github/workflows/ci.yml.
+- Le workflow consulté utilise des identifiants de test pour le service PostgreSQL éphémère GitHub Actions et des variables de rôle runtime de test. Ce contexte suggère des identifiants de CI, mais l'alerte doit être examinée précisément avant d'être classée comme faux positif. Ne pas copier les valeurs dans des documents publics ni supposer qu'un secret de production est exposé.
+- Prochaine revue : confirmer qu'aucun vrai secret n'est présent, limiter l'exposition des identifiants de test et des permissions, considérer secrets GitHub uniquement si approprié au contexte CI, ajouter des contrôles sécurité ciblés (dépendances/secrets/code ou tests de régression sécurité), et vérifier les résultats sur un nouveau SHA. Ne pas modifier la CI avant d'avoir récupéré son contenu et ses contraintes complètes.
+- CI verte ne signifie pas « sécurité approuvée » ni « production prête ».
+
+NOTIFICATIONS
+- Spécification existante : docs/requirements/INTERNAL_NOTIFICATIONS_MODULE_SPEC.md.
+  URL : https://github.com/sebsonz/zenox-finance-platform/blob/docs/international-mvp-and-requirements/docs/requirements/INTERNAL_NOTIFICATIONS_MODULE_SPEC.md
+- La cloche frontend observée sur le HEAD de la branche facture affichait un message de démonstration indiquant que l'API n'était pas connectée. Aucun code de notification persistante n'a été confirmé par les recherches ciblées précédentes; refaire une vérification du dépôt complet avant de conclure.
+- Une tentative antérieure de création de branche feature/internal-notifications-foundation a été bloquée par les contrôles de sécurité OpenAI; aucune branche n'a été créée et aucun fichier de module n'a été modifié. Ne pas contourner ce blocage par une autre voie d'écriture. Si une branche dédiée est encore nécessaire, la créer manuellement dans l'interface GitHub, puis fournir son nom et son SHA de base.
+- Ne pas démarrer l'implémentation Notifications avant la récupération complète et le plan de tests demandé par l'utilisateur.
+
+PLAN OBLIGATOIRE DU NOUVEAU CHAT — « RÉCUPÉRER PUIS TESTER »
+1. Reprendre ce checkpoint et lire le checkpoint existant + les documents d'exigences sur GitHub; ne pas demander à l'utilisateur de recopier les fichiers déjà accessibles.
+2. Récupérer la liste actuelle des PRs, leur statut (open/closed/merged/draft), head/base branch, SHA exact, fichiers modifiés, derniers workflows et résultats. Vérifier aussi les branches actives et leur relation de dépendance. La liste ci-dessus est un instantané du 2026-10-24 et doit être rafraîchie.
+3. Identifier le clone local réellement utilisé par l'utilisateur et son état Git (branche courante, git status, remotes, derniers commits). Ne pas supposer que le clone local correspond à un HEAD GitHub.
+4. Comparer local vs GitHub et préserver toutes modifications non commitées/stashes; aucun reset, clean, force push ou opération destructive.
+5. Définir une matrice de tests par SHA/module. Exécuter des tests locaux authentiques uniquement après confirmation du clone/branche; tests DB Finance sur PostgreSQL jetable. Ne jamais exécuter les migrations sur une base Finance persistante sans autorisation.
+6. Comparer les résultats locaux aux runs CI exacts. Pour tout échec, capturer commande, SHA, sortie et diagnostic; corriger uniquement sur branche adaptée, puis relancer les tests sur le nouveau SHA.
+7. Revoir l'alerte de sécurité CI et les tests de sécurité du module paiements. Garder les PR en brouillon et ne rien fusionner sans autorisation explicite.
+8. Après reconstruction et tests, mettre à jour la matrice du MVP avec [FAIT]/[EN COURS]/[A FAIRE]/[BLOQUÉ] et seulement ensuite choisir entre corrections Facturation/Paiements et Notifications.
+
+GARDE-FOUS INCHANGÉS
+- Ne jamais toucher à zenoxfret_v2.
+- Aucun test/migration contre une base persistante par défaut.
+- Aucune fusion de PR sans accord.
+- Ne pas créer de code de notification ni modifier le workflow CI avant la récupération.
+- Ne pas prétendre avoir exécuté localement les tests : seuls les runs GitHub CI ci-dessus ont été inspectés dans cette session.
+- Garder les preuves de validation attachées au SHA exact; les anciens succès ne valident pas les commits futurs.
+
+FIN DE LA MISE À JOUR DU 2026-10-24
