@@ -84,6 +84,7 @@ userSessionRouter.get("/session", requireUserAuth(), (req, res) => {
     data: {
       id: req.financeUser?.id,
       ...(req.financeUser?.email ? { email: req.financeUser.email } : {}),
+      emailConfirmedAt: req.financeUser?.emailConfirmedAt ?? null,
     },
   });
 });
