@@ -48,11 +48,13 @@ async function exchangeSession(accessToken: string): Promise<void> {
 export function RegistrationWorkspace({
   user,
   onSessionChanged,
+  initialMode = "login",
 }: {
   user: User | null;
   onSessionChanged: () => Promise<void>;
+  initialMode?: "login" | "signup";
 }) {
-  const [mode, setMode] = useState<"login" | "signup" | "forgot" | "reset">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "forgot" | "reset">(initialMode);
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
