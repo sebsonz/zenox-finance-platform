@@ -4,7 +4,7 @@ Repository: sebsonz/zenox-finance-platform
 Branch: feature/tenant-registration-onboarding
 Base: feature/tax-rule-extensibility
 PR: https://github.com/sebsonz/zenox-finance-platform/pull/14
-Latest branch commit at checkpoint: 3376df4a93cb5262b0e1956d0a0fc8c23204e3c8
+Last validated implementation commit: 96c413a173e8a7642429feddb4164071cebd8c2e
 Status: OPEN / DRAFT / NOT MERGED
 
 1. USER GOAL
