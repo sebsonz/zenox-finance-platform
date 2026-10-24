@@ -37,6 +37,33 @@ describe("calculateAndSnapshotTaxSchema", () => {
     }
   });
 
+  it("accepts only the supported optional tax applicability facts", () => {
+    expect(calculateAndSnapshotTaxSchema.parse({
+      ...validRequest,
+      taxFacts: {
+        transactionType: "FREIGHT",
+        supplierIfuStatus: "REGISTERED",
+        customerCountryCode: "BJ",
+        isImport: false,
+      },
+    }).taxFacts).toEqual({
+      transactionType: "FREIGHT",
+      supplierIfuStatus: "REGISTERED",
+      customerCountryCode: "BJ",
+      isImport: false,
+    });
+
+    expect(() => calculateAndSnapshotTaxSchema.parse({
+      ...validRequest,
+      taxFacts: { tenantId: "client-controlled" },
+    })).toThrow();
+
+    expect(() => calculateAndSnapshotTaxSchema.parse({
+      ...validRequest,
+      taxFacts: { customerCountryCode: "BEN" },
+    })).toThrow();
+  });
+
   it("rejects unknown fields to prevent silent contract drift", () => {
     expect(() => calculateAndSnapshotTaxSchema.parse({ ...validRequest, tenantId: "client-controlled" })).toThrow();
   });
