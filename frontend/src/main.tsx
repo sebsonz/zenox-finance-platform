@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity, ArrowDownRight, ArrowUpRight, Bell, BookOpen, Building2, ChevronDown,
@@ -7,9 +7,20 @@ import {
   X
 } from "lucide-react";
 import "./styles.css";
+import { RegistrationWorkspace } from "./auth/RegistrationWorkspace.js";
 import { InvoiceWorkspace } from "./invoices/InvoiceWorkspace.js";
 
 type Page = "dashboard" | "tax" | "invoices" | "payments" | "settings";
+type SessionUser = { id: string; email?: string };
+type ActiveTenant = { id: string; tenantCode: string; legalName: string; role: string };
+
+async function readEntryData<T>(response: Response): Promise<T> {
+  const payload = await response.json().catch(() => ({})) as { data?: T; error?: { message?: string } };
+  if (!response.ok || payload.data === undefined) {
+    throw new Error(payload.error?.message ?? "Impossible de vérifier votre session.");
+  }
+  return payload.data;
+}
 const navigation: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Vue d’ensemble", icon: LayoutDashboard },
   { id: "invoices", label: "Factures", icon: FileText },
@@ -33,14 +44,14 @@ function App() {
     <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`}>
       <div className="brand"><div className="brand-mark">Z</div><div><strong>ZENOX<span>FINANCE</span></strong><small>Financial workspace</small></div><button className="close-menu" onClick={() => setMobileOpen(false)} aria-label="Fermer"><X size={18}/></button></div>
       <div className="workspace-label">ESPACE DE TRAVAIL</div>
-      <button className="workspace-switch"><div className="workspace-avatar"><Building2 size={17}/></div><span><strong>Zenox Finance</strong><small>Organisation principale</small></span><ChevronDown size={15}/></button>
+      <button className="workspace-switch"><div className="workspace-avatar"><Building2 size={17}/></div><span><strong>{activeTenant.legalName}</strong><small>{activeTenant.role}</small></span><ChevronDown size={15}/></button>
       <div className="nav-label">MENU PRINCIPAL</div>
       <nav>{navigation.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => navigate(id)} className={`nav-item ${page === id ? "active" : ""}`}><Icon size={18}/><span>{label}</span>{id === "tax" && <span className="nav-tag">BETA</span>}</button>)}</nav>
       <div className="sidebar-bottom"><div className="security-card"><ShieldCheck size={19}/><strong>Finance sécurisé</strong><p>Isolation des données et journalisation des opérations.</p><span><i/> Architecture multi-tenant</span></div><button className="nav-item help-link" onClick={() => setNotice("Le centre d’aide sera connecté dans une prochaine étape.")}><CircleHelp size={18}/> Centre d’aide</button><div className="user-row"><div className="user-avatar">ZF</div><span><strong>Administrateur</strong><small>Équipe Finance</small></span><ChevronDown size={15}/></div></div>
     </aside>
 
     <main className="main-area">
-      <header className="topbar"><button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Ouvrir le menu"><Menu size={20}/></button><div className="breadcrumbs">Workspace <span>/</span> <strong>{title}</strong></div><div className="top-actions"><div className="environment"><i/> Environnement de démonstration</div><button className="icon-button" aria-label="Rechercher" onClick={() => setNotice("La recherche globale sera activée avec les modules de données.")}><Search size={18}/></button><button className="icon-button notification-button" aria-label="Notifications" onClick={() => setNotice("Aucune notification réelle : l’API n’est pas encore connectée.")}><Bell size={18}/><i/></button><div className="top-avatar">ZF</div></div></header>
+      <header className="topbar"><button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Ouvrir le menu"><Menu size={20}/></button><div className="breadcrumbs">Workspace <span>/</span> <strong>{title}</strong></div><div className="top-actions"><div className="environment"><i/> Espace connecté</div><button className="icon-button" aria-label="Rechercher" onClick={() => setNotice("La recherche globale sera activée avec les modules de données.")}><Search size={18}/></button><button className="icon-button notification-button" aria-label="Notifications" onClick={() => setNotice("Aucune notification réelle : l’API n’est pas encore connectée.")}><Bell size={18}/><i/></button><button className="top-avatar" type="button" aria-label="Se déconnecter" title={sessionUser.email ?? "Se déconnecter"} onClick={() => void signOut()}>{(sessionUser.email ?? "ZF").slice(0, 2).toUpperCase()}</button></div></header>
       <div className="page-content">
         {notice && <div className="notice"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Fermer"><X size={16}/></button></div>}
         {page === "dashboard" && <Dashboard onNavigate={navigate}/>}
