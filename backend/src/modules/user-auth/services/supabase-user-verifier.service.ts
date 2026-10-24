@@ -102,10 +102,10 @@ export async function verifySupabaseAccessToken(
     ? payload.email_confirmed_at
     : "confirmed_at" in payload && typeof payload.confirmed_at === "string"
       ? payload.confirmed_at
-      : null;
+      : undefined;
   return {
     id: payload.id,
     ...(email === undefined ? {} : { email }),
-    emailConfirmedAt,
+    ...(emailConfirmedAt === undefined ? {} : { emailConfirmedAt }),
   };
 }
