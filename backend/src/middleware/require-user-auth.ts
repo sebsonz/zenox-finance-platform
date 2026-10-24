@@ -15,6 +15,7 @@ declare global {
         id: string;
         issuer: string;
         email?: string;
+        emailConfirmedAt?: string | null;
       };
     }
   }
@@ -78,6 +79,7 @@ export function requireUserAuth() {
         id: user.id,
         issuer: new URL(env.SUPABASE_URL).origin,
         ...(user.email === undefined ? {} : { email: user.email }),
+        ...(user.emailConfirmedAt === undefined ? {} : { emailConfirmedAt: user.emailConfirmedAt }),
       };
       next();
     } catch (error) {
