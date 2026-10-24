@@ -113,6 +113,58 @@ userInvoiceRouter.get(
 );
 
 
+userInvoiceRouter.get(
+  "/:tenantId/dashboard-summary",
+  requireUserAuth(),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const parsedTenantId = tenantIdSchema.safeParse(req.params["tenantId"]);
+    if (!parsedTenantId.success) {
+      res.status(400).json({ error: { code: "INVALID_TENANT_ID", message: "A valid tenant ID is required." } });
+      return;
+    }
+    try {
+      const context = await resolveInvoiceWriteContext(parsedTenantId.data, req, res, "invoices:read");
+      if (!context) return;
+      const summary = await withTenantTransaction(parsedTenantId.data, async (client) => {
+        const result = await client.query<{
+          currency_code: string | null;
+          minor_unit: number | null;
+          issued_invoice_count: number;
+          draft_invoice_count: number;
+          issued_total: string;
+        }>(
+          `SELECT
+             (SELECT t.default_currency FROM public.finance_tenants t
+               WHERE t.id = $1 AND t.status = 'ACTIVE') AS currency_code,
+             (SELECT c.minor_unit FROM public.finance_currencies c
+               WHERE c.code = (SELECT t.default_currency FROM public.finance_tenants t WHERE t.id = $1)
+               AND c.is_active = true) AS minor_unit,
+             COUNT(*) FILTER (WHERE i.status = 'ISSUED')::int AS issued_invoice_count,
+             COUNT(*) FILTER (WHERE i.status = 'DRAFT')::int AS draft_invoice_count,
+             COALESCE(SUM(i.grand_total) FILTER (WHERE i.status = 'ISSUED'), 0)::text AS issued_total
+           FROM public.finance_invoices i
+          WHERE i.tenant_id = $1`,
+          [parsedTenantId.data],
+        );
+        return result.rows[0];
+      });
+      res.setHeader("Cache-Control", "no-store");
+      res.status(200).json({
+        data: {
+          issuedInvoiceCount: summary?.issued_invoice_count ?? 0,
+          draftInvoiceCount: summary?.draft_invoice_count ?? 0,
+          issuedTotal: summary?.issued_total ?? "0",
+          currencyCode: summary?.currency_code ?? null,
+          minorUnit: summary?.minor_unit ?? 2,
+          correlationId: String(res.locals["correlationId"] ?? ""),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 async function resolveInvoiceWriteContext(
   tenantId: string,
   req: Request,
