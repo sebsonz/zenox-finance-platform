@@ -107,7 +107,7 @@ BEGIN
   IF NOT public.finance_is_active_platform_operator(p_operator_issuer, p_operator_subject) THEN
     RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'PLATFORM_OPERATOR_REQUIRED';
   END IF;
-  IF p_request_id IS NULL OR p_decision NOT IN ('APPROVE', 'REJECT') THEN
+  IF p_request_id IS NULL OR p_decision IS NULL OR p_decision NOT IN ('APPROVE', 'REJECT') THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'INVALID_REVIEW_DECISION';
   END IF;
   IF p_correlation_id IS NULL OR length(btrim(p_correlation_id)) NOT BETWEEN 1 AND 100 THEN
