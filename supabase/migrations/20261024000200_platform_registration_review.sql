@@ -26,6 +26,24 @@ ALTER TABLE public.finance_platform_operators ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_platform_operators FORCE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.finance_platform_operators FROM PUBLIC;
 
+-- Explicitly remove any Supabase default table grants from browser-facing roles.
+DO $table_revokes$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.finance_platform_operators FROM anon';
+    EXECUTE 'REVOKE ALL ON TABLE public.finance_registration_requests FROM anon';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.finance_platform_operators FROM authenticated';
+    EXECUTE 'REVOKE ALL ON TABLE public.finance_registration_requests FROM authenticated';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.finance_platform_operators FROM service_role';
+    EXECUTE 'REVOKE ALL ON TABLE public.finance_registration_requests FROM service_role';
+  END IF;
+END
+$table_revokes$;
+
 CREATE OR REPLACE FUNCTION public.finance_is_active_platform_operator(
   p_identity_issuer text,
   p_identity_subject text
