@@ -4,7 +4,7 @@ Repository: sebsonz/zenox-finance-platform
 Branch: feature/tenant-registration-onboarding
 Base: feature/tax-rule-extensibility
 PR: https://github.com/sebsonz/zenox-finance-platform/pull/14
-Last validated implementation commit: 96c413a173e8a7642429feddb4164071cebd8c2e
+Last validated implementation commit: e6acdc87e1cfe0acbe9793bb5876f064c68c41e2
 Status: OPEN / DRAFT / NOT MERGED
 
 1. USER GOAL
@@ -73,6 +73,7 @@ Turn the demo UI into a real-user application:
 1. Trigger/obtain GitHub Actions run for current PR head and fix every backend test, migration, drift, frontend typecheck/build issue.
 2. Review the SQL SECURITY DEFINER functions and effective runtime grants with the disposable least-privilege role; add integration checks that unauthorized identities cannot read each other's request data and failed duplicate submission leaves no extra tenant/membership.
 3. Review Supabase confirmation and password recovery redirects against actual Finance project settings (do not guess URLs).
-4. Complete the tenant approval boundary design before implementing activation; pending users must not access invoices.
+4. Confirm and execute the first-platform-operator bootstrap only in the dedicated Finance database after verifying the real Supabase identity; test the review UI with an ordinary user and an authorized operator.
 5. Add/verify production country reference, distributed rate limiting, session refresh, and approved legal terms before public launch.
-6. Only after explicit approval, merge in correct PR dependency order. No merges are authorized by this checkpoint.
+6. Verify Supabase confirmation/recovery redirects and approval/rejection behavior with test identities; ensure pending/rejected memberships cannot access invoices and approved memberships can.
+7. Only after explicit approval, merge in correct PR dependency order. No merges are authorized by this checkpoint.
