@@ -25,7 +25,7 @@ function formatMoneyString(value: string, currency: string, minorUnit: number): 
   const negative = value.startsWith("-");
   const unsigned = negative ? value.slice(1) : value;
   const [whole = "0", fraction = ""] = unsigned.split(".");
-  const grouped = whole.replace(/\\B(?=(\\d{3})+(?!\\d))/g, " ");
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   const decimals = minorUnit > 0 ? "." + fraction.padEnd(minorUnit, "0").slice(0, minorUnit) : "";
   return `${currency} ${negative ? "-" : ""}${grouped}${decimals}`;
 }
