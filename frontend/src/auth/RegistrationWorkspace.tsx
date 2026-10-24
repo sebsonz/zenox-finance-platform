@@ -297,8 +297,7 @@ export function RegistrationWorkspace({
             <button type="button" className="registration-primary" disabled={busy || !user.email} onClick={() => void resendConfirmation()}>
               {busy ? <LoaderCircle size={17} className="spin"/> : <Mail size={17}/>} Renvoyer l’e-mail de confirmation
             </button>
-          </>}
-        </> : <>
+          </> : <>
           <p className="registration-eyebrow">COMPTE CONNECTÉ</p>
           <h2>Configurez votre organisation</h2>
           <p className="registration-muted">Connecté en tant que <strong>{user.email ?? "utilisateur vérifié"}</strong>. Votre compte personnel et votre organisation sont deux éléments distincts.</p>
@@ -317,6 +316,7 @@ export function RegistrationWorkspace({
               <button className="registration-primary" type="submit" disabled={busy || !currencies.length || !acceptedTerms}>{busy ? <LoaderCircle size={17} className="spin"/> : <Building2 size={17}/>} Soumettre l’organisation</button>
               <p className="registration-footnote">La demande restera en attente. Aucun accès aux factures ou aux paiements ne sera accordé avant activation par un processus d’approbation autorisé.</p>
             </form>}
+          </>}
           </>}
         </> : <>
           <div className="registration-card-top"><div className="registration-icon">{mode === "signup" ? <UserPlus size={22}/> : mode === "forgot" || mode === "reset" ? <Mail size={22}/> : <KeyRound size={22}/>}</div><span className="registration-secure"><ShieldCheck size={14}/> Connexion sécurisée</span></div>
