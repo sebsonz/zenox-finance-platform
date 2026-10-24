@@ -46,6 +46,38 @@ const navigation: { id: Page; label: string; icon: typeof LayoutDashboard }[] = 
 ];
 
 function App() {
+  const [entryChecking, setEntryChecking] = useState(true);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
+  const [activeTenant, setActiveTenant] = useState<ActiveTenant | null>(null);
+  const [entryError, setEntryError] = useState("");
+
+  async function refreshEntry() {
+    setEntryChecking(true);
+    setEntryError("");
+    try {
+      const sessionResponse = await fetch("/api/v1/user/session", { credentials: "same-origin", cache: "no-store" });
+      if (!sessionResponse.ok) {
+        setSessionUser(null);
+        setActiveTenant(null);
+        return;
+      }
+      const session = await readEntryData<SessionUser>(sessionResponse);
+      setSessionUser(session);
+      const tenantData = await readEntryData<{ tenants: ActiveTenant[] }>(
+        await fetch("/api/v1/user/tenants", { credentials: "same-origin", cache: "no-store" }),
+      );
+      setActiveTenant(tenantData.tenants?.[0] ?? null);
+    } catch (error) {
+      setSessionUser(null);
+      setActiveTenant(null);
+      setEntryError(error instanceof Error ? error.message : "L’API Finance est inaccessible.");
+    } finally {
+      setEntryChecking(false);
+    }
+  }
+
+  useEffect(() => { void refreshEntry(); }, []);
+
   const [page, setPage] = useState<Page>("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [amount, setAmount] = useState("100000");
@@ -54,6 +86,14 @@ function App() {
 
   const navigate = (next: Page) => { setPage(next); setMobileOpen(false); setNotice(""); };
   const title = navigation.find((item) => item.id === page)?.label ?? "Vue d’ensemble";
+
+  if (entryChecking) return <main className="entry-loading"><div className="brand-mark">Z</div><p>Vérification sécurisée de votre espace…</p></main>;
+  if (!sessionUser || !activeTenant) return <><RegistrationWorkspace user={sessionUser} onSessionChanged={refreshEntry}/>{entryError && <div className="entry-error">{entryError}</div>}</>;
+
+  async function signOut() {
+    await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" });
+    await refreshEntry();
+  }
 
   return <div className="app-shell">
     {mobileOpen && <button className="mobile-scrim" aria-label="Fermer le menu" onClick={() => setMobileOpen(false)} />}
