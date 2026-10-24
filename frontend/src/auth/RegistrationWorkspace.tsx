@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Building2, CheckCircle2, CircleAlert, KeyRound, LoaderCircle, LogIn, Mail, ShieldCheck, UserPlus } from "lucide-react";
 
-type User = { id: string; email?: string };
+type User = { id: string; email?: string; emailConfirmedAt?: string | null };
 type Currency = { code: string; name: string; minorUnit: number };
 type RegistrationRequest = {
   id: string;
@@ -101,7 +101,7 @@ export function RegistrationWorkspace({
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !user.emailConfirmedAt) return;
     void loadRequests();
     void fetch("/api/v1/user/registration/currencies", { credentials: "same-origin", cache: "no-store" })
       .then((response) => readData<{ currencies: Currency[] }>(response, "Le référentiel des devises est indisponible."))
@@ -232,6 +232,30 @@ export function RegistrationWorkspace({
     }
   }
 
+  async function resendConfirmation() {
+    if (!user?.email) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const config = await authConfig();
+      const url = new URL(`${config.supabaseUrl.replace(/\/$/, "")}/auth/v1/resend`);
+      url.searchParams.set("type", "signup");
+      url.searchParams.set("redirect_to", window.location.origin);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json", apikey: config.supabaseAnonKey },
+        body: JSON.stringify({ email: user.email }),
+      });
+      if (!response.ok) throw new Error("L’e-mail ne peut pas être renvoyé pour le moment. Réessayez plus tard.");
+      setNotice("Si la confirmation est encore nécessaire, un nouvel e-mail sera envoyé.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Impossible de renvoyer l’e-mail.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function signOut() {
     setBusy(true);
     try {
@@ -264,6 +288,17 @@ export function RegistrationWorkspace({
       <div className="registration-card">
         {user ? <>
           <div className="registration-card-top"><div className="registration-icon"><Building2 size={22}/></div><button type="button" className="registration-signout" onClick={() => void signOut()} disabled={busy}>Déconnexion</button></div>
+          {!user.emailConfirmedAt ? <>
+            <p className="registration-eyebrow">CONFIRMATION REQUISE</p>
+            <h2>Vérifiez votre adresse e-mail</h2>
+            <p className="registration-muted">Votre compte existe, mais l’adresse e-mail doit être confirmée avant toute demande d’organisation.</p>
+            {notice && <div className="registration-notice"><CheckCircle2 size={17}/><span>{notice}</span></div>}
+            {error && <div className="registration-error"><CircleAlert size={17}/><span>{error}</span></div>}
+            <button type="button" className="registration-primary" disabled={busy || !user.email} onClick={() => void resendConfirmation()}>
+              {busy ? <LoaderCircle size={17} className="spin"/> : <Mail size={17}/>} Renvoyer l’e-mail de confirmation
+            </button>
+          </>}
+        </> : <>
           <p className="registration-eyebrow">COMPTE CONNECTÉ</p>
           <h2>Configurez votre organisation</h2>
           <p className="registration-muted">Connecté en tant que <strong>{user.email ?? "utilisateur vérifié"}</strong>. Votre compte personnel et votre organisation sont deux éléments distincts.</p>
