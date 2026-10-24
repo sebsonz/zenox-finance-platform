@@ -72,8 +72,8 @@ function toRequest(row: {
     countryCode: row.country_code,
     defaultCurrency: row.default_currency,
     status: row.status,
-    submittedAt: new Date(row.submitted_at).toISOString(),
-    updatedAt: new Date(row.updated_at).toISOString(),
+    submittedAt: row.submitted_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
     ...(row.rejection_reason ? { rejectionReason: row.rejection_reason } : {}),
   };
 }
