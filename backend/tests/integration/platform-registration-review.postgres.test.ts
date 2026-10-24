@@ -55,6 +55,13 @@ integrationDescribe("platform registration review PostgreSQL functions", () => {
     );
   }
 
+  it("does not grant the runtime role direct access to registration or operator tables", async () => {
+    await expect(runtimePool.query("SELECT * FROM public.finance_platform_operators"))
+      .rejects.toMatchObject({ code: "42501" });
+    await expect(runtimePool.query("SELECT * FROM public.finance_registration_requests"))
+      .rejects.toMatchObject({ code: "42501" });
+  });
+
   it("requires an explicitly bootstrapped platform operator and atomically approves a request", async () => {
     const suffix = randomUUID();
     const operatorIssuer = "https://platform-auth.example.test";
