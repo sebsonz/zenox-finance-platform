@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { RegistrationHomeLink } from "./RegistrationHomeLink";
 import { Building2, CheckCircle2, CircleAlert, KeyRound, LoaderCircle, LogIn, Mail, ShieldCheck, UserPlus } from "lucide-react";
 
 type User = { id: string; email?: string; emailConfirmedAt?: string | null };
@@ -285,6 +286,7 @@ export function RegistrationWorkspace({
     </section>
 
     <section className="registration-content">
+      {!user && <RegistrationHomeLink />}
       <div className="registration-card">
         {user ? <>
           <div className="registration-card-top"><div className="registration-icon"><Building2 size={22}/></div><button type="button" className="registration-signout" onClick={() => void signOut()} disabled={busy}>Déconnexion</button></div>
