@@ -1,0 +1,30 @@
+.registration-home-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 9px;
+  width: min(100%, 510px);
+  margin: 0 0 18px;
+  color: #315fbd;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.registration-home-link:hover {
+  color: #173f91;
+  text-decoration: underline;
+}
+
+.registration-home-link:focus-visible {
+  outline: 2px solid #4d85ff;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.registration-home-link__arrow {
+  font-size: 19px;
+  line-height: 1;
+}
