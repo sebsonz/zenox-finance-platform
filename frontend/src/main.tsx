@@ -11,6 +11,7 @@ import { RegistrationWorkspace } from "./auth/RegistrationWorkspace.js";
 import { PlatformEntryWorkspace } from "./auth/PlatformEntryWorkspace.js";
 import { InvoiceWorkspace } from "./invoices/InvoiceWorkspace.js";
 import { PlatformReviewWorkspace } from "./platform/PlatformReviewWorkspace.js";
+import { PlatformAdminDashboard } from "./platform/PlatformAdminDashboard.js";
 
 type Page = "dashboard" | "tax" | "invoices" | "payments" | "settings" | "platform";
 type SessionUser = { id: string; email?: string; emailConfirmedAt?: string | null };
@@ -130,6 +131,8 @@ function App() {
       onBackToEntry={() => setShowOrganizationSetup(false)}
     />{entryError && <div className="entry-error">{entryError}</div>}</>;
   }
+
+  if (!activeTenant && isPlatformOperator) return <PlatformAdminDashboard email={sessionUser.email ?? "admin"} onSignOut={async () => { await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" }); await refreshEntry(); }} />;
 
   async function signOut() {
     await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" });
