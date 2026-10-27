@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Activity, Bell, Building2, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight,
+  Activity, Bell, Building2, ChevronDown, ChevronLeft, ChevronRight,
   CircleHelp, ClipboardList, CreditCard, FileText, Globe2, LayoutDashboard, LogOut,
-  Menu, Moon, Search, Settings2, ShieldCheck, Sun, Users, X, type LucideIcon,
+  Menu, Moon, Search, ShieldCheck, Sun, Users, X, type LucideIcon,
 } from "lucide-react";
 import { PlatformReviewWorkspace } from "./PlatformReviewWorkspace.js";
 import "./PlatformAdminDashboard.css";
@@ -70,10 +70,6 @@ export function PlatformAdminDashboard({ email, onSignOut }: { email: string; on
     orgs: "Organisations", users: "Utilisateurs & permissions", audit: "Journal d’audit",
     finance: "Facturation & paiements", tax: "Fiscalité & juridictions",
   } satisfies Record<Section, string>)[section], [section]);
-  const filteredRequests = requests.filter((request) => {
-    const value = `${request.legalName} ${request.countryCode} ${request.id}`.toLocaleLowerCase();
-    return value.includes(query.toLocaleLowerCase());
-  });
   const pendingCount = requests.filter((request) => !request.status || request.status === "PENDING").length;
   const selectSection = (next: Section) => { setSection(next); setMobileOpen(false); setNotice(""); };
 
