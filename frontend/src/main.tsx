@@ -63,6 +63,7 @@ function App() {
         setSessionUser(null);
         setActiveTenant(null);
         setIsPlatformOperator(false);
+        setShowOrganizationSetup(false);
         setPage("dashboard");
         return;
       }
@@ -86,6 +87,7 @@ function App() {
       setSessionUser(null);
       setActiveTenant(null);
       setIsPlatformOperator(false);
+      setShowOrganizationSetup(false);
       setPage("dashboard");
       setEntryError(error instanceof Error ? error.message : "L’API Finance est inaccessible.");
     } finally {

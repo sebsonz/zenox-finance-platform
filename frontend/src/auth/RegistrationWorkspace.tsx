@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { RegistrationHomeLink } from "./RegistrationHomeLink";
+import "./PlatformEntryWorkspace.css";
 import { Building2, CheckCircle2, CircleAlert, KeyRound, LoaderCircle, LogIn, Mail, ShieldCheck, UserPlus } from "lucide-react";
 
 type User = { id: string; email?: string; emailConfirmedAt?: string | null };
@@ -49,9 +50,11 @@ async function exchangeSession(accessToken: string): Promise<void> {
 export function RegistrationWorkspace({
   user,
   onSessionChanged,
+  onBackToEntry,
 }: {
   user: User | null;
   onSessionChanged: () => Promise<void>;
+  onBackToEntry?: () => void;
 }) {
   const [mode, setMode] = useState<"login" | "signup" | "forgot" | "reset">("login");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -289,7 +292,7 @@ export function RegistrationWorkspace({
       {!user && <RegistrationHomeLink />}
       <div className="registration-card">
         {user ? <>
-          <div className="registration-card-top"><div className="registration-icon"><Building2 size={22}/></div><button type="button" className="registration-signout" onClick={() => void signOut()} disabled={busy}>Déconnexion</button></div>
+          <div className="registration-card-top"><div className="registration-icon"><Building2 size={22}/></div><div className="registration-card-actions">{onBackToEntry && <button type="button" className="registration-signout" onClick={onBackToEntry} disabled={busy}>Autres options</button>}<button type="button" className="registration-signout" onClick={() => void signOut()} disabled={busy}>Déconnexion</button></div></div>
           {!user.emailConfirmedAt ? <>
             <p className="registration-eyebrow">CONFIRMATION REQUISE</p>
             <h2>Vérifiez votre adresse e-mail</h2>
