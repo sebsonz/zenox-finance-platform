@@ -132,7 +132,7 @@ function App() {
     />{entryError && <div className="entry-error">{entryError}</div>}</>;
   }
 
-  if (!activeTenant && isPlatformOperator) return <PlatformAdminDashboard email={sessionUser.email ?? "admin"} onSignOut={async () => { await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" }); await refreshEntry(); }} />;
+  if (isPlatformOperator) return <PlatformAdminDashboard email={sessionUser.email ?? "admin"} onSignOut={async () => { await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" }); await refreshEntry(); }} />;
 
   async function signOut() {
     await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" });
