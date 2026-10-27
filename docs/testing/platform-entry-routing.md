@@ -7,7 +7,7 @@ Un utilisateur connecté sans organisation active doit pouvoir choisir entre l�
 ## Cas d’acceptation
 
 1. **Visiteur non connecté** : l’écran de connexion/inscription s’affiche.
-2. **Compte connecté sans rôle plateforme et sans organisation active** : l’écran « Choisissez votre espace » s’affiche. Le formulaire de création d’organisation ne s’ouvre que si l’utilisateur choisit explicitement « Créer une organisation cliente ».
+2. **Compte connecté sans rôle plateforme et sans organisation active** : l’écran « Choisissez votre espace » s’affiche. Le parcours de création ou de suivi d’organisation ne s’ouvre que si l’utilisateur le choisit explicitement. Un compte dont l’e-mail n’est pas confirmé conserve l’écran de confirmation existant.
 3. **Demande d’accès plateforme par un utilisateur ordinaire** : `GET /api/v1/user/platform/me` renvoie 403; l’interface explique que l’activation nécessite une opération DBA autorisée. Aucun droit n’est accordé et aucune organisation n’est créée.
 4. **Opérateur actif et email confirmé** : le contrôle serveur renvoie `isPlatformOperator: true`; l’interface actualise la session d’entrée et ouvre l’espace « Demandes d’inscription ».
 5. **Email non confirmé** : le contrôle administrateur est désactivé et l’interface invite à confirmer l’adresse.

@@ -90,9 +90,9 @@ export function PlatformEntryWorkspace({ user, onCreateOrganization, onSessionCh
           <div className="platform-entry-divider"><span>OU</span></div>
 
           <button type="button" className="platform-entry-secondary" onClick={onCreateOrganization} disabled={checking}>
-            <Building2 size={18}/><span>Créer une organisation cliente</span><ArrowRight size={17}/>
+            <Building2 size={18}/><span>Créer ou suivre une organisation cliente</span><ArrowRight size={17}/>
           </button>
-          <p className="platform-entry-hint">Cette option crée une demande d’organisation distincte. Elle n’est pas requise pour un compte administrateur.</p>
+          <p className="platform-entry-hint">Cette option ouvre le parcours client pour créer une demande ou consulter son état. Elle n’est pas requise pour un compte administrateur.</p>
 
           <button type="button" className="platform-entry-signout" onClick={() => void signOut()} disabled={checking}>
             <LogOut size={16}/> Déconnexion
