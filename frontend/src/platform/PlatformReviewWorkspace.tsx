@@ -19,7 +19,7 @@ async function readPayload<T>(response: Response, fallback: string): Promise<T> 
   return payload.data;
 }
 
-export function PlatformReviewWorkspace() {
+export function PlatformReviewWorkspace({ searchQuery = "" }: { searchQuery?: string }) {
   const [requests, setRequests] = useState<PendingRegistration[]>([]);
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -47,6 +47,10 @@ export function PlatformReviewWorkspace() {
   }
 
   useEffect(() => { void loadRequests(); }, []);
+
+  const normalizedSearch = searchQuery.trim().toLocaleLowerCase("fr");
+  const visibleRequests = requests.filter((request) => [request.legalName, request.countryCode, request.defaultCurrency, request.id]
+    .some((value) => value.toLocaleLowerCase("fr").includes(normalizedSearch)));
 
   async function decide(request: PendingRegistration, decision: "APPROVE" | "REJECT") {
     const reason = (reasons[request.id] ?? "").trim();
@@ -88,7 +92,7 @@ export function PlatformReviewWorkspace() {
       <div>
         <div className="eyebrow"><ShieldCheck size={14}/> ADMINISTRATION SÉCURISÉE</div>
         <h1>Demandes d’inscription</h1>
-        <p>Vérifiez les organisations avant d’activer leur espace financier.</p>
+        <p>Vérifiez les organisations avant d’activer leur espace financier.{normalizedSearch ? ` · ${visibleRequests.length} résultat(s)` : ""}</p>
       </div>
       <button className="outline-button" type="button" onClick={() => void loadRequests()} disabled={loading}><RefreshCw size={15}/> Actualiser</button>
     </div>
@@ -96,8 +100,8 @@ export function PlatformReviewWorkspace() {
     {notice && <div className="registration-notice"><CheckCircle2 size={17}/><span>{notice}</span></div>}
     {error && <div className="registration-error"><CircleAlert size={17}/><span>{error}</span></div>}
     {loading ? <div className="platform-review-empty"><LoaderCircle size={22} className="spin"/><p>Chargement des demandes…</p></div>
-      : requests.length === 0 ? <div className="platform-review-empty"><ClipboardCheck size={28}/><strong>Aucune demande en attente</strong><p>Les nouvelles inscriptions apparaîtront ici après confirmation de l’e-mail et soumission de l’organisation.</p></div>
-      : <div className="platform-review-list">{requests.map((request) => <article className="platform-review-card" key={request.id}>
+      : visibleRequests.length === 0 ? <div className="platform-review-empty"><ClipboardCheck size={28}/><strong>{normalizedSearch ? "Aucun résultat pour cette recherche" : "Aucune demande en attente"}</strong><p>{normalizedSearch ? "Essayez un autre nom d’organisation, pays, devise ou identifiant." : "Les nouvelles inscriptions apparaîtront ici après confirmation de l’e-mail et soumission de l’organisation."}</p></div>
+      : <div className="platform-review-list">{visibleRequests.map((request) => <article className="platform-review-card" key={request.id}>
         <div className="platform-review-card-header"><div><span className="platform-review-status">EN ATTENTE</span><h2>{request.legalName}</h2><p>{request.countryCode} · Devise par défaut : {request.defaultCurrency}</p></div><small>{new Date(request.submittedAt).toLocaleString()}</small></div>
         <p className="platform-review-reference">Référence : {request.id}</p>
         <label className="platform-review-reason">Motif de refus (obligatoire uniquement en cas de refus)<textarea value={reasons[request.id] ?? ""} onChange={(event) => setReasons((current) => ({ ...current, [request.id]: event.target.value }))} minLength={10} maxLength={1000} placeholder="Expliquez les informations manquantes ou non vérifiables…"/></label>
