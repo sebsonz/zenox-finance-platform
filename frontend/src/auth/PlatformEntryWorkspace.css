@@ -1,0 +1,38 @@
+.platform-entry-shell{min-height:100vh;display:grid;grid-template-columns:minmax(280px,1fr) minmax(360px,560px);background:#f5f7fb;color:#1d293b}
+.platform-entry-brand{display:flex;flex-direction:column;justify-content:center;padding:64px clamp(28px,7vw,100px);background:#101a2d;color:#fff}
+.platform-entry-brand-mark{display:grid;place-items:center;width:54px;height:54px;border-radius:16px;background:linear-gradient(145deg,#4d85ff,#2861db);font:800 32px Manrope,sans-serif;box-shadow:0 8px 24px #2354c94d}
+.platform-entry-kicker{margin:30px 0 12px;color:#9dbbff;font-size:10px;font-weight:700;letter-spacing:1.5px}
+.platform-entry-brand h1{font:800 clamp(28px,3vw,40px) Manrope,sans-serif;letter-spacing:-1px;color:#fff;margin:0 0 15px}
+.platform-entry-brand h1 span{color:#78a3ff}
+.platform-entry-intro{max-width:450px;color:#b8c4d8;font-size:14px;line-height:1.8}
+.platform-entry-security{display:flex;align-items:flex-start;gap:12px;max-width:470px;margin-top:25px;padding:17px;border:1px solid #34445e;border-radius:12px;background:#17243a;color:#9dbbff}
+.platform-entry-security span{color:#bdc9dc;font-size:12px;line-height:1.7}
+.platform-entry-content{display:grid;place-items:center;padding:32px}
+.platform-entry-card{width:min(100%,470px);padding:34px;background:#fff;border:1px solid #e6ebf3;border-radius:16px;box-shadow:0 18px 50px #16233b0b}
+.platform-entry-card-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:13px;background:#eaf1ff;color:#3569d8;margin-bottom:24px}
+.platform-entry-eyebrow{font-size:10px;font-weight:800;letter-spacing:1.2px;color:#4777db;margin:0 0 9px}
+.platform-entry-card h2{font:800 25px Manrope,sans-serif;letter-spacing:-.5px;color:#1d293b;margin:0 0 12px}
+.platform-entry-muted{font-size:13px;line-height:1.8;color:#78859a;margin:0 0 24px}
+.platform-entry-muted strong{color:#35445c}
+.platform-entry-primary,.platform-entry-secondary{display:flex;align-items:center;gap:11px;width:100%;min-height:48px;padding:12px 14px;border-radius:9px;font-size:12px;font-weight:700;text-align:left}
+.platform-entry-primary{border:1px solid #3267de;background:#3267de;color:white;box-shadow:0 5px 14px #3267de20}
+.platform-entry-primary:hover:not(:disabled){background:#2556c5}
+.platform-entry-primary span,.platform-entry-secondary span{flex:1}
+.platform-entry-primary:disabled,.platform-entry-secondary:disabled,.platform-entry-signout:disabled,.platform-entry-retry:disabled{opacity:.6;cursor:not-allowed}
+.platform-entry-secondary{border:1px solid #dce3ef;background:#fff;color:#34435a}
+.platform-entry-secondary:hover:not(:disabled){background:#f7f9fd;border-color:#b8c9e8}
+.platform-entry-divider{display:flex;align-items:center;gap:12px;margin:22px 0;color:#9aa5b6;font-size:9px;font-weight:800;letter-spacing:1px}
+.platform-entry-divider:before,.platform-entry-divider:after{content:"";height:1px;background:#edf0f5;flex:1}
+.platform-entry-hint{font-size:10px;line-height:1.65;color:#8995a8;margin:10px 0 0}
+.platform-entry-notice,.platform-entry-error{display:flex;align-items:flex-start;gap:10px;padding:12px;border-radius:9px;margin:-7px 0 18px;font-size:11px;line-height:1.65}
+.platform-entry-notice{color:#775d20;background:#fff8e8;border:1px solid #f1dfb1}
+.platform-entry-error{color:#a23546;background:#fff0f1;border:1px solid #f3cbd0}
+.platform-entry-notice svg,.platform-entry-error svg{flex-shrink:0;margin-top:1px}
+.platform-entry-signout,.platform-entry-retry{display:flex;align-items:center;justify-content:center;gap:7px;margin:18px auto 0;padding:5px;border:0;background:transparent;color:#78859a;font-size:11px}
+.platform-entry-signout:hover,.platform-entry-retry:hover{color:#315fbd;text-decoration:underline}
+.platform-entry-retry{margin-top:4px;font-size:10px}
+.platform-entry-spin{animation:platform-entry-spin .9s linear infinite}
+@keyframes platform-entry-spin{to{transform:rotate(360deg)}}
+.registration-card-actions{display:flex;align-items:center;gap:10px}
+@media(max-width:850px){.platform-entry-shell{grid-template-columns:1fr}.platform-entry-brand{padding:36px 28px}.platform-entry-kicker{margin-top:22px}.platform-entry-security{margin-top:12px}.platform-entry-content{padding:24px 16px 36px}}
+@media(max-width:420px){.platform-entry-card{padding:24px 20px}.registration-card-actions{gap:6px}.registration-card-actions .registration-signout{font-size:10px;padding:6px}}

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import { RegistrationWorkspace } from "./auth/RegistrationWorkspace.js";
+import { PlatformEntryWorkspace } from "./auth/PlatformEntryWorkspace.js";
 import { InvoiceWorkspace } from "./invoices/InvoiceWorkspace.js";
 import { PlatformReviewWorkspace } from "./platform/PlatformReviewWorkspace.js";
 
@@ -53,6 +54,7 @@ function App() {
   const [activeTenant, setActiveTenant] = useState<ActiveTenant | null>(null);
   const [isPlatformOperator, setIsPlatformOperator] = useState(false);
   const [entryError, setEntryError] = useState("");
+  const [showOrganizationSetup, setShowOrganizationSetup] = useState(false);
 
   async function refreshEntry() {
     setEntryChecking(true);
@@ -63,6 +65,7 @@ function App() {
         setSessionUser(null);
         setActiveTenant(null);
         setIsPlatformOperator(false);
+        setShowOrganizationSetup(false);
         setPage("dashboard");
         return;
       }
@@ -86,6 +89,7 @@ function App() {
       setSessionUser(null);
       setActiveTenant(null);
       setIsPlatformOperator(false);
+      setShowOrganizationSetup(false);
       setPage("dashboard");
       setEntryError(error instanceof Error ? error.message : "L’API Finance est inaccessible.");
     } finally {
@@ -108,7 +112,24 @@ function App() {
   const title = visibleNavigation.find((item) => item.id === page)?.label ?? "Vue d’ensemble";
 
   if (entryChecking) return <main className="entry-loading"><div className="brand-mark">Z</div><p>Vérification sécurisée de votre espace…</p></main>;
-  if (!sessionUser || (!activeTenant && !isPlatformOperator)) return <><RegistrationWorkspace user={sessionUser} onSessionChanged={refreshEntry}/>{entryError && <div className="entry-error">{entryError}</div>}</>;
+  if (!sessionUser) return <><RegistrationWorkspace user={null} onSessionChanged={refreshEntry}/>{entryError && <div className="entry-error">{entryError}</div>}</>;
+  if (!activeTenant && !isPlatformOperator && !sessionUser.emailConfirmedAt) {
+    return <RegistrationWorkspace user={sessionUser} onSessionChanged={refreshEntry} />;
+  }
+  if (!activeTenant && !isPlatformOperator && !showOrganizationSetup) {
+    return <PlatformEntryWorkspace
+      user={sessionUser}
+      onCreateOrganization={() => setShowOrganizationSetup(true)}
+      onSessionChanged={refreshEntry}
+    />;
+  }
+  if (!activeTenant && !isPlatformOperator) {
+    return <><RegistrationWorkspace
+      user={sessionUser}
+      onSessionChanged={refreshEntry}
+      onBackToEntry={() => setShowOrganizationSetup(false)}
+    />{entryError && <div className="entry-error">{entryError}</div>}</>;
+  }
 
   async function signOut() {
     await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" });
