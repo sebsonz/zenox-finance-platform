@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Activity, Bell, Building2, ChevronDown, ChevronLeft, ChevronRight,
   CircleHelp, ClipboardList, CreditCard, FileText, Globe2, LayoutDashboard, LogOut,
-  Menu, Moon, Search, ShieldCheck, Sun, Users, X, type LucideIcon,
+  Menu, Moon, RefreshCw, Search, ShieldCheck, Sun, Users, X, type LucideIcon,
 } from "lucide-react";
 import { PlatformReviewWorkspace } from "./PlatformReviewWorkspace.js";
 import "./PlatformAdminDashboard.css";
@@ -46,6 +46,7 @@ export function PlatformAdminDashboard({ email, onSignOut }: { email: string; on
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [requestsError, setRequestsError] = useState("");
   const [requestsLoading, setRequestsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -58,18 +59,40 @@ export function PlatformAdminDashboard({ email, onSignOut }: { email: string; on
   }, [dark]);
   useEffect(() => {
     let cancelled = false;
-    setRequestsLoading(true); setRequestsError("");
+    setRequestsLoading(true);
+    setRequestsError("");
     void loadRequests().then((items) => { if (!cancelled) setRequests(items); })
       .catch((error: unknown) => { if (!cancelled) setRequestsError(error instanceof Error ? error.message : "Erreur de chargement."); })
       .finally(() => { if (!cancelled) setRequestsLoading(false); });
     return () => { cancelled = true; };
-  }, [section]);
+  }, [refreshKey]);
+
+  useEffect(() => {
+    function handleSearchShortcut(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        document.querySelector<HTMLInputElement>(".pad-search input")?.focus();
+      }
+      if (event.key === "Escape") {
+        setQuery("");
+        (document.activeElement as HTMLElement | null)?.blur?.();
+      }
+    }
+    window.addEventListener("keydown", handleSearchShortcut);
+    return () => window.removeEventListener("keydown", handleSearchShortcut);
+  }, []);
 
   const title = useMemo(() => ({
     dashboard: "Tableau de bord de la plateforme", requests: "Demandes d’inscription",
     orgs: "Organisations", users: "Utilisateurs & permissions", audit: "Journal d’audit",
     finance: "Facturation & paiements", tax: "Fiscalité & juridictions",
   } satisfies Record<Section, string>)[section], [section]);
+  const normalizedQuery = query.trim().toLocaleLowerCase("fr");
+  const filteredRequests = requests.filter((request) => {
+    if (!normalizedQuery) return true;
+    return [request.legalName, request.countryCode, request.status ?? "PENDING", request.id]
+      .some((value) => value.toLocaleLowerCase("fr").includes(normalizedQuery));
+  });
   const pendingCount = requests.filter((request) => !request.status || request.status === "PENDING").length;
   const selectSection = (next: Section) => { setSection(next); setMobileOpen(false); setNotice(""); };
 
@@ -82,12 +105,12 @@ export function PlatformAdminDashboard({ email, onSignOut }: { email: string; on
       <div className="pad-sidebar-bottom"><div className="pad-secure"><ShieldCheck size={18}/>{!collapsed && <div><strong>Accès sécurisé</strong><small>Opérateur plateforme vérifié</small></div>}</div><button className="pad-nav-item" title="Centre d’aide" onClick={() => setNotice("Le centre d’aide sera connecté dans une prochaine étape.")}><CircleHelp size={18}/>{!collapsed && <span>Centre d’aide</span>}</button><div className="pad-user" title={email}><span className="pad-avatar">{email.slice(0,2).toUpperCase()}</span>{!collapsed && <span className="pad-user-copy"><strong>Super Admin</strong><small>{email}</small></span>}<button className="pad-signout" aria-label="Se déconnecter" onClick={(event) => { event.stopPropagation(); void onSignOut(); }}><LogOut size={15}/></button></div></div>
     </aside>
     <main className="pad-main">
-      <header className="pad-topbar"><button className="pad-mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Ouvrir la navigation"><Menu size={20}/></button><div className="pad-search"><Search size={17}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher une organisation, un utilisateur, une demande…"/><kbd>Ctrl K</kbd></div><div className="pad-top-actions"><span className="pad-operator"><span className="pad-avatar">{email.slice(0,2).toUpperCase()}</span><span><strong>Super Admin</strong><small>ZENOX Finance</small></span><ChevronDown size={14}/></span><button className="pad-theme-toggle" onClick={() => setDark(!dark)} aria-label={dark ? "Activer le thème clair" : "Activer le thème sombre"}>{dark ? <Moon size={16}/> : <Sun size={16}/>}<span>{dark ? "Sombre" : "Clair"}</span></button><button className="pad-bell" onClick={() => setNotice("Les notifications seront reliées au service de notifications.")} aria-label="Notifications"><Bell size={18}/><i/></button></div></header>
+      <header className="pad-topbar"><button className="pad-mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Ouvrir la navigation"><Menu size={20}/></button><div className="pad-search"><Search size={17}/><input aria-label="Rechercher une demande d’inscription" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher une demande (nom, pays, statut)…"/>{query && <button type="button" className="pad-search-clear" onClick={() => setQuery("")} aria-label="Effacer la recherche"><X size={13}/></button>}<kbd>Ctrl K</kbd></div><div className="pad-top-actions"><span className="pad-operator"><span className="pad-avatar">{email.slice(0,2).toUpperCase()}</span><span><strong>Super Admin</strong><small>ZENOX Finance</small></span><ChevronDown size={14}/></span><button className="pad-theme-toggle" onClick={() => setDark(!dark)} aria-label={dark ? "Activer le thème clair" : "Activer le thème sombre"}>{dark ? <Moon size={16}/> : <Sun size={16}/>}<span>{dark ? "Sombre" : "Clair"}</span></button><button className="pad-bell" onClick={() => setNotice("Les notifications seront reliées au service de notifications.")} aria-label="Notifications"><Bell size={18}/><i/></button></div></header>
       <div className="pad-content">
         <div className="pad-page-heading"><div><div className="pad-eyebrow"><ShieldCheck size={14}/> ADMINISTRATION DE LA PLATEFORME</div><h1>{title}</h1><p>Supervisez ZENOX Finance, ses organisations et ses opérations.</p></div><span className="pad-live"><i/> Session sécurisée</span></div>
         {notice && <div className="pad-notice" role="status">{notice}<button onClick={() => setNotice("")} aria-label="Fermer"><X size={15}/></button></div>}
-        {section === "dashboard" && <DashboardOverview pendingCount={pendingCount} requests={requests} loading={requestsLoading} error={requestsError} onNavigate={selectSection}/>}
-        {section === "requests" && <div className="pad-module"><div className="pad-module-tools"><div><h2>Revue des inscriptions</h2><p>Examinez les demandes et prenez une décision motivée.</p></div><span className="pad-source-label">API sécurisée</span></div><PlatformReviewWorkspace/></div>}
+        {section === "dashboard" && <DashboardOverview pendingCount={pendingCount} requests={filteredRequests} loading={requestsLoading} error={requestsError} query={query} onRefresh={() => setRefreshKey((value) => value + 1)} onNavigate={selectSection}/>} 
+        {section === "requests" && <div className="pad-module"><div className="pad-module-tools"><div><h2>Revue des inscriptions</h2><p>Examinez les demandes et prenez une décision motivée.</p></div><div className="pad-module-actions"><span className="pad-source-label">API sécurisée</span><button type="button" className="pad-refresh-button" onClick={() => setRefreshKey((value) => value + 1)}><RefreshCw size={14}/> Actualiser les indicateurs</button></div></div><PlatformReviewWorkspace/></div>}
         {section === "orgs" && <ModulePlaceholder icon={Building2} title="Organisations" description="La gestion globale des organisations nécessite une API plateforme dédiée. Aucune donnée de démonstration n’est affichée."/>}
         {section === "users" && <ModulePlaceholder icon={Users} title="Utilisateurs & permissions" description="Les comptes, rôles et rattachements seront affichés après connexion aux endpoints plateforme autorisés."/>}
         {section === "audit" && <ModulePlaceholder icon={Activity} title="Journal d’audit" description="Les événements d’audit seront consultables ici dès que l’API plateforme de lecture sera disponible."/>}
@@ -99,7 +122,7 @@ export function PlatformAdminDashboard({ email, onSignOut }: { email: string; on
   </div>;
 }
 
-function DashboardOverview({ pendingCount, requests, loading, error, onNavigate }: { pendingCount: number; requests: RequestItem[]; loading: boolean; error: string; onNavigate: (section: Section) => void }) {
+function DashboardOverview({ pendingCount, requests, loading, error, query, onRefresh, onNavigate }: { pendingCount: number; requests: RequestItem[]; loading: boolean; error: string; query: string; onRefresh: () => void; onNavigate: (section: Section) => void }) {
   const metrics = [
     { label: "Organisations actives", value: "—", hint: "API globale à connecter", icon: Building2, tone: "blue" },
     { label: "Demandes en attente", value: loading ? "…" : error ? "—" : String(pendingCount), hint: "Demandes accessibles à l’opérateur", icon: ClipboardList, tone: "violet" },
@@ -109,8 +132,8 @@ function DashboardOverview({ pendingCount, requests, loading, error, onNavigate 
   return <>
     <section className="pad-metrics">{metrics.map(({label,value,hint,icon:Icon,tone}) => <article className="pad-metric" key={label}><div className={`pad-metric-icon ${tone}`}><Icon size={19}/></div><div className="pad-metric-copy"><span>{label}</span><strong>{value}</strong><small>{hint}</small></div></article>)}</section>
     <div className="pad-overview-grid"><section className="pad-panel pad-chart-panel"><div className="pad-panel-heading"><div><h2>Vue d’ensemble</h2><p>Les séries apparaîtront lorsque les agrégats de la plateforme seront disponibles.</p></div><span className="pad-source-label">Données vérifiées uniquement</span></div><div className="pad-chart-empty"><Activity size={27}/><strong>Graphiques en attente des données API</strong><span>Aucun chiffre fictif n’est utilisé dans cette vue.</span></div></section><section className="pad-panel"><div className="pad-panel-heading"><div><h2>Répartition des organisations</h2><p>Par pays et région</p></div><Globe2 size={18}/></div><div className="pad-chart-empty compact"><Globe2 size={25}/><strong>Répartition indisponible</strong><span>Une API globale agrégée est nécessaire.</span></div></section></div>
-    <section className="pad-panel pad-recent"><div className="pad-panel-heading"><div><h2>Demandes récentes</h2><p>Source : endpoint sécurisé des demandes d’inscription</p></div><button className="pad-text-button" onClick={() => onNavigate("requests")}>Voir les demandes <ChevronRight size={15}/></button></div>
-      {error ? <div className="pad-inline-error" role="alert">{error}</div> : loading ? <div className="pad-empty-row">Chargement des demandes…</div> : requests.length === 0 ? <div className="pad-empty-row">Aucune demande disponible pour le moment.</div> : <div className="pad-table-scroll"><table className="pad-table"><thead><tr><th>Organisation</th><th>Pays</th><th>Statut</th><th>Reçue le</th><th/></tr></thead><tbody>{requests.slice(0,6).map((item) => <tr key={item.id}><td><strong>{item.legalName}</strong><small>{item.id}</small></td><td>{item.countryCode}</td><td><span className="pad-status">{item.status ?? "PENDING"}</span></td><td>{new Date(item.submittedAt).toLocaleDateString("fr-FR")}</td><td><button className="pad-row-action" onClick={() => onNavigate("requests")} aria-label={`Ouvrir la demande de ${item.legalName}`}><ChevronRight size={16}/></button></td></tr>)}</tbody></table></div>}
+    <section className="pad-panel pad-recent"><div className="pad-panel-heading"><div><h2>{query.trim() ? "Résultats des demandes" : "Demandes récentes"}</h2><p>Source : endpoint sécurisé des demandes d’inscription{query.trim() ? ` · ${requests.length} résultat(s) correspondant(s)` : ""}</p></div><div className="pad-module-actions"><button type="button" className="pad-refresh-button" onClick={onRefresh} disabled={loading}><RefreshCw size={14}/> Actualiser</button><button className="pad-text-button" onClick={() => onNavigate("requests")}>Voir les demandes <ChevronRight size={15}/></button></div></div>
+      {error ? <div className="pad-inline-error" role="alert"><span>{error}</span><button type="button" className="pad-refresh-button" onClick={onRefresh}><RefreshCw size={14}/> Réessayer</button></div> : loading ? <div className="pad-empty-row">Chargement des demandes…</div> : requests.length === 0 ? <div className="pad-empty-row">{query.trim() ? "Aucune demande ne correspond à cette recherche." : "Aucune demande disponible pour le moment."}</div> : <div className="pad-table-scroll"><table className="pad-table"><thead><tr><th>Organisation</th><th>Pays</th><th>Statut</th><th>Reçue le</th><th/></tr></thead><tbody>{requests.slice(0,6).map((item) => <tr key={item.id}><td><strong>{item.legalName}</strong><small>{item.id}</small></td><td>{item.countryCode}</td><td><span className="pad-status">{item.status ?? "PENDING"}</span></td><td>{new Date(item.submittedAt).toLocaleDateString("fr-FR")}</td><td><button className="pad-row-action" onClick={() => onNavigate("requests")} aria-label={`Ouvrir la demande de ${item.legalName}`}><ChevronRight size={16}/></button></td></tr>)}</tbody></table></div>}
     </section>
   </>;
 }
