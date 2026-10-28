@@ -13,6 +13,7 @@ import { PlatformEntryWorkspace } from "../auth/PlatformEntryWorkspace.js";
 import { InvoiceWorkspace } from "../invoices/InvoiceWorkspace.js";
 import { PlatformReviewWorkspace } from "../platform/PlatformReviewWorkspace.js";
 import { PlatformAdminDashboard } from "../platform/PlatformAdminDashboard.js";
+import { LandingPage } from "../public/LandingPage.js";
 
 type SessionUser = { id: string; email?: string; emailConfirmedAt?: string | null };
 type ActiveTenant = { id: string; tenantCode: string; legalName: string; role: string };
@@ -52,7 +53,7 @@ export function App() {
         setActiveTenant(null);
         setIsPlatformOperator(false);
         setShowOrganizationSetup(false);
-        routerNavigate(pagePaths.dashboard, { replace: true });
+        if (location.pathname !== "/") routerNavigate(pagePaths.dashboard, { replace: true });
         return;
       }
       const session = await readEntryData<SessionUser>(sessionResponse);
@@ -105,7 +106,18 @@ export function App() {
   const title = visibleNavigation.find((item) => item.id === page)?.label ?? "Vue d’ensemble";
 
   if (entryChecking) return <main className="entry-loading"><div className="brand-mark">Z</div><p>Vérification sécurisée de votre espace…</p></main>;
-  if (!sessionUser) return <><RegistrationWorkspace user={null} onSessionChanged={refreshEntry}/>{entryError && <div className="entry-error">{entryError}</div>}</>;
+  const authParams = new URLSearchParams(location.search);
+  const authRequested = authParams.get("auth") === "1";
+  const requestedMode = authParams.get("mode") === "signup" ? "signup" : "login";
+  const hasAuthCallback = new URLSearchParams(location.hash.replace(/^#/, "")).has("access_token");
+
+  if (!sessionUser && location.pathname === "/" && !authRequested && !hasAuthCallback) {
+    return <LandingPage
+      onLogin={() => routerNavigate("/?auth=1&mode=login")}
+      onCreateAccount={() => routerNavigate("/?auth=1&mode=signup")}
+    />;
+  }
+  if (!sessionUser) return <><RegistrationWorkspace user={null} initialMode={authRequested ? requestedMode : "login"} onSessionChanged={refreshEntry}/>{entryError && <div className="entry-error">{entryError}</div>}</>;
   if (!activeTenant && !isPlatformOperator && !sessionUser.emailConfirmedAt) {
     return <RegistrationWorkspace user={sessionUser} onSessionChanged={refreshEntry} />;
   }
