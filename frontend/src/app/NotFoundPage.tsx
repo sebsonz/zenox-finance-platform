@@ -1,3 +1,4 @@
+import "./NotFoundPage.css";
 import { Link } from "react-router";
 import { ArrowLeft, FileQuestion } from "lucide-react";
 
