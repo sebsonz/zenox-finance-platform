@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
-    "test:navigation": "node --experimental-strip-types --test src/app/navigation.test.ts"
+    "test:navigation": "node --experimental-strip-types --test scripts/navigation.test.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.1.2",
