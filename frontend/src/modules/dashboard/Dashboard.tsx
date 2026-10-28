@@ -5,6 +5,14 @@ import {
 } from "lucide-react";
 import type { Page } from "../../app/navigation.js";
 
+async function readEntryData<T>(response: Response): Promise<T> {
+  const payload = await response.json().catch(() => ({})) as { data?: T; error?: { message?: string } };
+  if (!response.ok || payload.data === undefined) {
+    throw new Error(payload.error?.message ?? "Impossible de charger les indicateurs.");
+  }
+  return payload.data;
+}
+
 type DashboardSummary = {
   issuedInvoiceCount: number;
   draftInvoiceCount: number;
