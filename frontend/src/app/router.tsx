@@ -1,4 +1,5 @@
-import { createBrowserRouter, Navigate } from "react-router";
+import { createBrowserRouter } from "react-router";
+import { NotFoundPage } from "./NotFoundPage.js";
 import { App } from "./App.js";
 
 export const router = createBrowserRouter([
@@ -17,6 +18,6 @@ export const router = createBrowserRouter([
   },
   {
     path: "*",
-    element: <Navigate to="/dashboard" replace />,
+    Component: NotFoundPage,
   },
 ]);
