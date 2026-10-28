@@ -2,9 +2,9 @@ name: ZENOX Finance CI
 
 on:
   push:
-    branches: [main, feat/invoice-tax-snapshot-binding, chore/monorepo-frontend-backend-structure, feature/invoice-workflow-completion, feature/tax-rule-extensibility, feat/platform-admin-entry-routing, feat/platform-admin-dashboard-v3]
+    branches: [main, feat/invoice-tax-snapshot-binding, chore/monorepo-frontend-backend-structure, feature/invoice-workflow-completion, feature/tax-rule-extensibility, feat/platform-admin-entry-routing, feat/platform-admin-dashboard-v3, feat/modular-routing-architecture]
   pull_request:
-    branches: [main, feat/invoice-tax-snapshot-binding, feature/invoice-user-readonly-bff, feature/invoice-workflow-completion, feat/platform-admin-entry-routing]
+    branches: [main, feat/invoice-tax-snapshot-binding, feature/invoice-user-readonly-bff, feature/invoice-workflow-completion, feat/platform-admin-entry-routing, feat/platform-admin-dashboard-v3]
 
 permissions:
   contents: read
@@ -57,5 +57,7 @@ jobs:
         run: npm --prefix frontend install
       - name: Frontend typecheck
         run: npm --prefix frontend run typecheck
+      - name: Frontend navigation tests
+        run: npm --prefix frontend run test:navigation
       - name: Frontend build
         run: npm --prefix frontend run build

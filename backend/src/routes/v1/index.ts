@@ -1,33 +1,16 @@
 import { Router } from "express";
 import { healthRouter } from "../../modules/health/routes/health.routes.js";
 import { taxCalculationRouter } from "../../modules/tax/routes/tax-calculation.routes.js";
-import { userTenantAccessRouter } from "../../modules/user-auth/routes/user-tenant-access.routes.js";
-import { userTenantDirectoryRouter } from "../../modules/user-auth/routes/user-tenant-directory.routes.js";
-import { userInvoiceRouter } from "../../modules/user-auth/routes/user-invoice.routes.js";
-import { userSessionRouter } from "../../modules/user-auth/routes/user-session.routes.js";
-import { invoiceDraftRouter } from "../../modules/invoices/routes/invoice-draft.routes.js";
 import { customerRouter } from "../../modules/customers/routes/customer.routes.js";
 import { currencyRouter } from "../../modules/currencies/routes/currency.routes.js";
-import { invoiceTaxSnapshotRouter } from "../../modules/invoices/routes/invoice-tax-snapshot.routes.js";
-import { invoiceIssuanceRouter } from "../../modules/invoices/routes/invoice-issuance.routes.js";
-import { invoiceDocumentRouter } from "../../modules/invoices/routes/invoice-document.routes.js";
-import { creditNoteRouter } from "../../modules/invoices/routes/credit-note.routes.js";
-import { registrationRouter } from "../../modules/registration/routes/registration.routes.js";
-import { platformRegistrationRouter } from "../../modules/registration/routes/platform-registration.routes.js";
+import { invoicesRouter } from "../../modules/invoices/routes/index.js";
+import { userAuthRouter } from "../../modules/user-auth/routes/index.js";
 
 export const apiV1Router = Router();
+
 apiV1Router.use("/health", healthRouter);
 apiV1Router.use("/tax", taxCalculationRouter);
-apiV1Router.use("/user", userTenantDirectoryRouter);
-apiV1Router.use("/user", userTenantAccessRouter);
-apiV1Router.use("/user", userSessionRouter);
-apiV1Router.use("/user/registration", registrationRouter);
-apiV1Router.use("/user/platform", platformRegistrationRouter);
-apiV1Router.use("/user/tenants", userInvoiceRouter);
-apiV1Router.use("/invoices", invoiceTaxSnapshotRouter);
-apiV1Router.use("/invoices", invoiceIssuanceRouter);
-apiV1Router.use("/invoices", invoiceDocumentRouter);
-apiV1Router.use("/invoices", creditNoteRouter);
-apiV1Router.use("/invoices", invoiceDraftRouter);
+apiV1Router.use("/user", userAuthRouter);
+apiV1Router.use("/invoices", invoicesRouter);
 apiV1Router.use("/customers", customerRouter);
 apiV1Router.use("/currencies", currencyRouter);

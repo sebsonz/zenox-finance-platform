@@ -51,12 +51,14 @@ export function RegistrationWorkspace({
   user,
   onSessionChanged,
   onBackToEntry,
+  initialMode = "login",
 }: {
   user: User | null;
   onSessionChanged: () => Promise<void>;
   onBackToEntry?: () => void;
+  initialMode?: "login" | "signup";
 }) {
-  const [mode, setMode] = useState<"login" | "signup" | "forgot" | "reset">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "forgot" | "reset">(initialMode);
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
