@@ -15,7 +15,7 @@ Branche de travail: `feat/modular-routing-architecture` (PR #19, draft; ne pas f
 7. Toute donnée d'entreprise doit être isolée par tenant; conserver les contrôles d'accès PostgreSQL/Supabase RLS.
 8. Pas de migration Supabase ni de changement de schéma sans validation explicite.
 9. Les pages non encore implémentées doivent utiliser des placeholders explicites, sans simuler des données métier comme si elles étaient réelles.
-10. Avant toute intégration locale, préserver le working tree existant et tester la branche dans un dossier séparé.
+10. Avant toute intégration locale, préserver le working tree existant, puis importer et tester les changements dans le dossier principal du projet; ne pas créer de dossier de test séparé.
 
 ## Arborescence frontend cible
 
