@@ -22,7 +22,7 @@ function formatMoneyString(value: string, currency: string, minorUnit: number): 
   return `${currency} ${negative ? "-" : ""}${grouped}${decimals}`;
 }
 
-function Dashboard({ onNavigate, tenantId }: { onNavigate: (page: Page) => void; tenantId: string }) {
+export function Dashboard({ onNavigate, tenantId }: { onNavigate: (page: Page) => void; tenantId: string }) {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState("");
