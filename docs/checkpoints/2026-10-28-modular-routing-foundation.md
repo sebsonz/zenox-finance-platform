@@ -85,3 +85,23 @@ Règles de travail convenues :
 - Aucun code applicatif modifié dans cette mise à jour documentaire.
 - Aucune migration exécutée ; aucune base distante modifiée.
 - Aucune PR fusionnée.
+
+
+## 9. Squelette modulaire créé sur GitHub — 2026-10-29
+
+Commit : `ed0c6d708538318ea890d6be3ae4964098e32124`.
+
+- Ajout de **437 chemins** au total : 381 fichiers placeholder pour matérialiser les répertoires et 56 fichiers README de domaine.
+- Frontend : répertoires `features/` pour les 22 domaines fonctionnels, chacun avec des emplacements réservés pour pages, composants, hooks, API, schémas, types et tests.
+- Frontend partagé : emplacements `api`, `auth`, `components`, `hooks`, `i18n`, `lib` et `types`.
+- Backend : emplacements structurés pour les 26 domaines/modules, chacun avec application, domaine, repositories, routes, schémas, services, types et tests.
+- Backend partagé : emplacements pour auth, configuration, DB, erreurs, HTTP, idempotence, observabilité, sécurité, tenancy, validation, tâches et support de tests.
+- Documentation : répertoires de départ pour architecture, décisions, diagrammes, contrats, runbooks, tests, conformité et documentation des modules.
+- Les fichiers README indiquent explicitement que le squelette n'est pas une implémentation fonctionnelle.
+- Les fichiers métier existants n'ont pas été remplacés ; seules les chemins absents de la branche ont été ajoutés.
+- Aucun code applicatif métier n'a été généré par cette opération ; aucune migration ou modification de base distante n'a été faite.
+- La CI du nouveau HEAD doit encore être consultée avant de déclarer cette version validée.
+
+## 10. Convention pour la suite
+
+Le squelette est un plan de rangement, pas une obligation de remplir tous les fichiers d'un coup. À chaque module traité, ajouter les fichiers réellement nécessaires, supprimer les placeholders devenus inutiles, implémenter les comportements et tests, puis mettre à jour son statut. Ne pas créer de dossiers/fichiers artificiels uniquement pour augmenter le nombre de fichiers.
