@@ -12,7 +12,7 @@ import { RegistrationWorkspace } from "../auth/RegistrationWorkspace.js";
 import { PlatformEntryWorkspace } from "../auth/PlatformEntryWorkspace.js";
 import { InvoiceWorkspace } from "../invoices/InvoiceWorkspace.js";
 import { PlatformReviewWorkspace } from "../platform/PlatformReviewWorkspace.js";
-import { PlatformAdminDashboard } from "./platform/PlatformAdminDashboard.js";
+import { PlatformAdminDashboard } from "../platform/PlatformAdminDashboard.js";
 
 type Page = "dashboard" | "tax" | "invoices" | "payments" | "settings" | "platform";
 
