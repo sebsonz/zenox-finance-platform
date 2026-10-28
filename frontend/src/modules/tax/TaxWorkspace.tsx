@@ -2,7 +2,7 @@ import {
   Activity, ArrowUpRight, Globe2, ShieldCheck, SlidersHorizontal
 } from "lucide-react";
 
-function TaxWorkspace({ amount, setAmount, currency, setCurrency, onSubmit }: { amount: string; setAmount: (v: string) => void; currency: string; setCurrency: (v: string) => void; onSubmit: () => void }) {
+export function TaxWorkspace({ amount, setAmount, currency, setCurrency, onSubmit }: { amount: string; setAmount: (v: string) => void; currency: string; setCurrency: (v: string) => void; onSubmit: () => void }) {
   return <>
     <div className="welcome-row"><div><div className="eyebrow"><Globe2 size={14}/> FISCALITÉ & CONFORMITÉ</div><h1>Moteur fiscal</h1><p className="subtitle">Préparez une demande de calcul fiscal et consultez les règles versionnées.</p></div><span className="status-chip"><i/> API non connectée</span></div>
     <div className="demo-banner"><div className="demo-icon"><ShieldCheck size={19}/></div><div><strong>Calcul réel désactivé</strong><p>Ce formulaire est une interface de préparation. Les taux, résultats et snapshots doivent provenir du backend authentifié.</p></div><span className="demo-pill">APERÇU UI</span></div>
