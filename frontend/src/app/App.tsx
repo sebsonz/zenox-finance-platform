@@ -101,6 +101,13 @@ export function App() {
   useEffect(() => { void refreshEntry(); }, []);
 
   const page = pageFromPath(location.pathname);
+
+  useEffect(() => {
+    if (!entryChecking && page === "platform" && !isPlatformOperator) {
+      routerNavigate(pagePaths.dashboard, { replace: true });
+    }
+  }, [entryChecking, isPlatformOperator, page, routerNavigate]);
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [amount, setAmount] = useState("100000");
   const [currency, setCurrency] = useState("XOF");
