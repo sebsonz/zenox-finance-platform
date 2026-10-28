@@ -14,21 +14,6 @@ import { InvoiceWorkspace } from "../invoices/InvoiceWorkspace.js";
 import { PlatformReviewWorkspace } from "../platform/PlatformReviewWorkspace.js";
 import { PlatformAdminDashboard } from "../platform/PlatformAdminDashboard.js";
 
-type Page = "dashboard" | "tax" | "invoices" | "payments" | "settings" | "platform";
-
-const pagePaths: Record<Page, string> = {
-  dashboard: "/dashboard",
-  tax: "/tax",
-  invoices: "/invoices",
-  payments: "/payments",
-  settings: "/settings",
-  platform: "/platform",
-};
-
-function pageFromPath(pathname: string): Page {
-  const match = Object.entries(pagePaths).find(([, path]) => path === pathname);
-  return (match?.[0] as Page | undefined) ?? "dashboard";
-}
 type SessionUser = { id: string; email?: string; emailConfirmedAt?: string | null };
 type ActiveTenant = { id: string; tenantCode: string; legalName: string; role: string };
 async function readEntryData<T>(response: Response): Promise<T> {
