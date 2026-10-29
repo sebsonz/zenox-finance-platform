@@ -8,6 +8,7 @@ export type FinanceUserPermission =
   | "members:read"
   | "members:manage"
   | "settings:manage"
+  | "customers:read"
   | "invoices:read"
   | "invoices:create"
   | "invoices:issue"
@@ -21,7 +22,7 @@ export type FinanceUserPermission =
 const ROLE_PERMISSIONS: Readonly<Record<FinanceUserRole, readonly FinanceUserPermission[]>> = {
   OWNER: [
     "tenant:read", "members:read", "members:manage", "settings:manage",
-    "invoices:read", "invoices:create", "invoices:issue", "invoices:credit",
+    "customers:read", "invoices:read", "invoices:create", "invoices:issue", "invoices:credit",
     "payments:read", "payments:record", "payments:allocate",
     "tax:read", "tax:manage",
   ],
@@ -41,7 +42,7 @@ const ROLE_PERMISSIONS: Readonly<Record<FinanceUserRole, readonly FinanceUserPer
     "tenant:read", "invoices:read", "invoices:create",
     "payments:read", "payments:record", "payments:allocate", "tax:read",
   ],
-  VIEWER: ["tenant:read", "members:read", "invoices:read", "payments:read", "tax:read"],
+  VIEWER: ["tenant:read", "members:read", "customers:read", "invoices:read", "payments:read", "tax:read"],
 };
 
 export function hasFinanceUserPermission(
