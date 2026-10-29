@@ -1,5 +1,6 @@
 import { withTenantTransaction } from "../../../db/transaction.js";
 import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinanceCustomerReadContext } from "./customer.service.js";
 import { customerRepository } from "../repositories/customer.repository.js";
 import { customerRelationsRepository } from "../repositories/customer-relations.repository.js";
 import type {
@@ -63,7 +64,7 @@ export const customerRelationsService = {
     });
   },
 
-  async listContacts(context: FinanceRequestContext, customerId: string, query: ListCustomerRelationsQuery) {
+  async listContacts(context: FinanceCustomerReadContext, customerId: string, query: ListCustomerRelationsQuery) {
     return withTenantTransaction(context.tenantId, async (client) => {
       const customer = await customerRepository.findById(client, customerId);
       if (!customer) throw new CustomerRelationsServiceError("CUSTOMER_NOT_FOUND", "The customer was not found.");
@@ -105,7 +106,7 @@ export const customerRelationsService = {
     });
   },
 
-  async listAddresses(context: FinanceRequestContext, customerId: string, query: ListCustomerRelationsQuery) {
+  async listAddresses(context: FinanceCustomerReadContext, customerId: string, query: ListCustomerRelationsQuery) {
     return withTenantTransaction(context.tenantId, async (client) => {
       const customer = await customerRepository.findById(client, customerId);
       if (!customer) throw new CustomerRelationsServiceError("CUSTOMER_NOT_FOUND", "The customer was not found.");
