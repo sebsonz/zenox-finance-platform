@@ -19,7 +19,16 @@
 
 - Extraction des appels API de session depuis `RegistrationWorkspace.tsx` vers `frontend/src/auth/auth-api.ts`.
 - Le composant d'inscription réutilise désormais les fonctions partagées au lieu d'héberger la logique de transport.
-- Aucun écran existant supprimé et aucun contrat d'API modifié par cette extraction.
+- Tests frontend dédiés à l'enveloppe API, à la gestion d'erreur, à la configuration non-cacheable et à l'échange de session same-origin.
+- Annuaire paginé des membres du tenant via `GET /api/v1/user/tenants/:tenantId/members`, réservé aux membres actifs ayant `members:read`.
+- Modification du rôle/statut via `PATCH /api/v1/user/tenants/:tenantId/members/:memberId`, avec validation stricte, autorisation serveur et protection contre la désactivation/rétrogradation du dernier propriétaire actif.
+- Les tests de routes couvrent les identifiants invalides, les accès refusés, les mises à jour, le conflit `LAST_ACTIVE_OWNER` et les champs inconnus.
+- Aucun écran existant supprimé et aucun contrat d'API existant modifié par l'extraction.
+
+## CI observée
+
+- Commit `f70175348c4afe56dada400657d59021c8322d6b` — CI verte : backend typecheck/build, migrations et tests PostgreSQL jetables, tests backend, frontend typecheck, navigation, tests API d'authentification et build.
+- L'échec précédent provenait d'annotations TypeScript dans `frontend/scripts/auth-api.test.mjs`; elles ont été supprimées pour conserver un test Node JavaScript valide.
 
 ## Travail restant avant validation M01
 
