@@ -26,7 +26,7 @@ vi.mock("../../src/modules/customers/services/customer-relations.service.js", ()
     constructor(readonly code: string, message: string) { super(message); }
   },
   customerRelationsService: {
-    createContact: vi.fn(), listContacts: vi.fn(), createAddress: vi.fn(), listAddresses: vi.fn(),
+    createContact: vi.fn(), listContacts: vi.fn(), createAddress: vi.fn(), listAddresses: vi.fn(), updateContact: vi.fn(), archiveContact: vi.fn(), updateAddress: vi.fn(), archiveAddress: vi.fn(),
   },
 }));
 vi.mock("../../src/modules/currencies/repositories/currency.repository.js", () => ({
@@ -279,6 +279,26 @@ describe("customer and currency API routes", () => {
     expect(customerRelationsService.createAddress).toHaveBeenCalledWith(
       expect.objectContaining({ tenantId: TENANT_A }), CUSTOMER_ID,
       expect.objectContaining({ addressType: "BILLING", countryCode: "BJ" }),
+    );
+  });
+
+
+  it("exposes contact and address update/archive routes with tenant context", async () => {
+    vi.mocked(customerRelationsService.updateContact).mockResolvedValue({ id: CUSTOMER_ID, fullName: "Updated Contact" } as never);
+    const contact = await request(app(), `/customers/${CUSTOMER_ID}/contacts/${CUSTOMER_ID}`, {
+      method: "PATCH", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fullName: "Updated Contact" }),
+    });
+    expect(contact.status).toBe(200);
+    expect(customerRelationsService.updateContact).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_A }), CUSTOMER_ID, CUSTOMER_ID, { fullName: "Updated Contact" },
+    );
+
+    vi.mocked(customerRelationsService.archiveAddress).mockResolvedValue({ id: CUSTOMER_ID, status: "ARCHIVED" } as never);
+    const address = await request(app(), `/customers/${CUSTOMER_ID}/addresses/${CUSTOMER_ID}/archive`, { method: "POST" });
+    expect(address.status).toBe(200);
+    expect(customerRelationsService.archiveAddress).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_A }), CUSTOMER_ID, CUSTOMER_ID,
     );
   });
 
