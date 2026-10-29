@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg";
-import type { CreateCustomerInput, ListCustomersQuery } from "../validators/customer.schema.js";
+import type { CreateCustomerInput, ListCustomersQuery, UpdateCustomerInput } from "../validators/customer.schema.js";
 
 export interface FinanceCustomer {
   id: string;
@@ -96,6 +96,45 @@ export const customerRepository = {
          FROM public.finance_customers
         WHERE id = $1
         LIMIT 1`,
+      [customerId],
+    );
+    return result.rows[0] ? mapCustomer(result.rows[0]) : null;
+  },
+
+  async update(
+    client: PoolClient,
+    customerId: string,
+    input: UpdateCustomerInput,
+  ): Promise<FinanceCustomer | null> {
+    const columns: Record<keyof UpdateCustomerInput, string> = {
+      legalName: "legal_name",
+      displayName: "display_name",
+      email: "email",
+      phone: "phone",
+      countryCode: "country_code",
+      taxIdentifier: "tax_identifier",
+      registrationIdentifier: "registration_identifier",
+      defaultCurrency: "default_currency",
+    };
+    const entries = Object.entries(input) as [keyof UpdateCustomerInput, unknown][];
+    const assignments = entries.map(([key], index) => `${columns[key]} = ${index + 2}`);
+    const values = entries.map(([, value]) => value);
+    const result = await client.query<CustomerRow>(
+      `UPDATE public.finance_customers
+          SET ${assignments.join(", ")}, updated_at = now()
+        WHERE id = $1 AND status = 'ACTIVE'
+        RETURNING ${customerColumns}`,
+      [customerId, ...values],
+    );
+    return result.rows[0] ? mapCustomer(result.rows[0]) : null;
+  },
+
+  async archive(client: PoolClient, customerId: string): Promise<FinanceCustomer | null> {
+    const result = await client.query<CustomerRow>(
+      `UPDATE public.finance_customers
+          SET status = 'ARCHIVED', updated_at = now()
+        WHERE id = $1 AND status = 'ACTIVE'
+        RETURNING ${customerColumns}`,
       [customerId],
     );
     return result.rows[0] ? mapCustomer(result.rows[0]) : null;
