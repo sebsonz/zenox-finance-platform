@@ -23,6 +23,8 @@
 - Annuaire paginé des membres du tenant via `GET /api/v1/user/tenants/:tenantId/members`, réservé aux membres actifs ayant `members:read`.
 - Modification du rôle/statut via `PATCH /api/v1/user/tenants/:tenantId/members/:memberId`, avec validation stricte, autorisation serveur et protection contre la désactivation/rétrogradation du dernier propriétaire actif.
 - Les tests de routes couvrent les identifiants invalides, les accès refusés, les mises à jour, le conflit `LAST_ACTIVE_OWNER` et les champs inconnus.
+- La session Super Admin plateforme réutilise la session BFF vérifiée (cookie HttpOnly), mais l'autorisation plateforme reste distincte des memberships tenant : `GET /api/v1/user/platform/me` vérifie l'identité issuer + subject dans `finance_platform_operators`, exige l'e-mail confirmé et ne dépend pas d'un tenant actif.
+- Tests renforcés pour la frontière de session Super Admin : session absente => 401, utilisateur authentifié sans privilège plateforme => 403, opérateur autorisé => statut sans cache sans exiger d'appartenance à un tenant.
 - Aucun écran existant supprimé et aucun contrat d'API existant modifié par l'extraction.
 
 ## CI observée
