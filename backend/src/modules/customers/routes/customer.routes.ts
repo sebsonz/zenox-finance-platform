@@ -296,3 +296,46 @@ customerRouter.post(
     }
   },
 );
+
+
+function relationId(req: Request, key: "contactId" | "addressId", res: Response): string | null {
+  const parsed = z.string().uuid().safeParse(req.params[key]);
+  if (!parsed.success) { res.status(400).json({ error: { code: "INVALID_RELATION_ID", message: "The relation ID must be a UUID." } }); return null; }
+  return parsed.data;
+}
+
+customerRouter.patch("/:customerId/contacts/:contactId", requireIntegrationAuth(["customer:write"]), async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const ctx = requireContext(req, res); if (!ctx) return;
+  const cid = parseCustomerId(req, res); if (!cid) return;
+  const rid = relationId(req, "contactId", res); if (!rid) return;
+  const parsed = updateCustomerContactSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: { code: "INVALID_CONTACT", message: "The contact update is invalid." } }); return; }
+  try { const contact = await customerRelationsService.updateContact(ctx, cid, rid, parsed.data); res.status(200).json({ data: { contact, correlationId: ctx.correlationId } }); }
+  catch (error) { if (sendRelationError(error, res, ctx.correlationId)) return; next(error); }
+});
+
+customerRouter.post("/:customerId/contacts/:contactId/archive", requireIntegrationAuth(["customer:write"]), async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const ctx = requireContext(req, res); if (!ctx) return;
+  const cid = parseCustomerId(req, res); if (!cid) return;
+  const rid = relationId(req, "contactId", res); if (!rid) return;
+  try { const contact = await customerRelationsService.archiveContact(ctx, cid, rid); res.status(200).json({ data: { contact, correlationId: ctx.correlationId } }); }
+  catch (error) { if (sendRelationError(error, res, ctx.correlationId)) return; next(error); }
+});
+
+customerRouter.patch("/:customerId/addresses/:addressId", requireIntegrationAuth(["customer:write"]), async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const ctx = requireContext(req, res); if (!ctx) return;
+  const cid = parseCustomerId(req, res); if (!cid) return;
+  const rid = relationId(req, "addressId", res); if (!rid) return;
+  const parsed = updateCustomerAddressSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: { code: "INVALID_ADDRESS", message: "The address update is invalid." } }); return; }
+  try { const address = await customerRelationsService.updateAddress(ctx, cid, rid, parsed.data); res.status(200).json({ data: { address, correlationId: ctx.correlationId } }); }
+  catch (error) { if (sendRelationError(error, res, ctx.correlationId)) return; next(error); }
+});
+
+customerRouter.post("/:customerId/addresses/:addressId/archive", requireIntegrationAuth(["customer:write"]), async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const ctx = requireContext(req, res); if (!ctx) return;
+  const cid = parseCustomerId(req, res); if (!cid) return;
+  const rid = relationId(req, "addressId", res); if (!rid) return;
+  try { const address = await customerRelationsService.archiveAddress(ctx, cid, rid); res.status(200).json({ data: { address, correlationId: ctx.correlationId } }); }
+  catch (error) { if (sendRelationError(error, res, ctx.correlationId)) return; next(error); }
+});
