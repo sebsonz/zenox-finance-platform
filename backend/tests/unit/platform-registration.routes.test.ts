@@ -90,6 +90,25 @@ describe("platform registration review routes", () => {
 
   afterEach(() => vi.clearAllMocks());
 
+  it("requires an authenticated session before platform privilege is checked", async () => {
+    mocks.user = undefined;
+    const response = await request(app(), "GET", "/platform/me");
+    expect(response.status).toBe(401);
+    expect(response.body).toMatchObject({ error: { code: "UNAUTHENTICATED" } });
+    expect(mocks.isPlatformOperator).not.toHaveBeenCalled();
+  });
+
+  it("allows a verified platform operator without requiring tenant membership", async () => {
+    const response = await request(app(), "GET", "/platform/me");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.body).toMatchObject({ data: { isPlatformOperator: true } });
+    expect(mocks.isPlatformOperator).toHaveBeenCalledWith(
+      "https://platform-auth.example.test",
+      "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    );
+  });
+
   it("does not authorize a normal user as a platform operator", async () => {
     mocks.isPlatformOperator.mockResolvedValue(false);
     const response = await request(app(), "GET", "/platform/me");
