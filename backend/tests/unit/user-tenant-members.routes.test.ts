@@ -72,7 +72,7 @@ describe("GET /user/tenants/:tenantId/members", () => {
         created_at: owner.activated_at,
         updated_at: owner.activated_at,
       }],
-      limit: 25,
+      limit: 10,
       offset: 0,
     } as never);
   });
