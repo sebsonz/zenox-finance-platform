@@ -2,11 +2,11 @@ import { withTenantTransaction } from "../../../db/transaction.js";
 import { currencyRepository } from "../../currencies/repositories/currency.repository.js";
 import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
 import { customerRepository, type FinanceCustomer } from "../repositories/customer.repository.js";
-import type { CreateCustomerInput, ListCustomersQuery } from "../validators/customer.schema.js";
+import type { CreateCustomerInput, ListCustomersQuery, UpdateCustomerInput } from "../validators/customer.schema.js";
 
 export class CustomerServiceError extends Error {
   constructor(
-    readonly code: "CURRENCY_NOT_SUPPORTED" | "CUSTOMER_CODE_CONFLICT" | "EXTERNAL_IDENTITY_CONFLICT",
+    readonly code: "CURRENCY_NOT_SUPPORTED" | "CUSTOMER_CODE_CONFLICT" | "EXTERNAL_IDENTITY_CONFLICT" | "CUSTOMER_NOT_FOUND" | "CUSTOMER_ARCHIVED",
     message: string,
   ) {
     super(message);
@@ -44,6 +44,32 @@ export const customerService = {
     } catch (error) {
       return mapDatabaseError(error);
     }
+  },
+
+  async update(context: FinanceRequestContext, customerId: string, input: UpdateCustomerInput): Promise<FinanceCustomer> {
+    if (input.defaultCurrency) {
+      const currency = await currencyRepository.findActiveByCode(input.defaultCurrency);
+      if (!currency) throw new CustomerServiceError("CURRENCY_NOT_SUPPORTED", "The requested default currency is not active.");
+    }
+    return withTenantTransaction(context.tenantId, async (client) => {
+      const current = await customerRepository.findById(client, customerId);
+      if (!current) throw new CustomerServiceError("CUSTOMER_NOT_FOUND", "The customer was not found.");
+      if (current.status !== "ACTIVE") throw new CustomerServiceError("CUSTOMER_ARCHIVED", "Archived customers cannot be modified.");
+      const updated = await customerRepository.update(client, customerId, input);
+      if (!updated) throw new CustomerServiceError("CUSTOMER_NOT_FOUND", "The customer was not found.");
+      return updated;
+    });
+  },
+
+  async archive(context: FinanceRequestContext, customerId: string): Promise<FinanceCustomer> {
+    return withTenantTransaction(context.tenantId, async (client) => {
+      const current = await customerRepository.findById(client, customerId);
+      if (!current) throw new CustomerServiceError("CUSTOMER_NOT_FOUND", "The customer was not found.");
+      if (current.status === "ARCHIVED") return current;
+      const archived = await customerRepository.archive(client, customerId);
+      if (!archived) throw new CustomerServiceError("CUSTOMER_NOT_FOUND", "The customer was not found.");
+      return archived;
+    });
   },
 
   async list(context: FinanceRequestContext, query: ListCustomersQuery): Promise<FinanceCustomer[]> {
