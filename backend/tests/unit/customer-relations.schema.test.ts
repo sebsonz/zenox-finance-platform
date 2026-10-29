@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   createCustomerAddressSchema,
   createCustomerContactSchema,
+  updateCustomerAddressSchema,
+  updateCustomerContactSchema,
   listCustomerRelationsQuerySchema,
 } from "../../src/modules/customers/validators/customer-relations.schema.js";
 import { updateCustomerSchema } from "../../src/modules/customers/validators/customer.schema.js";
