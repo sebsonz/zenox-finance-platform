@@ -29,6 +29,13 @@ When `hasMore` is false, `nextCursor` is `null`; otherwise it is the final ID in
 
 Required scope: `customer:read`. Returns the customer only within the authenticated tenant's transaction/RLS context. Invalid UUID: `400`; missing or foreign-tenant customer: `404`.
 
+### Customer update and archive
+
+- PATCH /api/v1/customers/:customerId — scope customer:write; validates a strict partial update of mutable profile fields. Customer code and external identity remain stable through this endpoint. An empty patch is rejected.
+- POST /api/v1/customers/:customerId/archive — scope customer:write; changes ACTIVE to ARCHIVED idempotently instead of physically deleting the customer.
+
+Archived customers remain available for historical references and cannot receive new contacts or addresses. Updating an archived customer returns 409. A supplied default currency is checked against active Finance currency reference data.
+
 ### Customer contacts
 
 - POST /api/v1/customers/:customerId/contacts — scope customer:write; creates a contact for an active customer.
