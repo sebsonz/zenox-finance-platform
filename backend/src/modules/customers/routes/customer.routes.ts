@@ -2,7 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from "express"
 import { z } from "zod";
 import { requireIntegrationAuth } from "../../../middleware/require-integration-auth.js";
 import { CustomerServiceError, customerService } from "../services/customer.service.js";
-import { createCustomerSchema, listCustomersQuerySchema } from "../validators/customer.schema.js";
+import { createCustomerSchema, listCustomersQuerySchema, updateCustomerSchema } from "../validators/customer.schema.js";
 import { CustomerRelationsServiceError, customerRelationsService } from "../services/customer-relations.service.js";
 import { createCustomerAddressSchema, createCustomerContactSchema, listCustomerRelationsQuerySchema } from "../validators/customer-relations.schema.js";
 
@@ -241,6 +241,57 @@ customerRouter.get(
       });
     } catch (error) {
       if (sendRelationError(error, res, context.correlationId)) return;
+      next(error);
+    }
+  },
+);
+
+
+customerRouter.patch(
+  "/:customerId",
+  requireIntegrationAuth(["customer:write"]),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const context = requireContext(req, res);
+    if (!context) return;
+    const customerId = parseCustomerId(req, res);
+    if (!customerId) return;
+    const parsed = updateCustomerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: { code: "INVALID_REQUEST", message: "The customer update is invalid." } });
+      return;
+    }
+    try {
+      const customer = await customerService.update(context, customerId, parsed.data);
+      res.status(200).json({ data: { customer, correlationId: context.correlationId } });
+    } catch (error) {
+      if (error instanceof CustomerServiceError) {
+        const status = error.code === "CUSTOMER_NOT_FOUND" ? 404
+          : error.code === "CUSTOMER_ARCHIVED" || error.code === "CUSTOMER_CODE_CONFLICT" || error.code === "EXTERNAL_IDENTITY_CONFLICT" ? 409
+          : 422;
+        res.status(status).json({ error: { code: error.code, message: error.message, correlationId: context.correlationId } });
+        return;
+      }
+      next(error);
+    }
+  },
+);
+
+customerRouter.post(
+  "/:customerId/archive",
+  requireIntegrationAuth(["customer:write"]),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const context = requireContext(req, res);
+    if (!context) return;
+    const customerId = parseCustomerId(req, res);
+    if (!customerId) return;
+    try {
+      const customer = await customerService.archive(context, customerId);
+      res.status(200).json({ data: { customer, correlationId: context.correlationId } });
+    } catch (error) {
+      if (error instanceof CustomerServiceError && error.code === "CUSTOMER_NOT_FOUND") {
+        res.status(404).json({ error: { code: error.code, message: error.message, correlationId: context.correlationId } });
+        return;
+      }
       next(error);
     }
   },
