@@ -50,6 +50,19 @@ describe("M04 customer relation schemas", () => {
     }).success).toBe(false);
   });
 
+  it("validates strict partial contact and address updates", () => {
+    expect(updateCustomerContactSchema.parse({ fullName: "Updated Contact", email: null })).toEqual({
+      fullName: "Updated Contact", email: null,
+    });
+    expect(updateCustomerContactSchema.safeParse({}).success).toBe(false);
+    expect(updateCustomerContactSchema.safeParse({ tenantId: "forged" }).success).toBe(false);
+    expect(updateCustomerAddressSchema.parse({ city: "Porto-Novo", region: null })).toEqual({
+      city: "Porto-Novo", region: null,
+    });
+    expect(updateCustomerAddressSchema.safeParse({}).success).toBe(false);
+    expect(updateCustomerAddressSchema.safeParse({ countryCode: "BEN" }).success).toBe(false);
+  });
+
   it("bounds relation pagination and requires a non-empty customer patch", () => {
     expect(listCustomerRelationsQuerySchema.parse({ limit: "20", status: "ACTIVE" })).toMatchObject({
       limit: 20,
