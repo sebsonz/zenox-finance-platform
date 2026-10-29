@@ -132,8 +132,8 @@ function parseCustomerId(req: Request, res: Response): string | null {
 
 function sendRelationError(error: unknown, res: Response, correlationId: string): boolean {
   if (!(error instanceof CustomerRelationsServiceError)) return false;
-  const status = error.code === "CUSTOMER_NOT_FOUND" ? 404
-    : error.code === "PRIMARY_RELATION_CONFLICT" ? 409 : 422;
+  const status = error.code === "CUSTOMER_NOT_FOUND" || error.code === "RELATION_NOT_FOUND" ? 404
+    : error.code === "CUSTOMER_ARCHIVED" || error.code === "PRIMARY_RELATION_CONFLICT" ? 409 : 422;
   res.status(status).json({ error: { code: error.code, message: error.message, correlationId } });
   return true;
 }
