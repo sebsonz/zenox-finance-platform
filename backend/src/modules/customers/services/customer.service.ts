@@ -3,7 +3,6 @@ import { currencyRepository } from "../../currencies/repositories/currency.repos
 import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
 import type { FinanceCustomerReadContext } from "../types/customer-operation-context.js";
 
-export type FinanceCustomerReadContext = Pick<FinanceRequestContext, "tenantId" | "correlationId">;
 import { customerRepository, type FinanceCustomer } from "../repositories/customer.repository.js";
 import type { CreateCustomerInput, ListCustomersQuery, UpdateCustomerInput } from "../validators/customer.schema.js";
 
