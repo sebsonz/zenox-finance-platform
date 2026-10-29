@@ -17,11 +17,11 @@ test("readData surfaces API errors without leaking raw response details", async 
 test("authConfig requests configuration without caching", async (context) => {
   const originalFetch = globalThis.fetch;
   context.after(() => { globalThis.fetch = originalFetch; });
-  let observed: { url?: string; cache?: RequestCache } = {};
-  globalThis.fetch = (async (input, init) => {
+  let observed = {};
+  globalThis.fetch = async (input, init) => {
     observed = { url: String(input), cache: init?.cache };
     return new Response(JSON.stringify({ data: { supabaseUrl: "https://auth.example.test", supabaseAnonKey: "public-key" } }));
-  }) as typeof fetch;
+  };
 
   assert.deepEqual(await authConfig(), {
     supabaseUrl: "https://auth.example.test",
@@ -33,8 +33,8 @@ test("authConfig requests configuration without caching", async (context) => {
 test("exchangeSession uses same-origin credentials and never stores the token in a URL", async (context) => {
   const originalFetch = globalThis.fetch;
   context.after(() => { globalThis.fetch = originalFetch; });
-  let observed: { url?: string; method?: string; credentials?: RequestCredentials; body?: string } = {};
-  globalThis.fetch = (async (input, init) => {
+  let observed = {};
+  globalThis.fetch = async (input, init) => {
     observed = {
       url: String(input),
       method: init?.method,
@@ -42,7 +42,7 @@ test("exchangeSession uses same-origin credentials and never stores the token in
       body: String(init?.body),
     };
     return new Response(JSON.stringify({ data: { id: "user-1" } }));
-  }) as typeof fetch;
+  };
 
   await exchangeSession("test-access-token");
   assert.deepEqual(observed, {
