@@ -36,10 +36,10 @@ Le dépôt contient déjà un premier vertical slice client (création, liste, d
 
 ## Checklist de clôture
 
-- [ ] CRUD client et archivage documentés et testés
-- [ ] Contacts et adresses documentés et testés
-- [ ] RLS/FORCE RLS et grants au moindre privilège vérifiés
-- [ ] Tests cross-tenant et absence de contexte
+- [x] Création, liste, détail, mise à jour partielle et archivage client implémentés/documentés (tests ciblés à compléter)
+- [x] Tables tenant-scoped, création et liste paginée des contacts/adresses implémentées/documentées (tests API ciblés et mise à jour/archivage des relations à compléter)
+- [x] RLS/FORCE RLS, clés étrangères composites et grants runtime limités ajoutés (preuve CI encore attendue)
+- [x] Test PostgreSQL cross-tenant / absence de contexte ajouté pour contacts/adresses (preuve CI encore attendue)
 - [ ] CI verte sur SHA final
 - [ ] Checkpoint mis à jour avec preuves et limites connues
 - [ ] Import local groupé en fin de module; migration distante séparée et soumise à autorisation
