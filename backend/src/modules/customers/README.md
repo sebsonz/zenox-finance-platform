@@ -1,6 +1,6 @@
 # M04 — Clients et contacts
 
-Le module possède un premier parcours client (création, liste paginée, détail) et expose désormais les contacts et adresses du client via l'API v1.
+Le module possède les parcours client (création, liste paginée, détail, mise à jour partielle et archivage) et expose les contacts et adresses du client via l'API v1.
 
 ## Responsabilités
 
