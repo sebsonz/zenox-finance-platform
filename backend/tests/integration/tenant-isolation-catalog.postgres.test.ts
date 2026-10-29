@@ -11,6 +11,22 @@ interface TenantScopedTable {
   policy_count: number;
 }
 
+// Reviewed control-plane exceptions. They are intentionally not governed by
+// app.tenant_id because they are used before tenant context is established.
+// Their access remains backend-only and is checked by the dedicated tests.
+const CONTROL_PLANE_EXCEPTIONS = {
+  finance_integration_tenant_grants: {
+    rls_enabled: false,
+    rls_forced: false,
+    policy_count: 0,
+  },
+  finance_registration_requests: {
+    rls_enabled: true,
+    rls_forced: true,
+    policy_count: 0,
+  },
+} as const;
+
 integrationDescribe("M03 tenant isolation catalog guard", () => {
   let pool: Pool;
 
@@ -22,7 +38,7 @@ integrationDescribe("M03 tenant isolation catalog guard", () => {
     await pool?.end();
   });
 
-  it("requires RLS, FORCE RLS and an explicit policy on every Finance table with tenant_id", async () => {
+  it("requires RLS, FORCE RLS and an explicit policy on every tenant-scoped business table", async () => {
     const result = await pool.query<TenantScopedTable>(`
       SELECT c.relname AS table_name,
              c.relrowsecurity AS rls_enabled,
@@ -46,7 +62,13 @@ integrationDescribe("M03 tenant isolation catalog guard", () => {
 
     expect(result.rows.length, "Finance tenant-scoped tables must be discovered").toBeGreaterThan(0);
 
+    const byName = new Map(result.rows.map((table) => [table.table_name, table]));
+    for (const [tableName, expected] of Object.entries(CONTROL_PLANE_EXCEPTIONS)) {
+      expect(byName.get(tableName), `Reviewed control-plane exception ${tableName} must exist`).toMatchObject(expected);
+    }
+
     const violations = result.rows
+      .filter((table) => !(table.table_name in CONTROL_PLANE_EXCEPTIONS))
       .filter((table) => !table.rls_enabled || !table.rls_forced || table.policy_count === 0)
       .map((table) => ({
         table: table.table_name,
@@ -57,7 +79,7 @@ integrationDescribe("M03 tenant isolation catalog guard", () => {
 
     expect(
       violations,
-      "Every Finance table carrying tenant_id must enable and force RLS and define an explicit policy",
+      "Every tenant-scoped business table must enable and force RLS and define an explicit policy; only documented control-plane exceptions are excluded",
     ).toEqual([]);
   });
 });
