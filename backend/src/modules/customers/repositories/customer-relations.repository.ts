@@ -2,6 +2,8 @@ import type { PoolClient } from "pg";
 import type {
   CreateCustomerAddressInput,
   CreateCustomerContactInput,
+  UpdateCustomerContactInput,
+  UpdateCustomerAddressInput,
   ListCustomerRelationsQuery,
 } from "../validators/customer-relations.schema.js";
 
@@ -82,6 +84,32 @@ export const customerRelationsRepository = {
     return mapContact(result.rows[0]!);
   },
 
+  async updateContact(client: PoolClient, customerId: string, contactId: string, input: UpdateCustomerContactInput) {
+    const columns: Record<keyof UpdateCustomerContactInput, string> = {
+      contactType: "contact_type", fullName: "full_name", jobTitle: "job_title",
+      email: "email", phone: "phone", isPrimary: "is_primary",
+    };
+    const entries = Object.entries(input) as [keyof UpdateCustomerContactInput, unknown][];
+    const assignments = entries.map(([key], index) => `${columns[key]} = ${index + 3}`);
+    const result = await client.query<ContactRow>(
+      `UPDATE public.finance_customer_contacts SET ${assignments.join(", ")}, updated_at = now()
+       WHERE customer_id = $1 AND id = $2 AND status = 'ACTIVE'
+       RETURNING ${contactColumns}`,
+      [customerId, contactId, ...entries.map(([, value]) => value)],
+    );
+    return result.rows[0] ? mapContact(result.rows[0]) : null;
+  },
+
+  async archiveContact(client: PoolClient, customerId: string, contactId: string) {
+    const result = await client.query<ContactRow>(
+      `UPDATE public.finance_customer_contacts SET status = 'ARCHIVED', is_primary = false, updated_at = now()
+       WHERE customer_id = $1 AND id = $2 AND status = 'ACTIVE'
+       RETURNING ${contactColumns}`,
+      [customerId, contactId],
+    );
+    return result.rows[0] ? mapContact(result.rows[0]) : null;
+  },
+
   async listContacts(client: PoolClient, customerId: string, query: ListCustomerRelationsQuery) {
     const result = await client.query<ContactRow>(
       `SELECT ${contactColumns} FROM public.finance_customer_contacts
@@ -103,6 +131,33 @@ export const customerRelationsRepository = {
        input.postalCode ?? null, input.countryCode, input.isPrimary],
     );
     return mapAddress(result.rows[0]!);
+  },
+
+  async updateAddress(client: PoolClient, customerId: string, addressId: string, input: UpdateCustomerAddressInput) {
+    const columns: Record<keyof UpdateCustomerAddressInput, string> = {
+      addressType: "address_type", label: "label", recipientName: "recipient_name",
+      addressLine1: "address_line1", addressLine2: "address_line2", city: "city",
+      region: "region", postalCode: "postal_code", countryCode: "country_code", isPrimary: "is_primary",
+    };
+    const entries = Object.entries(input) as [keyof UpdateCustomerAddressInput, unknown][];
+    const assignments = entries.map(([key], index) => `${columns[key]} = ${index + 3}`);
+    const result = await client.query<AddressRow>(
+      `UPDATE public.finance_customer_addresses SET ${assignments.join(", ")}, updated_at = now()
+       WHERE customer_id = $1 AND id = $2 AND status = 'ACTIVE'
+       RETURNING ${addressColumns}`,
+      [customerId, addressId, ...entries.map(([, value]) => value)],
+    );
+    return result.rows[0] ? mapAddress(result.rows[0]) : null;
+  },
+
+  async archiveAddress(client: PoolClient, customerId: string, addressId: string) {
+    const result = await client.query<AddressRow>(
+      `UPDATE public.finance_customer_addresses SET status = 'ARCHIVED', is_primary = false, updated_at = now()
+       WHERE customer_id = $1 AND id = $2 AND status = 'ACTIVE'
+       RETURNING ${addressColumns}`,
+      [customerId, addressId],
+    );
+    return result.rows[0] ? mapAddress(result.rows[0]) : null;
   },
 
   async listAddresses(client: PoolClient, customerId: string, query: ListCustomerRelationsQuery) {
