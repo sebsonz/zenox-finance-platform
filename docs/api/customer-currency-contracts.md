@@ -29,6 +29,22 @@ When `hasMore` is false, `nextCursor` is `null`; otherwise it is the final ID in
 
 Required scope: `customer:read`. Returns the customer only within the authenticated tenant's transaction/RLS context. Invalid UUID: `400`; missing or foreign-tenant customer: `404`.
 
+### Customer contacts
+
+- POST /api/v1/customers/:customerId/contacts — scope customer:write; creates a contact for an active customer.
+- GET /api/v1/customers/:customerId/contacts?status=ACTIVE&limit=25&cursor=<uuid> — scope customer:read; bounded cursor pagination.
+
+Contacts support GENERAL, BILLING, TECHNICAL, LEGAL and OTHER types. Contact name is required; email, phone and job title are optional. Only one active primary contact per customer is permitted. Contact rows use tenant-scoped RLS and a composite foreign key to the owning tenant/customer.
+
+### Customer addresses
+
+- POST /api/v1/customers/:customerId/addresses — scope customer:write; creates an address for an active customer.
+- GET /api/v1/customers/:customerId/addresses?status=ACTIVE&limit=25&cursor=<uuid> — scope customer:read; bounded cursor pagination.
+
+Address types are REGISTERED, BILLING, SHIPPING and OTHER. Address line 1, city and two-letter country code are required. A primary address is unique per customer and address type. Address rows use tenant-scoped RLS and a composite foreign key to the owning tenant/customer.
+
+These endpoints reject unknown request fields, validate customer UUIDs and never accept tenant identity from client input. Missing/foreign-tenant customer returns 404; archived customer cannot receive new contacts or addresses (422); duplicate primary records return 409.
+
 ## Currencies
 
 ### `GET /api/v1/currencies`
