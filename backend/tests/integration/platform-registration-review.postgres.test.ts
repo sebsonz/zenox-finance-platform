@@ -62,6 +62,51 @@ integrationDescribe("platform registration review PostgreSQL functions", () => {
       .rejects.toMatchObject({ code: "42501" });
   });
 
+  it("authorizes only the exact active platform identity and denies suspended or mismatched identities", async () => {
+    const operatorIssuer = "https://platform-auth.example.test";
+    const operatorSubject = randomUUID();
+    const otherIssuer = "https://other-auth.example.test";
+    const otherSubject = randomUUID();
+
+    await bootstrapOperator(operatorIssuer, operatorSubject);
+
+    const active = await runtimePool.query<{ is_active: boolean }>(
+      "SELECT public.finance_is_active_platform_operator($1, $2) AS is_active",
+      [operatorIssuer, operatorSubject],
+    );
+    expect(active.rows[0]?.is_active).toBe(true);
+
+    const wrongSubject = await runtimePool.query<{ is_active: boolean }>(
+      "SELECT public.finance_is_active_platform_operator($1, $2) AS is_active",
+      [operatorIssuer, otherSubject],
+    );
+    expect(wrongSubject.rows[0]?.is_active).toBe(false);
+
+    const wrongIssuer = await runtimePool.query<{ is_active: boolean }>(
+      "SELECT public.finance_is_active_platform_operator($1, $2) AS is_active",
+      [otherIssuer, operatorSubject],
+    );
+    expect(wrongIssuer.rows[0]?.is_active).toBe(false);
+
+    await adminPool.query(
+      `UPDATE public.finance_platform_operators
+          SET status = 'SUSPENDED', updated_at = now()
+        WHERE identity_issuer = $1 AND identity_subject = $2`,
+      [operatorIssuer, operatorSubject],
+    );
+
+    const suspended = await runtimePool.query<{ is_active: boolean }>(
+      "SELECT public.finance_is_active_platform_operator($1, $2) AS is_active",
+      [operatorIssuer, operatorSubject],
+    );
+    expect(suspended.rows[0]?.is_active).toBe(false);
+
+    await expect(runtimePool.query(
+      "SELECT * FROM public.finance_list_pending_registration_requests($1, $2)",
+      [operatorIssuer, operatorSubject],
+    )).rejects.toMatchObject({ code: "42501", message: "PLATFORM_OPERATOR_REQUIRED" });
+  });
+
   it("requires an explicitly bootstrapped platform operator and atomically approves a request", async () => {
     const suffix = randomUUID();
     const operatorIssuer = "https://platform-auth.example.test";
