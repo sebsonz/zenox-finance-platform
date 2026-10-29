@@ -1,6 +1,8 @@
 import { withTenantTransaction } from "../../../db/transaction.js";
 import { currencyRepository } from "../../currencies/repositories/currency.repository.js";
 import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+
+export type FinanceCustomerReadContext = Pick<FinanceRequestContext, "tenantId" | "correlationId">;
 import { customerRepository, type FinanceCustomer } from "../repositories/customer.repository.js";
 import type { CreateCustomerInput, ListCustomersQuery, UpdateCustomerInput } from "../validators/customer.schema.js";
 
@@ -72,11 +74,11 @@ export const customerService = {
     });
   },
 
-  async list(context: FinanceRequestContext, query: ListCustomersQuery): Promise<FinanceCustomer[]> {
+  async list(context: FinanceCustomerReadContext, query: ListCustomersQuery): Promise<FinanceCustomer[]> {
     return withTenantTransaction(context.tenantId, async (client) => customerRepository.list(client, query));
   },
 
-  async findById(context: FinanceRequestContext, customerId: string): Promise<FinanceCustomer | null> {
+  async findById(context: FinanceCustomerReadContext, customerId: string): Promise<FinanceCustomer | null> {
     return withTenantTransaction(context.tenantId, async (client) => customerRepository.findById(client, customerId));
   },
 };
