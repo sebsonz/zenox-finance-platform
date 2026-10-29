@@ -59,5 +59,7 @@ jobs:
         run: npm --prefix frontend run typecheck
       - name: Frontend navigation tests
         run: npm --prefix frontend run test:navigation
+      - name: Frontend auth API tests
+        run: npm --prefix frontend run test:auth-api
       - name: Frontend build
         run: npm --prefix frontend run build
