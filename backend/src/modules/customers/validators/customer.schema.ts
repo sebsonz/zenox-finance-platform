@@ -29,6 +29,19 @@ export const createCustomerSchema = z.object({
   }
 });
 
+export const updateCustomerSchema = z.object({
+  legalName: z.string().trim().min(1).max(200).optional(),
+  displayName: z.string().trim().max(200).nullable().optional(),
+  email: z.string().trim().email().max(254).nullable().optional(),
+  phone: z.string().trim().max(40).nullable().optional(),
+  countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/).optional(),
+  taxIdentifier: z.string().trim().max(100).nullable().optional(),
+  registrationIdentifier: z.string().trim().max(100).nullable().optional(),
+  defaultCurrency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).nullable().optional(),
+}).strict().refine((value) => Object.keys(value).length > 0, {
+  message: "At least one customer field must be provided.",
+});
+
 export const listCustomersQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
   status: z.enum(["ACTIVE", "ARCHIVED"]).optional().default("ACTIVE"),
@@ -37,4 +50,5 @@ export const listCustomersQuerySchema = z.object({
 }).strict();
 
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
+export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
 export type ListCustomersQuery = z.infer<typeof listCustomersQuerySchema>;
