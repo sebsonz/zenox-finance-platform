@@ -36,6 +36,15 @@ Required scope: `customer:read`. Returns the customer only within the authentica
 
 Archived customers remain available for historical references and cannot receive new contacts or addresses. Updating an archived customer returns 409. A supplied default currency is checked against active Finance currency reference data.
 
+### Customer contact and address lifecycle
+
+- PATCH /api/v1/customers/:customerId/contacts/:contactId — scope customer:write; strict partial update of an active contact.
+- POST /api/v1/customers/:customerId/contacts/:contactId/archive — scope customer:write; soft-archives the contact.
+- PATCH /api/v1/customers/:customerId/addresses/:addressId — scope customer:write; strict partial update of an active address.
+- POST /api/v1/customers/:customerId/addresses/:addressId/archive — scope customer:write; soft-archives the address.
+
+Archived relations are retained for history and cannot be updated through these endpoints. Tenant identity is taken from the verified integration context; relation IDs must be UUIDs. A relation not found within the tenant/customer scope returns 404, malformed payloads return 400, and duplicate active primary records return 409.
+
 ### Customer contacts
 
 - POST /api/v1/customers/:customerId/contacts — scope customer:write; creates a contact for an active customer.
