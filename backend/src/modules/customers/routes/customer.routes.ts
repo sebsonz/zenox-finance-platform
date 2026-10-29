@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireIntegrationAuth } from "../../../middleware/require-integration-auth.js";
 import { CustomerServiceError, customerService } from "../services/customer.service.js";
 import { createCustomerSchema, listCustomersQuerySchema } from "../validators/customer.schema.js";
+import { CustomerRelationsServiceError, customerRelationsService } from "../services/customer-relations.service.js";
+import { createCustomerAddressSchema, createCustomerContactSchema, listCustomerRelationsQuerySchema } from "../validators/customer-relations.schema.js";
 
 export const customerRouter = Router();
 
@@ -113,6 +115,132 @@ customerRouter.get(
       }
       res.status(200).json({ data: { customer, correlationId: context.correlationId } });
     } catch (error) {
+      next(error);
+    }
+  },
+);
+
+
+function parseCustomerId(req: Request, res: Response): string | null {
+  const parsed = z.string().uuid().safeParse(req.params["customerId"]);
+  if (!parsed.success) {
+    res.status(400).json({ error: { code: "INVALID_CUSTOMER_ID", message: "The customer ID must be a UUID." } });
+    return null;
+  }
+  return parsed.data;
+}
+
+function sendRelationError(error: unknown, res: Response, correlationId: string): boolean {
+  if (!(error instanceof CustomerRelationsServiceError)) return false;
+  const status = error.code === "CUSTOMER_NOT_FOUND" ? 404
+    : error.code === "PRIMARY_RELATION_CONFLICT" ? 409 : 422;
+  res.status(status).json({ error: { code: error.code, message: error.message, correlationId } });
+  return true;
+}
+
+customerRouter.post(
+  "/:customerId/contacts",
+  requireIntegrationAuth(["customer:write"]),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const context = requireContext(req, res);
+    if (!context) return;
+    const customerId = parseCustomerId(req, res);
+    if (!customerId) return;
+    const parsed = createCustomerContactSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: { code: "INVALID_CONTACT", message: "The customer contact is invalid." } });
+      return;
+    }
+    try {
+      const contact = await customerRelationsService.createContact(context, customerId, parsed.data);
+      res.status(201).json({ data: { contact, correlationId: context.correlationId } });
+    } catch (error) {
+      if (sendRelationError(error, res, context.correlationId)) return;
+      next(error);
+    }
+  },
+);
+
+customerRouter.get(
+  "/:customerId/contacts",
+  requireIntegrationAuth(["customer:read"]),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const context = requireContext(req, res);
+    if (!context) return;
+    const customerId = parseCustomerId(req, res);
+    if (!customerId) return;
+    const parsed = listCustomerRelationsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: { code: "INVALID_QUERY", message: "The contact list query is invalid." } });
+      return;
+    }
+    try {
+      const rows = await customerRelationsService.listContacts(context, customerId, parsed.data);
+      const hasMore = rows.length > parsed.data.limit;
+      const contacts = hasMore ? rows.slice(0, parsed.data.limit) : rows;
+      res.status(200).json({
+        data: {
+          contacts,
+          page: { limit: parsed.data.limit, hasMore, nextCursor: hasMore ? contacts.at(-1)?.id ?? null : null },
+          correlationId: context.correlationId,
+        },
+      });
+    } catch (error) {
+      if (sendRelationError(error, res, context.correlationId)) return;
+      next(error);
+    }
+  },
+);
+
+customerRouter.post(
+  "/:customerId/addresses",
+  requireIntegrationAuth(["customer:write"]),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const context = requireContext(req, res);
+    if (!context) return;
+    const customerId = parseCustomerId(req, res);
+    if (!customerId) return;
+    const parsed = createCustomerAddressSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: { code: "INVALID_ADDRESS", message: "The customer address is invalid." } });
+      return;
+    }
+    try {
+      const address = await customerRelationsService.createAddress(context, customerId, parsed.data);
+      res.status(201).json({ data: { address, correlationId: context.correlationId } });
+    } catch (error) {
+      if (sendRelationError(error, res, context.correlationId)) return;
+      next(error);
+    }
+  },
+);
+
+customerRouter.get(
+  "/:customerId/addresses",
+  requireIntegrationAuth(["customer:read"]),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const context = requireContext(req, res);
+    if (!context) return;
+    const customerId = parseCustomerId(req, res);
+    if (!customerId) return;
+    const parsed = listCustomerRelationsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: { code: "INVALID_QUERY", message: "The address list query is invalid." } });
+      return;
+    }
+    try {
+      const rows = await customerRelationsService.listAddresses(context, customerId, parsed.data);
+      const hasMore = rows.length > parsed.data.limit;
+      const addresses = hasMore ? rows.slice(0, parsed.data.limit) : rows;
+      res.status(200).json({
+        data: {
+          addresses,
+          page: { limit: parsed.data.limit, hasMore, nextCursor: hasMore ? addresses.at(-1)?.id ?? null : null },
+          correlationId: context.correlationId,
+        },
+      });
+    } catch (error) {
+      if (sendRelationError(error, res, context.correlationId)) return;
       next(error);
     }
   },
