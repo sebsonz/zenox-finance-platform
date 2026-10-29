@@ -4,7 +4,7 @@ import { requireIntegrationAuth } from "../../../middleware/require-integration-
 import { CustomerServiceError, customerService } from "../services/customer.service.js";
 import { createCustomerSchema, listCustomersQuerySchema, updateCustomerSchema } from "../validators/customer.schema.js";
 import { CustomerRelationsServiceError, customerRelationsService } from "../services/customer-relations.service.js";
-import { createCustomerAddressSchema, createCustomerContactSchema, listCustomerRelationsQuerySchema } from "../validators/customer-relations.schema.js";
+import { createCustomerAddressSchema, createCustomerContactSchema, listCustomerRelationsQuerySchema, updateCustomerAddressSchema, updateCustomerContactSchema } from "../validators/customer-relations.schema.js";
 
 export const customerRouter = Router();
 
