@@ -2,9 +2,9 @@ name: ZENOX Finance CI
 
 on:
   push:
-    branches: [main, feat/invoice-tax-snapshot-binding, chore/monorepo-frontend-backend-structure, feature/invoice-workflow-completion, feature/tax-rule-extensibility, feat/platform-admin-entry-routing, feat/platform-admin-dashboard-v3, feat/modular-routing-architecture, feat/m01-identity-access-sessions, feat/m03-tenant-isolation-policies]
+    branches: [main, feat/invoice-tax-snapshot-binding, chore/monorepo-frontend-backend-structure, feature/invoice-workflow-completion, feature/tax-rule-extensibility, feat/platform-admin-entry-routing, feat/platform-admin-dashboard-v3, feat/modular-routing-architecture, feat/m01-identity-access-sessions, feat/m03-tenant-isolation-policies, feat/m04-customers-contacts]
   pull_request:
-    branches: [main, feat/invoice-tax-snapshot-binding, feature/invoice-user-readonly-bff, feature/invoice-workflow-completion, feat/platform-admin-entry-routing, feat/platform-admin-dashboard-v3, feat/modular-routing-architecture]
+    branches: [main, feat/invoice-tax-snapshot-binding, feature/invoice-user-readonly-bff, feature/invoice-workflow-completion, feat/platform-admin-entry-routing, feat/platform-admin-dashboard-v3, feat/modular-routing-architecture, feat/m04-customers-contacts]
 
 permissions:
   contents: read
