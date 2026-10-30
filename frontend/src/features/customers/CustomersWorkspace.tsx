@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { CustomerManagementDialog, type CustomerEditorKind, type CustomerEditorMode, type CustomerEditorRecord } from "./CustomerManagementDialog.js";
+import "./customers-management.css";
 import { Building2, Mail, MapPin, Phone, RefreshCw, Search, UserRound, Users } from "lucide-react";
 
 type Customer = {
@@ -33,6 +35,7 @@ export function CustomersWorkspace({ tenantId }: { tenantId: string }) {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState("");
+  const [editor, setEditor] = useState<{ kind: CustomerEditorKind; mode: CustomerEditorMode; record?: CustomerEditorRecord } | null>(null);
 
   async function loadCustomers(query = search) {
     setLoading(true); setError("");
@@ -66,12 +69,49 @@ export function CustomersWorkspace({ tenantId }: { tenantId: string }) {
   }
 
   useEffect(() => { void loadCustomers(""); }, [tenantId]);
+
+  function openEditor(kind: CustomerEditorKind, mode: CustomerEditorMode, record?: CustomerEditorRecord) {
+    setEditor({ kind, mode, ...(record ? { record } : {}) });
+  }
+
+  async function saveEditor(values: CustomerEditorRecord) {
+    if (!selected && editor?.kind !== "customer") throw new Error("Sélectionnez d'abord un client.");
+    const customerId = selected?.id;
+    const base = `/api/v1/user/tenants/${encodeURIComponent(tenantId)}/customers`;
+    let url = base;
+    let method = "POST";
+    if (editor?.kind === "customer" && editor.mode === "edit" && customerId) { url = `${base}/${encodeURIComponent(customerId)}`; method = "PATCH"; }
+    if (editor?.kind === "contact" && customerId) { url = `${base}/${encodeURIComponent(customerId)}/contacts`; }
+    if (editor?.kind === "contact" && editor.mode === "edit" && customerId) { url = `${url}/${encodeURIComponent(String(editor.record?.id ?? ""))}`; method = "PATCH"; }
+    if (editor?.kind === "address" && customerId) { url = `${base}/${encodeURIComponent(customerId)}/addresses`; }
+    if (editor?.kind === "address" && editor.mode === "edit" && customerId) { url = `${url}/${encodeURIComponent(String(editor.record?.id ?? ""))}`; method = "PATCH"; }
+    await readData(await fetch(url, { method, credentials: "same-origin", cache: "no-store", headers: { "content-type": "application/json" }, body: JSON.stringify(values) }), "Enregistrement impossible.");
+    const kind = editor?.kind;
+    setEditor(null);
+    await loadCustomers();
+    if (kind === "customer") {
+      const refreshed = customers.find((item) => item.id === customerId);
+      if (refreshed) await loadDetails(refreshed);
+    } else if (selected) await loadDetails(selected);
+  }
+
+  async function archiveItem(kind: CustomerEditorKind, id: string) {
+    if (!selected && kind !== "customer") return;
+    if (!window.confirm(kind === "customer" ? "Archiver ce client ?" : kind === "contact" ? "Archiver ce contact ?" : "Archiver cette adresse ?")) return;
+    const base = `/api/v1/user/tenants/${encodeURIComponent(tenantId)}/customers`;
+    const url = kind === "customer" ? `${base}/${encodeURIComponent(id)}/archive`
+      : `${base}/${encodeURIComponent(selected!.id)}/${kind === "contact" ? "contacts" : "addresses"}/${encodeURIComponent(id)}/archive`;
+    await readData(await fetch(url, { method: "POST", credentials: "same-origin", cache: "no-store" }), "Archivage impossible.");
+    if (kind === "customer") { setSelected(null); await loadCustomers(); }
+    else if (selected) await loadDetails(selected);
+  }
+
   const countLabel = useMemo(() => `${customers.length} client(s)`, [customers.length]);
 
   return <section className="customers-workspace">
     <div className="welcome-row">
       <div><div className="eyebrow"><Users size={14}/> RELATION CLIENT</div><h1>Clients</h1><p className="subtitle">Consultez les clients, leurs contacts et leurs adresses enregistrés dans votre organisation.</p></div>
-      <span className="status-chip"><i/> Lecture sécurisée</span>
+      <div className="customer-toolbar"><span className="status-chip"><i/> Lecture et gestion sécurisées</span><button className="primary-button" onClick={() => openEditor("customer", "create")}>+ Nouveau client</button></div>
     </div>
     <div className="demo-banner"><div className="demo-icon"><Building2 size={19}/></div><div><strong>Répertoire de votre organisation</strong><p>Les données sont chargées depuis l’API Finance authentifiée. La création et la modification seront activées après finalisation du contrôle d’acteur et de l’audit.</p></div><span className="demo-pill">M04</span></div>
     {error && <div className="notice" role="alert"><span>{error}</span><button onClick={() => setError("")}>Fermer</button></div>}
@@ -91,20 +131,21 @@ export function CustomersWorkspace({ tenantId }: { tenantId: string }) {
       <section className="panel customer-detail-panel">
         {!selected ? <div className="customer-empty detail-empty"><div className="empty-illustration"><UserRound size={27}/></div><strong>Sélectionnez un client</strong><span>Ses informations, contacts et adresses apparaîtront ici.</span></div> :
           <>
-            <div className="customer-detail-heading"><div><div className="eyebrow">FICHE CLIENT · {selected.customerCode}</div><h2>{selected.displayName || selected.legalName}</h2><p>{selected.legalName}</p></div><span className="status-chip"><i/>{selected.status === "ACTIVE" ? "Actif" : "Archivé"}</span></div>
+            <div className="customer-detail-heading"><div><div className="eyebrow">FICHE CLIENT · {selected.customerCode}</div><h2>{selected.displayName || selected.legalName}</h2><p>{selected.legalName}</p></div><div className="customer-row-actions"><span className="status-chip"><i/>{selected.status === "ACTIVE" ? "Actif" : "Archivé"}</span><button className="outline-button" onClick={() => openEditor("customer", "edit", selected)}>Modifier</button><button className="outline-button danger-button" onClick={() => void archiveItem("customer", selected.id)}>Archiver</button></div></div>
             <div className="customer-facts">
               <div><Mail size={15}/><span>{selected.email || "E-mail non renseigné"}</span></div>
               <div><Phone size={15}/><span>{selected.phone || "Téléphone non renseigné"}</span></div>
               <div><MapPin size={15}/><span>{selected.countryCode} · {selected.defaultCurrency || "Devise non définie"}</span></div>
             </div>
             {detailLoading ? <p className="customer-loading">Chargement des coordonnées…</p> : <>
-              <div className="customer-section-heading"><h3>Contacts</h3><span>{contacts.length}</span></div>
-              {contacts.length ? <div className="customer-relation-list">{contacts.map((contact) => <article key={contact.id}><strong>{contact.fullName}{contact.isPrimary ? " · Principal" : ""}</strong><small>{[contact.jobTitle, contact.contactType].filter(Boolean).join(" · ")}</small><span>{contact.email || contact.phone || "Aucune coordonnée"}</span></article>)}</div> : <p className="customer-no-relations">Aucun contact actif enregistré.</p>}
-              <div className="customer-section-heading"><h3>Adresses</h3><span>{addresses.length}</span></div>
-              {addresses.length ? <div className="customer-relation-list">{addresses.map((address) => <article key={address.id}><strong>{address.label || address.addressType}{address.isPrimary ? " · Principale" : ""}</strong><small>{address.recipientName || ""}</small><span>{[address.addressLine1, address.addressLine2, address.city, address.region, address.postalCode, address.countryCode].filter(Boolean).join(", ")}</span></article>)}</div> : <p className="customer-no-relations">Aucune adresse active enregistrée.</p>}
+              <div className="customer-section-heading"><h3>Contacts</h3><span>{contacts.length}</span><button className="text-button" onClick={() => openEditor("contact", "create")}>+ Ajouter</button></div>
+              {contacts.length ? <div className="customer-relation-list">{contacts.map((contact) => <article key={contact.id}><strong>{contact.fullName}{contact.isPrimary ? " · Principal" : ""}</strong><small>{[contact.jobTitle, contact.contactType].filter(Boolean).join(" · ")}</small><span>{contact.email || contact.phone || "Aucune coordonnée"}</span><div className="customer-row-actions"><button className="text-button" onClick={() => openEditor("contact", "edit", contact)}>Modifier</button><button className="text-button danger-text" onClick={() => void archiveItem("contact", contact.id)}>Archiver</button></div></article>)}</div> : <p className="customer-no-relations">Aucun contact actif enregistré.</p>}
+              <div className="customer-section-heading"><h3>Adresses</h3><span>{addresses.length}</span><button className="text-button" onClick={() => openEditor("address", "create")}>+ Ajouter</button></div>
+              {addresses.length ? <div className="customer-relation-list">{addresses.map((address) => <article key={address.id}><strong>{address.label || address.addressType}{address.isPrimary ? " · Principale" : ""}</strong><small>{address.recipientName || ""}</small><span>{[address.addressLine1, address.addressLine2, address.city, address.region, address.postalCode, address.countryCode].filter(Boolean).join(", ")}</span><div className="customer-row-actions"><button className="text-button" onClick={() => openEditor("address", "edit", address)}>Modifier</button><button className="text-button danger-text" onClick={() => void archiveItem("address", address.id)}>Archiver</button></div></article>)}</div> : <p className="customer-no-relations">Aucune adresse active enregistrée.</p>}
             </>}
           </>}
       </section>
     </div>
+    {editor && <CustomerManagementDialog kind={editor.kind} mode={editor.mode} initial={editor.record} onClose={() => setEditor(null)} onSave={saveEditor} />}
   </section>;
 }
