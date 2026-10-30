@@ -73,4 +73,18 @@ Success: `200 { data: { currencies, count, correlationId } }`.
 
 Authentication and authorization use the shared middleware responses (`401 UNAUTHENTICATED`, `403 INSUFFICIENT_SCOPE`, `403 TENANT_ACCESS_DENIED`). Validation errors have stable `400` codes; unexpected server errors use the application's generic `500 INTERNAL_ERROR` envelope and correlation ID.
 
-These contracts cover the API surface added in the initial customer/currency vertical slice; they do not imply that update/archive/customer UI or live database population of currency reference data is complete.
+## Authenticated user customer workspace
+
+The user-session API is mounted under `/api/v1/user` and uses the HttpOnly Finance session cookie or a verified bearer token. Tenant ID is a route parameter only; it is not trusted until the backend confirms an ACTIVE membership and ACTIVE tenant.
+
+Base: `/api/v1/user/tenants/:tenantId/customers`
+
+- GET `/`, GET `/:customerId`, GET `/:customerId/contacts`, GET `/:customerId/addresses`: require `customers:read`.
+- POST `/`, PATCH `/:customerId`, POST `/:customerId/archive`: require `customers:manage`.
+- POST/PATCH/archive under `/:customerId/contacts` and `/:customerId/addresses`: require `customers:manage`.
+
+The current role matrix grants `customers:manage` to OWNER, ADMIN and FINANCE_MANAGER. FINANCE_OPERATOR receives read-only customer access; VIEWER remains read-only. Every user mutation derives a USER actor from verified identity issuer + subject + active membership ID. The browser cannot supply actor identity. Customer, contact and address audit events are written to `finance_audit_events` in the same tenant transaction as each mutation.
+
+The customer workspace provides list/search/detail and create/update/archive flows for customers, contacts and addresses. Currency reference data remains owned by M06 and must be active before a customer default currency is accepted.
+
+Currency reference data remains Finance-owned and read-only for integration runtime roles. This document describes API contracts, not permission to apply migrations to a persistent database or deploy the feature.
