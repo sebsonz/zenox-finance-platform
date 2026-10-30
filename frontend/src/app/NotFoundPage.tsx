@@ -1,11 +1,13 @@
 import "./NotFoundPage.css";
 import { Link } from "react-router";
 import { ArrowLeft, FileQuestion } from "lucide-react";
+import { BrandLogo } from "../shared/components/BrandLogo.js";
 
 export function NotFoundPage() {
   return (
     <main className="not-found-page" role="main">
       <div className="not-found-card">
+        <Link className="not-found-brand" to="/"><BrandLogo /></Link>
         <div className="not-found-icon" aria-hidden="true"><FileQuestion size={28} /></div>
         <p className="not-found-code">ERREUR 404</p>
         <h1>Cette page est introuvable</h1>
