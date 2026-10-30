@@ -19,5 +19,8 @@ userAuthRouter.use("/", userTenantMemberManagementRouter);
 userAuthRouter.use("/", userSessionRouter);
 userAuthRouter.use("/registration", registrationRouter);
 userAuthRouter.use("/platform", platformRegistrationRouter);
-userAuthRouter.use("/tenants", userInvoiceRouter);
+
+// Register the M04 customer routes before invoice routes: both expose
+// /:tenantId/customers, but their permissions are intentionally different.
 userAuthRouter.use("/tenants", userCustomerRouter);
+userAuthRouter.use("/tenants", userInvoiceRouter);
