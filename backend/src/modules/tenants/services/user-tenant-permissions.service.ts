@@ -41,7 +41,7 @@ const ROLE_PERMISSIONS: Readonly<Record<FinanceUserRole, readonly FinanceUserPer
     "tax:read", "tax:manage",
   ],
   FINANCE_OPERATOR: [
-    "tenant:read", "invoices:read", "invoices:create",
+    "tenant:read", "customers:read", "invoices:read", "invoices:create",
     "payments:read", "payments:record", "payments:allocate", "tax:read",
   ],
   VIEWER: ["tenant:read", "members:read", "customers:read", "invoices:read", "payments:read", "tax:read"],
