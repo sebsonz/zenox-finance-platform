@@ -1,7 +1,9 @@
 import { withTenantTransaction } from "../../../db/transaction.js";
 import { currencyRepository } from "../../currencies/repositories/currency.repository.js";
 import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
-import type { FinanceCustomerReadContext } from "../types/customer-operation-context.js";
+import type { FinanceCustomerReadContext, FinanceCustomerOperationContext } from "../types/customer-operation-context.js";
+import { customerPrincipalId } from "../types/customer-operation-context.js";
+import { recordCustomerAudit } from "../repositories/customer-audit.repository.js";
 
 import { customerRepository, type FinanceCustomer } from "../repositories/customer.repository.js";
 import type { CreateCustomerInput, ListCustomersQuery, UpdateCustomerInput } from "../validators/customer.schema.js";
@@ -31,7 +33,7 @@ function mapDatabaseError(error: unknown): never {
 }
 
 export const customerService = {
-  async create(context: FinanceRequestContext, input: CreateCustomerInput): Promise<FinanceCustomer> {
+  async create(context: FinanceCustomerOperationContext, input: CreateCustomerInput): Promise<FinanceCustomer> {
     if (input.defaultCurrency) {
       const currency = await currencyRepository.findActiveByCode(input.defaultCurrency);
       if (!currency) {
@@ -41,14 +43,17 @@ export const customerService = {
 
     try {
       return await withTenantTransaction(context.tenantId, async (client) => {
-        return customerRepository.create(client, context.tenantId, context.principal.id, input);
+        return customerRepository.create(client, context.tenantId, customerPrincipalId(context), input).then(async (customer) => {
+          await recordCustomerAudit(client, context, "customer.created", "CUSTOMER", customer.id, { customerCode: customer.customerCode, customerType: customer.customerType });
+          return customer;
+        });
       });
     } catch (error) {
       return mapDatabaseError(error);
     }
   },
 
-  async update(context: FinanceRequestContext, customerId: string, input: UpdateCustomerInput): Promise<FinanceCustomer> {
+  async update(context: FinanceCustomerOperationContext, customerId: string, input: UpdateCustomerInput): Promise<FinanceCustomer> {
     if (input.defaultCurrency) {
       const currency = await currencyRepository.findActiveByCode(input.defaultCurrency);
       if (!currency) throw new CustomerServiceError("CURRENCY_NOT_SUPPORTED", "The requested default currency is not active.");
@@ -59,17 +64,19 @@ export const customerService = {
       if (current.status !== "ACTIVE") throw new CustomerServiceError("CUSTOMER_ARCHIVED", "Archived customers cannot be modified.");
       const updated = await customerRepository.update(client, customerId, input);
       if (!updated) throw new CustomerServiceError("CUSTOMER_NOT_FOUND", "The customer was not found.");
+      await recordCustomerAudit(client, context, "customer.updated", "CUSTOMER", updated.id, { changedFields: Object.keys(input) });
       return updated;
     });
   },
 
-  async archive(context: FinanceRequestContext, customerId: string): Promise<FinanceCustomer> {
+  async archive(context: FinanceCustomerOperationContext, customerId: string): Promise<FinanceCustomer> {
     return withTenantTransaction(context.tenantId, async (client) => {
       const current = await customerRepository.findById(client, customerId);
       if (!current) throw new CustomerServiceError("CUSTOMER_NOT_FOUND", "The customer was not found.");
       if (current.status === "ARCHIVED") return current;
       const archived = await customerRepository.archive(client, customerId);
       if (!archived) throw new CustomerServiceError("CUSTOMER_NOT_FOUND", "The customer was not found.");
+      await recordCustomerAudit(client, context, "customer.archived", "CUSTOMER", archived.id);
       return archived;
     });
   },
