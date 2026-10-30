@@ -1,36 +1,24 @@
 # M04 — Espace Clients (frontend)
 
-## État actuel
+## Fonctionnalités
+- Liste des clients actifs, recherche par nom légal/code et consultation du détail.
+- Création, modification et archivage logique des clients.
+- Consultation, création, modification et archivage des contacts.
+- Consultation, création, modification et archivage des adresses.
+- Devise par défaut validée par l'API M06; aucun calcul de devise côté navigateur.
+- États de chargement, erreurs, absence de données et rafraîchissement après mutation.
+- Dialogues responsive; requêtes same-origin, cookies de session et cache désactivé.
 
-Le composant `CustomersWorkspace` est raccordé à l'application authentifiée via la route `/customers`. Il reçoit le `tenantId` actif depuis le shell applicatif et n'ouvre pas de session ni de sélecteur d'organisation parallèle.
+## API
+Base : `/api/v1/user/tenants/:tenantId/customers`. Voir le README backend M04 pour les routes détaillées.
 
-Fonctionnalités disponibles en lecture seule :
+## Autorisations
+- Lecture : `customers:read`.
+- Mutations : `customers:manage`; l'autorisation réelle est vérifiée par le backend.
+- L'interface ne fait jamais autorité sur le tenant, l'identité ou les permissions.
+- Les actions de mutation sont auditées côté serveur.
 
-- liste des clients actifs, limitée à 100 résultats ;
-- recherche par nom légal ou code client via le paramètre `q` ;
-- fiche client avec identité, pays, devise par défaut et coordonnées ;
-- consultation des contacts et adresses actifs ;
-- états de chargement, absence de données et erreurs API ;
-- requêtes same-origin avec cookies de session et cache désactivé.
-
-Routes utilisées :
-
-- `GET /api/v1/user/tenants/:tenantId/customers`
-- `GET /api/v1/user/tenants/:tenantId/customers/:customerId/contacts`
-- `GET /api/v1/user/tenants/:tenantId/customers/:customerId/addresses`
-
-## Sécurité et limites
-
-Le backend vérifie la session, l'appartenance active au tenant, la permission `customers:read` et le statut actif du tenant. Le navigateur ne constitue jamais une autorité pour le tenant ou les permissions.
-
-Aucune création, modification ou suppression n'est exposée dans cette interface utilisateur. Les opérations d'écriture attendent une conception validée de l'acteur utilisateur et de l'audit métier. Les endpoints d'intégration machine restent distincts.
-
-## À faire
-
-- tests dédiés du chargement, des erreurs, des états vides et des détails ;
-- validation manuelle dans un environnement local avec une session et des données de test ;
-- pagination UI complète si le volume l'exige ;
-- écriture utilisateur après conception acteur/audit/CSRF/origine ;
-- amélioration UX (filtres, tri, création, modification) après validation sécurité.
-
-Ce module frontend n'est pas déclaré complet ni prêt pour production.
+## Limites
+- Pagination initiale de l'interface limitée à 100 entrées; le contrat API conserve une pagination bornée.
+- Aucun import/export de masse ni fusion de doublons dans M04.
+- Pas de suppression physique.
