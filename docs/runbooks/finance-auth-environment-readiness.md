@@ -63,14 +63,38 @@ Utiliser au minimum deux adresses de test différentes :
 
 Ne jamais utiliser une vraie identité client sans consentement. Aucun utilisateur ne doit être activé automatiquement sur la seule base de la confirmation e-mail.
 
-## 7. Conditions avant activation de production
+## 7. Accès runtime au référentiel des juridictions fiscales
+
+La route plateforme de consultation utilise le rôle PostgreSQL backend, jamais un accès direct du navigateur.
+
+Après application contrôlée des migrations Finance et provisionnement du rôle runtime :
+- vérifier que `finance_runtime` dispose de `SELECT` sur `public.finance_tax_jurisdictions` ;
+- vérifier que ce rôle ne dispose d'aucun droit `INSERT`, `UPDATE` ou `DELETE` sur cette table ;
+- vérifier que les rôles Supabase navigateur `anon` et `authenticated` ne disposent d'aucun droit direct ;
+- vérifier que RLS et FORCE RLS sont activés et que la policy `finance_tax_jurisdictions_read_active` ne retourne que les juridictions actives.
+
+La migration `20261030000100_platform_tax_jurisdiction_read_grants.sql` accorde SELECT à `finance_runtime` uniquement si ce rôle existe au moment de son exécution. Si le rôle est provisionné ensuite, le processus sécurisé de provisionnement doit appliquer le même grant minimal. Aucun grant ne doit être accordé au frontend.
+
+Contrôle indicatif à exécuter uniquement sur la base Finance dédiée, par un DBA autorisé :
+
+```sql
+SELECT
+  has_table_privilege('finance_runtime', 'public.finance_tax_jurisdictions', 'SELECT') AS can_select,
+  has_table_privilege('finance_runtime', 'public.finance_tax_jurisdictions', 'INSERT') AS can_insert,
+  has_table_privilege('finance_runtime', 'public.finance_tax_jurisdictions', 'UPDATE') AS can_update,
+  has_table_privilege('finance_runtime', 'public.finance_tax_jurisdictions', 'DELETE') AS can_delete;
+```
+
+Résultat attendu : `can_select = true` et les trois droits d'écriture à `false`. Ne pas exécuter cette vérification sur ZENOX FRET V2.
+
+## 8. Conditions avant activation de production
 
 - [ ] URL et clé publishable/anon vérifiées comme appartenant au projet Finance.
 - [ ] URL de site et allowlist de redirection exactes.
 - [ ] E-mails de confirmation/récupération livrés et liens testés.
 - [ ] Domaine HTTPS de production contrôlé.
 - [ ] Base Finance isolée, sauvegardes et accès DBA vérifiés.
-- [ ] Rôle PostgreSQL de runtime et privilèges validés sur cette base dédiée.
+- [ ] Rôle PostgreSQL de runtime et privilèges validés sur cette base dédiée, y compris la lecture seule des juridictions fiscales.
 - [ ] Premier opérateur provisionné avec subject confirmé, jamais deviné.
 - [ ] Tests d'accès en attente/approuvé/refusé réussis.
 - [ ] Conditions d'utilisation et politique de confidentialité approuvées.
