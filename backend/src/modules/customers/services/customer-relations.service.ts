@@ -1,6 +1,7 @@
 import { withTenantTransaction } from "../../../db/transaction.js";
 import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
-import type { FinanceCustomerReadContext } from "../types/customer-operation-context.js";
+import type { FinanceCustomerReadContext, FinanceCustomerOperationContext } from "../types/customer-operation-context.js";
+import { recordCustomerAudit } from "../repositories/customer-audit.repository.js";
 import { customerRepository } from "../repositories/customer.repository.js";
 import { customerRelationsRepository } from "../repositories/customer-relations.repository.js";
 import type {
@@ -30,18 +31,20 @@ function mapRelationError(error: unknown): never {
 }
 
 export const customerRelationsService = {
-  async createContact(context: FinanceRequestContext, customerId: string, input: CreateCustomerContactInput) {
+  async createContact(context: FinanceCustomerOperationContext, customerId: string, input: CreateCustomerContactInput) {
     try {
       return await withTenantTransaction(context.tenantId, async (client) => {
         const customer = await customerRepository.findById(client, customerId);
         if (!customer) throw new CustomerRelationsServiceError("CUSTOMER_NOT_FOUND", "The customer was not found.");
         if (customer.status !== "ACTIVE") throw new CustomerRelationsServiceError("CUSTOMER_ARCHIVED", "Contacts cannot be added to an archived customer.");
-        return customerRelationsRepository.createContact(client, context.tenantId, customerId, input);
+        const contact = await customerRelationsRepository.createContact(client, context.tenantId, customerId, input);
+        await recordCustomerAudit(client, context, "customer.contact.created", "CUSTOMER_CONTACT", contact.id, { customerId });
+        return contact;
       });
     } catch (error) { return mapRelationError(error); }
   },
 
-  async updateContact(context: FinanceRequestContext, customerId: string, contactId: string, input: UpdateCustomerContactInput) {
+  async updateContact(context: FinanceCustomerOperationContext, customerId: string, contactId: string, input: UpdateCustomerContactInput) {
     try {
       return await withTenantTransaction(context.tenantId, async (client) => {
         const customer = await customerRepository.findById(client, customerId);
@@ -49,17 +52,19 @@ export const customerRelationsService = {
         if (customer.status !== "ACTIVE") throw new CustomerRelationsServiceError("CUSTOMER_ARCHIVED", "Contacts cannot be modified for an archived customer.");
         const contact = await customerRelationsRepository.updateContact(client, customerId, contactId, input);
         if (!contact) throw new CustomerRelationsServiceError("RELATION_NOT_FOUND", "The contact was not found.");
+        await recordCustomerAudit(client, context, "customer.contact.updated", "CUSTOMER_CONTACT", contact.id, { customerId, changedFields: Object.keys(input) });
         return contact;
       });
     } catch (error) { return mapRelationError(error); }
   },
 
-  async archiveContact(context: FinanceRequestContext, customerId: string, contactId: string) {
+  async archiveContact(context: FinanceCustomerOperationContext, customerId: string, contactId: string) {
     return withTenantTransaction(context.tenantId, async (client) => {
       const customer = await customerRepository.findById(client, customerId);
       if (!customer) throw new CustomerRelationsServiceError("CUSTOMER_NOT_FOUND", "The customer was not found.");
       const contact = await customerRelationsRepository.archiveContact(client, customerId, contactId);
       if (!contact) throw new CustomerRelationsServiceError("RELATION_NOT_FOUND", "The contact was not found or is already archived.");
+      await recordCustomerAudit(client, context, "customer.contact.archived", "CUSTOMER_CONTACT", contact.id, { customerId });
       return contact;
     });
   },
@@ -72,18 +77,20 @@ export const customerRelationsService = {
     });
   },
 
-  async createAddress(context: FinanceRequestContext, customerId: string, input: CreateCustomerAddressInput) {
+  async createAddress(context: FinanceCustomerOperationContext, customerId: string, input: CreateCustomerAddressInput) {
     try {
       return await withTenantTransaction(context.tenantId, async (client) => {
         const customer = await customerRepository.findById(client, customerId);
         if (!customer) throw new CustomerRelationsServiceError("CUSTOMER_NOT_FOUND", "The customer was not found.");
         if (customer.status !== "ACTIVE") throw new CustomerRelationsServiceError("CUSTOMER_ARCHIVED", "Addresses cannot be added to an archived customer.");
-        return customerRelationsRepository.createAddress(client, context.tenantId, customerId, input);
+        const address = await customerRelationsRepository.createAddress(client, context.tenantId, customerId, input);
+        await recordCustomerAudit(client, context, "customer.address.created", "CUSTOMER_ADDRESS", address.id, { customerId });
+        return address;
       });
     } catch (error) { return mapRelationError(error); }
   },
 
-  async updateAddress(context: FinanceRequestContext, customerId: string, addressId: string, input: UpdateCustomerAddressInput) {
+  async updateAddress(context: FinanceCustomerOperationContext, customerId: string, addressId: string, input: UpdateCustomerAddressInput) {
     try {
       return await withTenantTransaction(context.tenantId, async (client) => {
         const customer = await customerRepository.findById(client, customerId);
@@ -91,17 +98,19 @@ export const customerRelationsService = {
         if (customer.status !== "ACTIVE") throw new CustomerRelationsServiceError("CUSTOMER_ARCHIVED", "Addresses cannot be modified for an archived customer.");
         const address = await customerRelationsRepository.updateAddress(client, customerId, addressId, input);
         if (!address) throw new CustomerRelationsServiceError("RELATION_NOT_FOUND", "The address was not found.");
+        await recordCustomerAudit(client, context, "customer.address.updated", "CUSTOMER_ADDRESS", address.id, { customerId, changedFields: Object.keys(input) });
         return address;
       });
     } catch (error) { return mapRelationError(error); }
   },
 
-  async archiveAddress(context: FinanceRequestContext, customerId: string, addressId: string) {
+  async archiveAddress(context: FinanceCustomerOperationContext, customerId: string, addressId: string) {
     return withTenantTransaction(context.tenantId, async (client) => {
       const customer = await customerRepository.findById(client, customerId);
       if (!customer) throw new CustomerRelationsServiceError("CUSTOMER_NOT_FOUND", "The customer was not found.");
       const address = await customerRelationsRepository.archiveAddress(client, customerId, addressId);
       if (!address) throw new CustomerRelationsServiceError("RELATION_NOT_FOUND", "The address was not found or is already archived.");
+      await recordCustomerAudit(client, context, "customer.address.archived", "CUSTOMER_ADDRESS", address.id, { customerId });
       return address;
     });
   },
