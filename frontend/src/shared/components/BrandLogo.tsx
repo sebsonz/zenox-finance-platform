@@ -1,5 +1,3 @@
-import type { CSSProperties } from "react";
-
 type BrandLogoProps = {
   variant?: "default" | "light" | "compact";
   className?: string;
