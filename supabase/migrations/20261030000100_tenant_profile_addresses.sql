@@ -81,3 +81,16 @@ CREATE POLICY finance_tenant_addresses_tenant_isolation
   WITH CHECK (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
 
 REVOKE ALL ON TABLE public.finance_tenant_profiles, public.finance_tenant_addresses FROM PUBLIC;
+
+-- The backend connects through the trusted server-side Supabase role.
+-- Browser roles receive no direct access; RLS remains enforced for non-bypass roles.
+DO $grants$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT SELECT, INSERT, UPDATE ON TABLE
+      public.finance_tenant_profiles,
+      public.finance_tenant_addresses
+    TO service_role;
+  END IF;
+END
+$grants$;
