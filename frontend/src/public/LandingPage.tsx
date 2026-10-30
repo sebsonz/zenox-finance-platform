@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   ArrowRight, BadgeCheck, CheckCircle2, ChevronDown, FileCheck2, FileText,
-  Globe2, Layers3, LockKeyhole, Menu, ShieldCheck, Users, X,
+  Globe2, Layers3, LockKeyhole, Menu, ShieldCheck, Users, WalletCards, X,
 } from "lucide-react";
 import "./landing.css";
 
