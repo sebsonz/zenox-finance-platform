@@ -62,7 +62,8 @@ export function CustomerManagementDialog({ kind, mode, initial, onClose, onSave 
     event.preventDefault();
     setBusy(true); setError("");
     try {
-      const payload: CustomerEditorRecord = { ...values };
+      const payload: CustomerEditorRecord = Object.fromEntries(fields[kind].map((field) => [field.name, values[field.name]]));
+      if (kind !== "customer") payload.isPrimary = Boolean(values.isPrimary);
       for (const field of fields[kind]) {
         if (!field.required && payload[field.name] === "") {
           if (mode === "edit") payload[field.name] = null;
