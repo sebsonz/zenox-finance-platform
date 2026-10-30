@@ -38,10 +38,10 @@
 @media(max-width:420px){.platform-entry-card{padding:24px 20px}.registration-card-actions{gap:6px}.registration-card-actions .registration-signout{font-size:10px;padding:6px}}
 
 .platform-entry-logo{margin-bottom:4px}
-.platform-entry-logo .zf-brand-symbol{width:58px;height:58px}
+.platform-entry-logo .zf-brand-symbol{width:72px;height:60px}
 .platform-entry-logo .zf-brand-wordmark strong{font-size:30px;color:#fff}
 .platform-entry-logo .zf-brand-wordmark>span{font-size:25px;color:#78a3ff}
 .registration-brand-logo{margin-bottom:26px}
-.registration-brand-logo .zf-brand-symbol{width:58px;height:58px}
+.registration-brand-logo .zf-brand-symbol{width:72px;height:60px}
 .registration-brand-logo .zf-brand-wordmark strong{font-size:30px;color:#fff}
 .registration-brand-logo .zf-brand-wordmark>span{font-size:25px;color:#78a3ff}
