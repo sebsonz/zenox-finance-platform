@@ -34,6 +34,7 @@ Connect the platform administration console's Fiscalité & juridictions section 
 - `backend/src/modules/tax/schemas/tax-jurisdiction-list.schema.ts`
 - `backend/src/modules/tax/repositories/tax-jurisdiction.repository.ts`
 - `backend/src/modules/tax/application/list-tax-jurisdictions.use-case.ts`
+- `backend/src/modules/tax/index.ts` (public M10 application contract)
 - `backend/src/routes/v1/index.ts`
 - `backend/src/modules/tax/index.ts`
 - `backend/tests/unit/platform-admin-tax.routes.test.ts`
