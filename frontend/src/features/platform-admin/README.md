@@ -1,5 +1,12 @@
-# Squelette de module
+# Fonctionnalité frontend — Administration plateforme
 
-Dossier réservé au domaine décrit dans l'architecture modulaire ZENOX Finance. Ce fichier ne signifie pas que la fonctionnalité est implémentée.
+La fonctionnalité `platform-admin` contient les vues de contrôle-plane réservées aux opérateurs de la plateforme Finance.
 
-Compléter progressivement les exigences, contrats, validations, autorisations, services, persistance, tests et documentation. Respecter l'isolation multi-tenant, l'audit et les critères d'acceptation du projet.
+- Les pages et composants sont organisés ici, sans déplacer le shell global.
+- `PlatformAdminDashboard` conserve la composition et la navigation de la console.
+- Les appels HTTP sont regroupés dans des clients API typés.
+- L'interface affiche uniquement des données réellement fournies par une API autorisée ; aucune métrique ou juridiction fictive n'est créée.
+- Le masquage des éléments de navigation améliore l'expérience, mais ne remplace jamais l'autorisation backend.
+- Les vues fiscales d'administration restent en lecture seule dans cette première tranche.
+
+La fonctionnalité est en cours de construction et n'est pas déclarée complète.
