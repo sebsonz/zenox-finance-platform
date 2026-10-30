@@ -86,9 +86,13 @@ describe("platform admin tax jurisdiction route", () => {
 
   it("rejects a missing user session before querying tax data", async () => {
     mocks.user = undefined;
+    const { PlatformAdminAccessError } = await import("../../src/modules/platform-admin/services/platform-admin-access.service.js");
+    mocks.assertActiveOperator.mockRejectedValue(new PlatformAdminAccessError(
+      "UNAUTHENTICATED", 401, "A valid user session is required.",
+    ));
     const response = await request("/platform-admin/tax/jurisdictions");
     expect(response.status).toBe(401);
-    expect(mocks.assertActiveOperator).not.toHaveBeenCalled();
+    expect(mocks.assertActiveOperator).toHaveBeenCalledWith(undefined);
     expect(mocks.execute).not.toHaveBeenCalled();
   });
 
