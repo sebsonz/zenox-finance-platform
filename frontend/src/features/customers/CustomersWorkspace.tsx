@@ -89,9 +89,9 @@ export function CustomersWorkspace({ tenantId }: { tenantId: string }) {
     const kind = editor?.kind;
     setEditor(null);
     await loadCustomers();
-    if (kind === "customer") {
-      const refreshed = customers.find((item) => item.id === customerId);
-      if (refreshed) await loadDetails(refreshed);
+    if (kind === "customer" && customerId) {
+      const refreshed = await readData<{ customer: Customer }>(await fetch(`${base}/${encodeURIComponent(customerId)}`, { credentials: "same-origin", cache: "no-store" }), "Impossible de recharger le client.");
+      await loadDetails(refreshed.customer);
     } else if (selected) await loadDetails(selected);
   }
 
@@ -101,9 +101,13 @@ export function CustomersWorkspace({ tenantId }: { tenantId: string }) {
     const base = `/api/v1/user/tenants/${encodeURIComponent(tenantId)}/customers`;
     const url = kind === "customer" ? `${base}/${encodeURIComponent(id)}/archive`
       : `${base}/${encodeURIComponent(selected!.id)}/${kind === "contact" ? "contacts" : "addresses"}/${encodeURIComponent(id)}/archive`;
-    await readData(await fetch(url, { method: "POST", credentials: "same-origin", cache: "no-store" }), "Archivage impossible.");
-    if (kind === "customer") { setSelected(null); await loadCustomers(); }
-    else if (selected) await loadDetails(selected);
+    try {
+      await readData(await fetch(url, { method: "POST", credentials: "same-origin", cache: "no-store" }), "Archivage impossible.");
+      if (kind === "customer") { setSelected(null); await loadCustomers(); }
+      else if (selected) await loadDetails(selected);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Archivage impossible.");
+    }
   }
 
   const countLabel = useMemo(() => `${customers.length} client(s)`, [customers.length]);
@@ -113,7 +117,7 @@ export function CustomersWorkspace({ tenantId }: { tenantId: string }) {
       <div><div className="eyebrow"><Users size={14}/> RELATION CLIENT</div><h1>Clients</h1><p className="subtitle">Consultez les clients, leurs contacts et leurs adresses enregistrés dans votre organisation.</p></div>
       <div className="customer-toolbar"><span className="status-chip"><i/> Lecture et gestion sécurisées</span><button className="primary-button" onClick={() => openEditor("customer", "create")}>+ Nouveau client</button></div>
     </div>
-    <div className="demo-banner"><div className="demo-icon"><Building2 size={19}/></div><div><strong>Répertoire de votre organisation</strong><p>Les données sont chargées depuis l’API Finance authentifiée. La création et la modification seront activées après finalisation du contrôle d’acteur et de l’audit.</p></div><span className="demo-pill">M04</span></div>
+    <div className="demo-banner"><div className="demo-icon"><Building2 size={19}/></div><div><strong>Répertoire de votre organisation</strong><p>Les données sont gérées depuis l’API Finance authentifiée. Les modifications sont réservées aux rôles autorisés et chaque action est journalisée.</p></div><span className="demo-pill">M04</span></div>
     {error && <div className="notice" role="alert"><span>{error}</span><button onClick={() => setError("")}>Fermer</button></div>}
     <div className="customers-layout">
       <section className="panel customer-list-panel">
