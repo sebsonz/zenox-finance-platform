@@ -5,7 +5,6 @@ import { customerService, CustomerServiceError } from "../../customers/services/
 import { customerRelationsService, CustomerRelationsServiceError } from "../../customers/services/customer-relations.service.js";
 import { createCustomerSchema, listCustomersQuerySchema, updateCustomerSchema } from "../../customers/validators/customer.schema.js";
 import { createCustomerContactSchema, createCustomerAddressSchema, updateCustomerContactSchema, updateCustomerAddressSchema, listCustomerRelationsQuerySchema } from "../../customers/validators/customer-relations.schema.js";
-import { listCustomerRelationsQuerySchema } from "../../customers/validators/customer-relations.schema.js";
 import { userTenantMembershipRepository } from "../../tenants/repositories/user-tenant-membership.repository.js";
 import { assertActiveMembershipCan } from "../../tenants/services/user-tenant-permissions.service.js";
 import { tenantRepository } from "../../tenants/repositories/tenant.repository.js";
@@ -38,7 +37,7 @@ async function resolveCustomerReadContext(
   try {
     assertActiveMembershipCan(membership, permission);
   } catch {
-    res.status(403).json({ error: { code: "CUSTOMER_ACCESS_DENIED", message: "The user is not authorized to read customers for this tenant." } });
+    res.status(403).json({ error: { code: "CUSTOMER_ACCESS_DENIED", message: "The user is not authorized for this customer operation." } });
     return null;
   }
   const tenant = await tenantRepository.findActiveById(tenantId);
@@ -46,7 +45,17 @@ async function resolveCustomerReadContext(
     res.status(404).json({ error: { code: "TENANT_NOT_AVAILABLE", message: "The requested tenant is not available." } });
     return null;
   }
-  return { tenantId, correlationId: String(res.locals["correlationId"] ?? "") };
+  return {
+    tenantId,
+    correlationId: String(res.locals["correlationId"] ?? ""),
+    actor: {
+      type: "USER",
+      ref: `${user.issuer}|${user.id}`,
+      membershipId: membership.id,
+      identityIssuer: user.issuer,
+      identitySubject: user.id,
+    },
+  };
 }
 
 function parseTenantId(req: Request, res: Response): string | null {
