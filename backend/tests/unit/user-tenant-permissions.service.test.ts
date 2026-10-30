@@ -47,4 +47,14 @@ describe("Finance user tenant role permissions", () => {
       "members:manage",
     )).not.toThrow();
   });
+
+  it("allows only owner, admin and finance manager to manage customers", () => {
+    for (const role of ["OWNER", "ADMIN", "FINANCE_MANAGER"] as const) {
+      expect(hasFinanceUserPermission(role, "customers:manage")).toBe(true);
+    }
+    expect(hasFinanceUserPermission("FINANCE_OPERATOR", "customers:manage")).toBe(false);
+    expect(hasFinanceUserPermission("VIEWER", "customers:manage")).toBe(false);
+    expect(hasFinanceUserPermission("FINANCE_OPERATOR", "customers:read")).toBe(true);
+  });
+
 });
