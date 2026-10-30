@@ -32,7 +32,7 @@ import { platformAdminRouter } from "../../src/modules/platform-admin/routes/pla
 
 function createApp() {
   const app = express();
-  app.use("/platform-admin", platformAdminRouter);
+  app.use("/user/platform", platformAdminRouter);
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     res.status(500).json({ error: { code: "INTERNAL_ERROR" } });
   });
@@ -90,7 +90,7 @@ describe("platform admin tax jurisdiction route", () => {
     mocks.assertActiveOperator.mockRejectedValue(new PlatformAdminAccessError(
       "UNAUTHENTICATED", 401, "A valid user session is required.",
     ));
-    const response = await request("/platform-admin/tax/jurisdictions");
+    const response = await request("/user/platform/tax/jurisdictions");
     expect(response.status).toBe(401);
     expect(mocks.assertActiveOperator).toHaveBeenCalledWith(undefined);
     expect(mocks.execute).not.toHaveBeenCalled();
@@ -101,21 +101,21 @@ describe("platform admin tax jurisdiction route", () => {
     mocks.assertActiveOperator.mockRejectedValue(new PlatformAdminAccessError(
       "PLATFORM_OPERATOR_REQUIRED", 403, "Forbidden",
     ));
-    const response = await request("/platform-admin/tax/jurisdictions");
+    const response = await request("/user/platform/tax/jurisdictions");
     expect(response.status).toBe(403);
     expect(response.body).toMatchObject({ error: { code: "PLATFORM_OPERATOR_REQUIRED" } });
     expect(mocks.execute).not.toHaveBeenCalled();
   });
 
   it("validates filters before executing the tax query", async () => {
-    const response = await request("/platform-admin/tax/jurisdictions?countryCode=ben&page=0");
+    const response = await request("/user/platform/tax/jurisdictions?countryCode=ben&page=0");
     expect(response.status).toBe(400);
     expect(response.body).toMatchObject({ error: { code: "VALIDATION_ERROR" } });
     expect(mocks.execute).not.toHaveBeenCalled();
   });
 
   it("returns a no-store paginated result for a verified platform operator", async () => {
-    const response = await request("/platform-admin/tax/jurisdictions?countryCode=BJ&level=COUNTRY&page=1&pageSize=25");
+    const response = await request("/user/platform/tax/jurisdictions?countryCode=BJ&level=COUNTRY&page=1&pageSize=25");
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(mocks.assertActiveOperator).toHaveBeenCalledWith(mocks.user);
