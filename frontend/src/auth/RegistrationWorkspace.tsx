@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { RegistrationHomeLink } from "./RegistrationHomeLink";
+import { BrandLogo } from "../shared/components/BrandLogo.js";
 import { authConfig, exchangeSession, readData } from "./auth-api.js";
 import "./PlatformEntryWorkspace.css";
 import { Building2, CheckCircle2, CircleAlert, KeyRound, LoaderCircle, LogIn, Mail, ShieldCheck, UserPlus } from "lucide-react";
