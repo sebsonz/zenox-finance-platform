@@ -14,6 +14,9 @@ export interface TenantProfileCompletion {
 }
 
 /**
+ * Informational profile-data readiness only. This does not establish tax-jurisdiction
+ * eligibility and must never be used alone to approve or activate a tenant.
+ *
  * Application boundary exported by the Tenants module.
  * Tenant scope is always taken from a trusted server-side operation context.
  */
