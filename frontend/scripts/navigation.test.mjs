@@ -16,3 +16,8 @@ test("page paths are unique", () => {
 test("unknown paths use the dashboard fallback", () => {
   assert.equal(pageFromPath("/not-a-real-page"), "dashboard");
 });
+
+test("customers page is registered for the M04 workspace", () => {
+  assert.equal(pagePaths.customers, "/customers");
+  assert.equal(pageFromPath("/customers"), "customers");
+});

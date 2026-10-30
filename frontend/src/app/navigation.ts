@@ -1,9 +1,10 @@
-export type Page = "dashboard" | "tax" | "invoices" | "payments" | "settings" | "platform";
+export type Page = "dashboard" | "tax" | "invoices" | "customers" | "payments" | "settings" | "platform";
 
 export const pagePaths: Record<Page, string> = {
   dashboard: "/dashboard",
   tax: "/tax",
   invoices: "/invoices",
+  customers: "/customers",
   payments: "/payments",
   settings: "/settings",
   platform: "/platform",

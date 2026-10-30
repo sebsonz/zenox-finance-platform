@@ -5,12 +5,13 @@ import { TaxWorkspace } from "../modules/tax/TaxWorkspace.js";
 import { ComingSoon } from "../shared/components/ComingSoon.js";
 import { pageFromPath, pagePaths, type Page } from "./navigation.js";
 import {
-  Bell, Building2, ChevronDown, CircleHelp, CreditCard, FileText, Globe2,
+  Bell, Building2, ChevronDown, CircleHelp, CreditCard, FileText, Globe2, Users,
   LayoutDashboard, Menu, Search, Settings2, ShieldCheck, WalletCards, X
 } from "lucide-react";
 import { RegistrationWorkspace } from "../auth/RegistrationWorkspace.js";
 import { PlatformEntryWorkspace } from "../auth/PlatformEntryWorkspace.js";
 import { InvoiceWorkspace } from "../invoices/InvoiceWorkspace.js";
+import { CustomersWorkspace } from "../features/customers/CustomersWorkspace.js";
 import { PlatformReviewWorkspace } from "../platform/PlatformReviewWorkspace.js";
 import { PlatformAdminDashboard } from "../platform/PlatformAdminDashboard.js";
 import { LandingPage } from "../public/LandingPage.js";
@@ -27,6 +28,7 @@ async function readEntryData<T>(response: Response): Promise<T> {
 const navigation: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Vue d’ensemble", icon: LayoutDashboard },
   { id: "invoices", label: "Factures", icon: FileText },
+  { id: "customers", label: "Clients", icon: Users },
   { id: "payments", label: "Paiements", icon: CreditCard },
   { id: "tax", label: "Moteur fiscal", icon: Globe2 },
   { id: "settings", label: "Paramètres", icon: Settings2 },
@@ -161,6 +163,7 @@ export function App() {
         {page === "dashboard" && activeTenant && <Dashboard onNavigate={navigate} tenantId={activeTenant.id}/>}
         {page === "tax" && <TaxWorkspace amount={amount} setAmount={setAmount} currency={currency} setCurrency={setCurrency} onSubmit={() => setNotice("Calcul non exécuté : connectez le formulaire à l’API Finance sécurisée avant tout calcul réel.")}/>}
         {page === "invoices" && <InvoiceWorkspace/>}
+        {page === "customers" && activeTenant && <CustomersWorkspace tenantId={activeTenant.id} canManage={["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(activeTenant.role)}/>}
         {page === "payments" && <ComingSoon icon={WalletCards} title="Paiements & allocations" description="Les paiements, affectations et soldes seront servis par le backend Finance, avec idempotence et contrôle multi-tenant."/>}
         {page === "settings" && <ComingSoon icon={Settings2} title="Paramètres Finance" description="La configuration des organisations, devises et intégrations sera reliée aux services authentifiés."/>}
         {page === "platform" && isPlatformOperator && <PlatformReviewWorkspace/>}

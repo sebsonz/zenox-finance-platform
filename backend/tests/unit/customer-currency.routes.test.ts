@@ -19,7 +19,15 @@ vi.mock("../../src/modules/customers/services/customer.service.js", () => ({
   CustomerServiceError: class CustomerServiceError extends Error {
     constructor(readonly code: string, message: string) { super(message); }
   },
-  customerService: { create: vi.fn(), list: vi.fn(), findById: vi.fn() },
+  customerService: { create: vi.fn(), list: vi.fn(), findById: vi.fn(), update: vi.fn(), archive: vi.fn() },
+}));
+vi.mock("../../src/modules/customers/services/customer-relations.service.js", () => ({
+  CustomerRelationsServiceError: class CustomerRelationsServiceError extends Error {
+    constructor(readonly code: string, message: string) { super(message); }
+  },
+  customerRelationsService: {
+    createContact: vi.fn(), listContacts: vi.fn(), createAddress: vi.fn(), listAddresses: vi.fn(), updateContact: vi.fn(), archiveContact: vi.fn(), updateAddress: vi.fn(), archiveAddress: vi.fn(),
+  },
 }));
 vi.mock("../../src/modules/currencies/repositories/currency.repository.js", () => ({
   currencyRepository: { listActive: vi.fn(), findActiveByCode: vi.fn() },
@@ -30,6 +38,7 @@ import { tenantRepository } from "../../src/modules/tenants/repositories/tenant.
 import { customerService, CustomerServiceError } from "../../src/modules/customers/services/customer.service.js";
 import { customerRouter } from "../../src/modules/customers/routes/customer.routes.js";
 import { currencyRepository } from "../../src/modules/currencies/repositories/currency.repository.js";
+import { customerRelationsService } from "../../src/modules/customers/services/customer-relations.service.js";
 import { currencyRouter } from "../../src/modules/currencies/routes/currency.routes.js";
 
 function principal(overrides: Record<string, unknown> = {}) {
@@ -222,4 +231,75 @@ describe("customer and currency API routes", () => {
     expect(response.status).toBe(409);
     expect(response.body).toMatchObject({ error: { code: "CUSTOMER_CODE_CONFLICT" } });
   });
+
+  it("updates and archives customers using the verified tenant context", async () => {
+    vi.mocked(customerService.update).mockResolvedValue({ id: CUSTOMER_ID, legalName: "Updated" } as never);
+    const updated = await request(app(), `/customers/${CUSTOMER_ID}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ legalName: "Updated" }),
+    });
+    expect(updated.status).toBe(200);
+    expect(customerService.update).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_A }),
+      CUSTOMER_ID,
+      { legalName: "Updated" },
+    );
+
+    vi.mocked(customerService.archive).mockResolvedValue({ id: CUSTOMER_ID, status: "ARCHIVED" } as never);
+    const archived = await request(app(), `/customers/${CUSTOMER_ID}/archive`, { method: "POST" });
+    expect(archived.status).toBe(200);
+    expect(archived.body).toMatchObject({ data: { customer: { status: "ARCHIVED" } } });
+  });
+
+  it("exposes tenant-scoped contact and address creation", async () => {
+    vi.mocked(customerRelationsService.createContact).mockResolvedValue({
+      id: CUSTOMER_ID, customerId: CUSTOMER_ID, fullName: "Awa Mensah",
+    } as never);
+    const contact = await request(app(), `/customers/${CUSTOMER_ID}/contacts`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fullName: "Awa Mensah", contactType: "BILLING" }),
+    });
+    expect(contact.status).toBe(201);
+    expect(customerRelationsService.createContact).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_A }), CUSTOMER_ID,
+      expect.objectContaining({ fullName: "Awa Mensah", contactType: "BILLING" }),
+    );
+
+    vi.mocked(customerRelationsService.createAddress).mockResolvedValue({
+      id: CUSTOMER_ID, customerId: CUSTOMER_ID, addressType: "BILLING",
+    } as never);
+    const address = await request(app(), `/customers/${CUSTOMER_ID}/addresses`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ addressType: "BILLING", addressLine1: "12 Rue du Port", city: "Cotonou", countryCode: "BJ" }),
+    });
+    expect(address.status).toBe(201);
+    expect(customerRelationsService.createAddress).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_A }), CUSTOMER_ID,
+      expect.objectContaining({ addressType: "BILLING", countryCode: "BJ" }),
+    );
+  });
+
+
+  it("exposes contact and address update/archive routes with tenant context", async () => {
+    vi.mocked(customerRelationsService.updateContact).mockResolvedValue({ id: CUSTOMER_ID, fullName: "Updated Contact" } as never);
+    const contact = await request(app(), `/customers/${CUSTOMER_ID}/contacts/${CUSTOMER_ID}`, {
+      method: "PATCH", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fullName: "Updated Contact" }),
+    });
+    expect(contact.status).toBe(200);
+    expect(customerRelationsService.updateContact).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_A }), CUSTOMER_ID, CUSTOMER_ID, { fullName: "Updated Contact" },
+    );
+
+    vi.mocked(customerRelationsService.archiveAddress).mockResolvedValue({ id: CUSTOMER_ID, status: "ARCHIVED" } as never);
+    const address = await request(app(), `/customers/${CUSTOMER_ID}/addresses/${CUSTOMER_ID}/archive`, { method: "POST" });
+    expect(address.status).toBe(200);
+    expect(customerRelationsService.archiveAddress).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: TENANT_A }), CUSTOMER_ID, CUSTOMER_ID,
+    );
+  });
+
 });
