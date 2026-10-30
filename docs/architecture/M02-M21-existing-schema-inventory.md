@@ -89,3 +89,47 @@ Les snapshots fiscaux peuvent référencer `jurisdiction_id`, mais ils constitue
 ## 7. Limites
 
 Les résultats de recherche de code GitHub sont indexés sur la branche par défaut, tandis que les fichiers de migration explicitement récupérés ont été lus sur la branche de travail. Cet inventaire ne remplace pas une vérification locale complète du HEAD courant. Aucun schéma n'a été appliqué à Supabase distant et aucun changement de base n'a été effectué.
+
+
+## 8. Complément après exploration exhaustive de l'arborescence (2026-10-30)
+
+L'exploration du contenu GitHub de `supabase/migrations` sur la branche de travail a retourné **22 migrations**. Elle a révélé deux migrations M02 déjà présentes, qui n'avaient pas été identifiées lors des premières recherches ciblées :
+
+- `20261024000100_tenant_registration_onboarding.sql`
+- `20261024000200_platform_registration_review.sql`
+
+### Onboarding M02 déjà implémenté
+
+La première migration crée `finance_registration_requests` et trois fonctions SECURITY DEFINER :
+- `finance_submit_organization_registration` : crée atomiquement le tenant PENDING, le membership OWNER PENDING, la demande et l'événement d'audit;
+- `finance_list_my_registration_requests` : liste les demandes de l'identité;
+- `finance_get_my_registration_request` : lit une demande appartenant à l'identité.
+
+Le routeur utilisateur est présent dans `backend/src/modules/registration/routes/registration.routes.ts`, monté sous `/api/v1/user/registration`. Il exige une session utilisateur, une adresse e-mail confirmée, un POST same-origin et un corps strict. L'issuer et le subject sont pris dans `req.financeUser`, pas dans le corps. La devise est validée par le référentiel M06.
+
+La seconde migration crée `finance_platform_operators` (rôle PLATFORM_ADMIN), et les fonctions :
+- `finance_is_active_platform_operator`;
+- `finance_list_pending_registration_requests`;
+- `finance_review_registration_request`.
+
+La revue est atomique : approbation active le tenant et son OWNER; rejet désactive le tenant et révoque le membership OWNER. L'auto-examen est refusé. Les routes sont dans `backend/src/modules/registration/routes/platform-registration.routes.ts`, montées sous `/api/v1/user/platform`. Les identités d'opérateur sont dérivées de la session vérifiée. Les tests unitaires et tests PostgreSQL jetables correspondants existent :
+- `backend/tests/unit/registration.routes.test.ts`;
+- `backend/tests/unit/platform-registration.routes.test.ts`;
+- `backend/tests/integration/registration.postgres.test.ts`;
+- `backend/tests/integration/platform-registration-review.postgres.test.ts`.
+
+### Modules présents mais squelettes
+
+Les dossiers `backend/src/modules/onboarding` et `backend/src/modules/platform-admin` contiennent actuellement des README de squelette et des répertoires vides. L'implémentation d'inscription/revue est logée dans `modules/registration`, et non dans ces deux modules. Ne pas dupliquer ces flux sans décision de refactorisation.
+
+### Modèle d'entreprise encore incomplet
+
+Les deux migrations d'inscription ne stockent que le nom légal, le pays et la devise par défaut dans le tenant et la demande. Elles ne couvrent pas le profil légal/commercial complet attendu : adresse propre du tenant, nom commercial, fuseau horaire, langues, identifiants fiscaux typés. Aucun modèle d'association tenant-juridiction ni de référence externe entreprise-consommateur n'apparaît dans les 22 migrations listées.
+
+### Sécurité et documentation
+
+Les routes d'inscription et de revue imposent un contrôle d'origine same-origin sur les POST. Cela constitue un contrôle présent, mais ne remplace pas une revue complète CSRF/session/proxy/rate-limit. Le document `WEB_API_SECURITY_BOUNDARY.md` est obsolète lorsqu'il affirme que le workspace M04 est entièrement en lecture seule : les routes M04 de mutation existent sur la branche et doivent être reflétées dans cette documentation.
+
+### Conclusion corrigée
+
+M02 n'est pas à créer de zéro : le parcours initial d'inscription, le premier OWNER en attente, la revue plateforme, l'approbation/rejet transactionnels et les tests associés existent déjà. Le travail restant est une extension et une consolidation ciblées, pas une reconstruction du socle.
