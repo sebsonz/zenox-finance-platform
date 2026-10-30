@@ -6,6 +6,7 @@ import { userTenantMemberManagementRouter } from "./user-tenant-member-managemen
 import { userSessionRouter } from "./user-session.routes.js";
 import { userInvoiceRouter } from "./user-invoice.routes.js";
 import { userCustomerRouter } from "./user-customer.routes.js";
+import { userTenantProfileRouter } from "./user-tenant-profile.routes.js";
 import { registrationRouter } from "../../registration/routes/registration.routes.js";
 import { platformRegistrationRouter } from "../../registration/routes/platform-registration.routes.js";
 
@@ -21,3 +22,4 @@ userAuthRouter.use("/registration", registrationRouter);
 userAuthRouter.use("/platform", platformRegistrationRouter);
 userAuthRouter.use("/tenants", userInvoiceRouter);
 userAuthRouter.use("/tenants", userCustomerRouter);
+userAuthRouter.use("/tenants", userTenantProfileRouter);
