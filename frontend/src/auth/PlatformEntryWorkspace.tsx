@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, Building2, CircleAlert, LoaderCircle, LogOut, RefreshCw, ShieldCheck } from "lucide-react";
 import "./PlatformEntryWorkspace.css";
+import { BrandLogo } from "../shared/components/BrandLogo.js";
 
 type User = { id: string; email?: string; emailConfirmedAt?: string | null };
 type Props = {
@@ -64,9 +65,9 @@ export function PlatformEntryWorkspace({ user, onCreateOrganization, onSessionCh
   return (
     <main className="platform-entry-shell">
       <section className="platform-entry-brand" aria-label="ZENOX Finance">
-        <div className="platform-entry-brand-mark">Z</div>
+        <BrandLogo variant="light" className="platform-entry-logo" />
         <p className="platform-entry-kicker">PLATEFORME FINANCIÈRE INTERNATIONALE</p>
-        <h1>ZENOX <span>FINANCE</span></h1>
+        
         <p className="platform-entry-intro">Un point d’entrée unique pour les organisations clientes et l’administration de la plateforme.</p>
         <div className="platform-entry-security"><ShieldCheck size={19}/><span>Les droits administrateur sont vérifiés côté serveur. Une adresse e-mail ou une action dans le navigateur ne suffit jamais à accorder des privilèges.</span></div>
       </section>
