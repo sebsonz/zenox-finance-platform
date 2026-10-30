@@ -3,4 +3,5 @@
  * Consumers must not import Tax repositories, validators or internal services.
  */
 export { listTaxJurisdictions } from "./application/list-tax-jurisdictions.use-case.js";
+export { taxJurisdictionListQuerySchema } from "./schemas/tax-jurisdiction-list.schema.js";
 export type { TaxJurisdictionListQuery } from "./schemas/tax-jurisdiction-list.schema.js";
