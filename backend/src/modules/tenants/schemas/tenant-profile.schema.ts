@@ -14,9 +14,6 @@ const ianaTimezoneSchema = z.string().trim().min(1).max(80).refine((timezone) =>
   }
 }, "Timezone must be a valid IANA timezone.");
 
-const nullableTrimmed = (max: number) =>
-  z.string().trim().max(max).nullable().optional();
-
 export const updateTenantProfileSchema = z.object({
   tradeName: z.string().trim().max(200).nullable(),
   timezone: ianaTimezoneSchema,
