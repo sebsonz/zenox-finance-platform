@@ -5,12 +5,21 @@ const languageTagSchema = z.string().trim().min(2).max(35).regex(
   "Language must be a BCP 47 language tag.",
 );
 
+const ianaTimezoneSchema = z.string().trim().min(1).max(80).refine((timezone) => {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
+}, "Timezone must be a valid IANA timezone.");
+
 const nullableTrimmed = (max: number) =>
   z.string().trim().max(max).nullable().optional();
 
 export const updateTenantProfileSchema = z.object({
   tradeName: nullableTrimmed(200),
-  timezone: z.string().trim().min(1).max(80),
+  timezone: ianaTimezoneSchema,
   primaryLanguage: languageTagSchema,
   supportedLanguages: z.array(languageTagSchema).min(1).max(20),
   websiteUrl: z.string().trim().url().max(2048).nullable().optional(),
