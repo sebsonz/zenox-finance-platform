@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   ArrowRight, BadgeCheck, CheckCircle2, ChevronDown, FileCheck2, FileText,
-  Globe2, Layers3, LockKeyhole, Menu, ShieldCheck, Users, WalletCards, X,
+  Globe2, Layers3, LockKeyhole, Menu, ShieldCheck, Users, CreditCard, X,
 } from "lucide-react";
 import "./landing.css";
 
@@ -14,7 +14,7 @@ const solutions = [
   { icon: FileText, number: "01", title: "Facturation internationale", description: "Préparez vos factures, gérez les brouillons et suivez leur cycle de vie dans un espace centralisé." },
   { icon: Layers3, number: "02", title: "Clients & relations", description: "Organisez les fiches clients, les contacts et les adresses dans un répertoire propre à votre organisation." },
   { icon: Globe2, number: "03", title: "Devises & fiscalité", description: "Une architecture prévue pour les devises et les règles fiscales versionnées, avec validation côté serveur." },
-  { icon: WalletCards, number: "04", title: "Paiements & comptabilité", description: "Des domaines séparés pour les paiements, les allocations et les écritures comptables, intégrés progressivement." },
+  { icon: CreditCard, number: "04", title: "Paiements & comptabilité", description: "Des domaines séparés pour les paiements, les allocations et les écritures comptables, intégrés progressivement." },
 ];
 
 const principles = [
