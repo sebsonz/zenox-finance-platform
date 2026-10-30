@@ -26,7 +26,7 @@ async function readData<T>(response: Response, fallback: string): Promise<T> {
   return payload.data;
 }
 
-export function CustomersWorkspace({ tenantId }: { tenantId: string }) {
+export function CustomersWorkspace({ tenantId, canManage = false }: { tenantId: string; canManage?: boolean }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selected, setSelected] = useState<Customer | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -115,7 +115,7 @@ export function CustomersWorkspace({ tenantId }: { tenantId: string }) {
   return <section className="customers-workspace">
     <div className="welcome-row">
       <div><div className="eyebrow"><Users size={14}/> RELATION CLIENT</div><h1>Clients</h1><p className="subtitle">Consultez les clients, leurs contacts et leurs adresses enregistrés dans votre organisation.</p></div>
-      <div className="customer-toolbar"><span className="status-chip"><i/> Lecture et gestion sécurisées</span><button className="primary-button" onClick={() => openEditor("customer", "create")}>+ Nouveau client</button></div>
+      <div className="customer-toolbar"><span className="status-chip"><i/> Lecture et gestion sécurisées</span>{canManage && <button className="primary-button" onClick={() => openEditor("customer", "create")}>+ Nouveau client</button>}</div>
     </div>
     <div className="demo-banner"><div className="demo-icon"><Building2 size={19}/></div><div><strong>Répertoire de votre organisation</strong><p>Les données sont gérées depuis l’API Finance authentifiée. Les modifications sont réservées aux rôles autorisés et chaque action est journalisée.</p></div><span className="demo-pill">M04</span></div>
     {error && <div className="notice" role="alert"><span>{error}</span><button onClick={() => setError("")}>Fermer</button></div>}
@@ -135,17 +135,17 @@ export function CustomersWorkspace({ tenantId }: { tenantId: string }) {
       <section className="panel customer-detail-panel">
         {!selected ? <div className="customer-empty detail-empty"><div className="empty-illustration"><UserRound size={27}/></div><strong>Sélectionnez un client</strong><span>Ses informations, contacts et adresses apparaîtront ici.</span></div> :
           <>
-            <div className="customer-detail-heading"><div><div className="eyebrow">FICHE CLIENT · {selected.customerCode}</div><h2>{selected.displayName || selected.legalName}</h2><p>{selected.legalName}</p></div><div className="customer-row-actions"><span className="status-chip"><i/>{selected.status === "ACTIVE" ? "Actif" : "Archivé"}</span><button className="outline-button" onClick={() => openEditor("customer", "edit", selected)}>Modifier</button><button className="outline-button danger-button" onClick={() => void archiveItem("customer", selected.id)}>Archiver</button></div></div>
+            <div className="customer-detail-heading"><div><div className="eyebrow">FICHE CLIENT · {selected.customerCode}</div><h2>{selected.displayName || selected.legalName}</h2><p>{selected.legalName}</p></div><div className="customer-row-actions"><span className="status-chip"><i/>{selected.status === "ACTIVE" ? "Actif" : "Archivé"}</span>{canManage && <><button className="outline-button" onClick={() => openEditor("customer", "edit", selected)}>Modifier</button><button className="outline-button danger-button" onClick={() => void archiveItem("customer", selected.id)}>Archiver</button></>}</div></div>
             <div className="customer-facts">
               <div><Mail size={15}/><span>{selected.email || "E-mail non renseigné"}</span></div>
               <div><Phone size={15}/><span>{selected.phone || "Téléphone non renseigné"}</span></div>
               <div><MapPin size={15}/><span>{selected.countryCode} · {selected.defaultCurrency || "Devise non définie"}</span></div>
             </div>
             {detailLoading ? <p className="customer-loading">Chargement des coordonnées…</p> : <>
-              <div className="customer-section-heading"><h3>Contacts</h3><span>{contacts.length}</span><button className="text-button" onClick={() => openEditor("contact", "create")}>+ Ajouter</button></div>
-              {contacts.length ? <div className="customer-relation-list">{contacts.map((contact) => <article key={contact.id}><strong>{contact.fullName}{contact.isPrimary ? " · Principal" : ""}</strong><small>{[contact.jobTitle, contact.contactType].filter(Boolean).join(" · ")}</small><span>{contact.email || contact.phone || "Aucune coordonnée"}</span><div className="customer-row-actions"><button className="text-button" onClick={() => openEditor("contact", "edit", contact)}>Modifier</button><button className="text-button danger-text" onClick={() => void archiveItem("contact", contact.id)}>Archiver</button></div></article>)}</div> : <p className="customer-no-relations">Aucun contact actif enregistré.</p>}
-              <div className="customer-section-heading"><h3>Adresses</h3><span>{addresses.length}</span><button className="text-button" onClick={() => openEditor("address", "create")}>+ Ajouter</button></div>
-              {addresses.length ? <div className="customer-relation-list">{addresses.map((address) => <article key={address.id}><strong>{address.label || address.addressType}{address.isPrimary ? " · Principale" : ""}</strong><small>{address.recipientName || ""}</small><span>{[address.addressLine1, address.addressLine2, address.city, address.region, address.postalCode, address.countryCode].filter(Boolean).join(", ")}</span><div className="customer-row-actions"><button className="text-button" onClick={() => openEditor("address", "edit", address)}>Modifier</button><button className="text-button danger-text" onClick={() => void archiveItem("address", address.id)}>Archiver</button></div></article>)}</div> : <p className="customer-no-relations">Aucune adresse active enregistrée.</p>}
+              <div className="customer-section-heading"><h3>Contacts</h3><span>{contacts.length}</span>{canManage && <button className="text-button" onClick={() => openEditor("contact", "create")}>+ Ajouter</button>}</div>
+              {contacts.length ? <div className="customer-relation-list">{contacts.map((contact) => <article key={contact.id}><strong>{contact.fullName}{contact.isPrimary ? " · Principal" : ""}</strong><small>{[contact.jobTitle, contact.contactType].filter(Boolean).join(" · ")}</small><span>{contact.email || contact.phone || "Aucune coordonnée"}</span>{canManage && <div className="customer-row-actions"><button className="text-button" onClick={() => openEditor("contact", "edit", contact)}>Modifier</button><button className="text-button danger-text" onClick={() => void archiveItem("contact", contact.id)}>Archiver</button></div>}</article>)}</div> : <p className="customer-no-relations">Aucun contact actif enregistré.</p>}
+              <div className="customer-section-heading"><h3>Adresses</h3><span>{addresses.length}</span>{canManage && <button className="text-button" onClick={() => openEditor("address", "create")}>+ Ajouter</button>}</div>
+              {addresses.length ? <div className="customer-relation-list">{addresses.map((address) => <article key={address.id}><strong>{address.label || address.addressType}{address.isPrimary ? " · Principale" : ""}</strong><small>{address.recipientName || ""}</small><span>{[address.addressLine1, address.addressLine2, address.city, address.region, address.postalCode, address.countryCode].filter(Boolean).join(", ")}</span>{canManage && <div className="customer-row-actions"><button className="text-button" onClick={() => openEditor("address", "edit", address)}>Modifier</button><button className="text-button danger-text" onClick={() => void archiveItem("address", address.id)}>Archiver</button></div>}</article>)}</div> : <p className="customer-no-relations">Aucune adresse active enregistrée.</p>}
             </>}
           </>}
       </section>
