@@ -2,6 +2,7 @@ import type {
   TenantAddress,
   TenantProfile,
 } from "../domain/tenant-profile.types.js";
+import type { FinanceUserTenantContext } from "./tenant-profile-operation-context.js";
 
 export interface TenantProfileCompletion {
   readonly complete: boolean;
@@ -10,10 +11,10 @@ export interface TenantProfileCompletion {
 
 /**
  * Application boundary exported by the Tenants module.
- * Implementations must derive tenant access from a trusted server context.
+ * Tenant scope is always taken from a trusted server-side operation context.
  */
 export interface TenantProfilePort {
-  getProfile(tenantId: string): Promise<TenantProfile | null>;
-  listActiveAddresses(tenantId: string): Promise<readonly TenantAddress[]>;
-  checkProfileCompletion(tenantId: string): Promise<TenantProfileCompletion>;
+  getProfile(context: FinanceUserTenantContext): Promise<TenantProfile | null>;
+  listActiveAddresses(context: FinanceUserTenantContext): Promise<readonly TenantAddress[]>;
+  checkProfileCompletion(context: FinanceUserTenantContext): Promise<TenantProfileCompletion>;
 }
