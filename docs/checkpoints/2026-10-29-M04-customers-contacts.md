@@ -1,10 +1,10 @@
 # M04 — Clients et contacts
 
-**Statut :** implémentation fonctionnelle complétée sur la branche; validation CI consolidée en cours sur le SHA courant. Ne pas déclarer production-ready avant revue et tests d'environnement.  
+**Statut :** implémentation fonctionnelle complétée; CI consolidée verte sur le SHA courant. Test manuel local et revue opérationnelle restent à effectuer avant merge/déploiement.  
 **Branche :** `feat/m04-customers-contacts`  
 **PR :** #21 — ouverte, brouillon, non fusionnée  
 **Base :** M03 `149de0735e5b02a0dc0c0dfbe1252be86e2c5ce5`  
-**Dernier SHA documentaire :** `a48925de07195a71d88f954516e03369bf08b340`  
+**Dernier SHA validé :** `477b0f72f3ea294109f4f7560e568580ef6a17bd`  
 **Architecture de référence :** `docs/architecture/2026-10-29-complete-modular-architecture-fr.md`
 
 ## Périmètre livré
@@ -45,8 +45,11 @@
 ## Validation
 - Ancienne validation CI connue : SHA `836e7af0928b3a7fadcb833a87aead66b13e22d1`, workflow #40977038471, succès.
 - Cette validation est antérieure aux dernières évolutions.
-- Une validation consolidée est déclenchée sur le dernier SHA; son résultat doit être relevé avant de clôturer M04.
-- Pas de répétition des tests antérieurs sans modification pertinente; la validation courante doit couvrir le commit exact.
+- Validation CI consolidée : [workflow #41095779595](https://github.com/sebsonz/zenox-finance-platform/actions/runs/41095779595), succès sur SHA `477b0f72f3ea294109f4f7560e568580ef6a17bd`.
+- Backend typecheck/build et frontend typecheck/navigation/auth API/build : succès.
+- Tests : 50 fichiers passés, 238 tests passés.
+- PostgreSQL jetable : 22 migrations appliquées, 0 en attente, 0 dérive.
+- Pas de répétition des tests antérieurs sans modification pertinente; cette validation couvre le commit exact.
 
 ## Garde-fous
 - Ne pas fusionner PR #21 sans accord explicite.
@@ -62,8 +65,8 @@
 - [x] Audit transactionnel des mutations.
 - [x] Interface utilisateur de gestion des trois ressources.
 - [x] Documentation backend, frontend et API.
-- [ ] CI verte sur le dernier SHA après l'ensemble des modifications.
+- [x] CI verte sur le dernier SHA après l'ensemble des modifications.
 - [ ] Test manuel local du parcours complet avec un tenant de test et des comptes par rôle.
 - [ ] Revue finale des critères de sécurité opérationnelle avant merge/déploiement.
 
-**Prochaine action :** terminer la validation CI consolidée, corriger uniquement les écarts révélés, puis présenter le bilan M04 pour revue. Aucun passage à M05 avant cette clôture.
+**Prochaine action :** effectuer le test manuel local du parcours complet avec un tenant de test et les rôles autorisés/refusés, puis présenter M04 pour revue finale. Aucun passage à M05 avant cette clôture.
