@@ -217,7 +217,7 @@ async function prepare(): Promise<void> {
         has_table_privilege('finance_runtime_test', 'public.finance_user_tenant_memberships', 'DELETE') AS can_delete,
         has_table_privilege('finance_runtime_test', 'public.finance_user_tenant_memberships', 'TRUNCATE') AS can_truncate,
         has_table_privilege('finance_runtime_test', 'public.finance_user_tenant_memberships', 'REFERENCES') AS can_references,
-        has_table_privilege('finance_runtime_test', 'public.finance_user_tenant_memberships', 'TRIGGER') AS can_trigger,
+        has_table_privilege('finance_runtime_test', 'public.finance_user_tenant_memberships', 'TRIGGER') AS can_trigger,\n        has_table_privilege('finance_runtime_test', 'public.finance_tax_jurisdictions', 'SELECT') AS tax_jurisdictions_select,\n        has_table_privilege('finance_runtime_test', 'public.finance_tax_jurisdictions', 'INSERT') AS tax_jurisdictions_insert,\n        has_table_privilege('finance_runtime_test', 'public.finance_tax_jurisdictions', 'UPDATE') AS tax_jurisdictions_update,\n        has_table_privilege('finance_runtime_test', 'public.finance_tax_jurisdictions', 'DELETE') AS tax_jurisdictions_delete,
         has_schema_privilege('finance_runtime_test', 'public', 'USAGE') AS schema_usage,
         has_schema_privilege('finance_runtime_test', 'public', 'CREATE') AS schema_create
     `);
@@ -229,7 +229,7 @@ async function prepare(): Promise<void> {
       membershipGrants["can_delete"] !== false ||
       membershipGrants["can_truncate"] !== false ||
       membershipGrants["can_references"] !== false ||
-      membershipGrants["can_trigger"] !== false ||
+      membershipGrants["can_trigger"] !== false ||\n      membershipGrants["tax_jurisdictions_select"] !== true ||\n      membershipGrants["tax_jurisdictions_insert"] !== false ||\n      membershipGrants["tax_jurisdictions_update"] !== false ||\n      membershipGrants["tax_jurisdictions_delete"] !== false ||
       membershipGrants["schema_usage"] !== true ||
       membershipGrants["schema_create"] !== false
     ) {
