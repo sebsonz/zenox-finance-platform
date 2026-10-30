@@ -74,7 +74,7 @@ async function resolveTenantProfileContext(
 
   return {
     tenantId,
-    correlationId: String(res.locals["correlationId"] ?? ""),
+    correlationId: String(res.locals["correlationId"] ?? "unknown"),
     actor: {
       type: "USER",
       ref: `${user.issuer}|${user.id}`,
@@ -123,7 +123,7 @@ userTenantProfileRouter.put("/:tenantId/profile", requireUserAuth(), async (req,
     const profile = await tenantProfileService.updateProfile(context, parsed.data);
     res.status(200).json({ data: { profile, correlationId: context.correlationId } });
   } catch (error) {
-    if (sendProfileError(error, res, String(res.locals["correlationId"] ?? ""))) return;
+    if (sendProfileError(error, res, String(res.locals["correlationId"] ?? "unknown"))) return;
     next(error);
   }
 });
@@ -157,7 +157,7 @@ userTenantProfileRouter.post("/:tenantId/addresses", requireUserAuth(), async (r
     const address = await tenantProfileService.createAddress(context, parsed.data);
     res.status(201).json({ data: { address, correlationId: context.correlationId } });
   } catch (error) {
-    if (sendProfileError(error, res, String(res.locals["correlationId"] ?? ""))) return;
+    if (sendProfileError(error, res, String(res.locals["correlationId"] ?? "unknown"))) return;
     next(error);
   }
 });
