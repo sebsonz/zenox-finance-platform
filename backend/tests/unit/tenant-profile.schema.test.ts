@@ -12,7 +12,9 @@ describe("tenant profile schemas", () => {
       timezone: "Africa/Porto-Novo",
       primaryLanguage: "fr",
       supportedLanguages: ["fr", "en"],
+      websiteUrl: null,
       generalEmail: "finance@example.com",
+      generalPhone: null,
     });
     expect(parsed.tradeName).toBe("Zenox");
     expect(parsed.primaryLanguage).toBe("fr");
@@ -21,17 +23,25 @@ describe("tenant profile schemas", () => {
 
   it("rejects invalid IANA timezones", () => {
     expect(updateTenantProfileSchema.safeParse({
+      tradeName: null,
       timezone: "Africa/Not-A-Real-City",
       primaryLanguage: "fr",
       supportedLanguages: ["fr"],
+      websiteUrl: null,
+      generalEmail: null,
+      generalPhone: null,
     }).success).toBe(false);
   });
 
   it("requires the primary language in the supported language list", () => {
     expect(updateTenantProfileSchema.safeParse({
+      tradeName: null,
       timezone: "Africa/Porto-Novo",
       primaryLanguage: "fr",
       supportedLanguages: ["en"],
+      websiteUrl: null,
+      generalEmail: null,
+      generalPhone: null,
     }).success).toBe(false);
   });
 
