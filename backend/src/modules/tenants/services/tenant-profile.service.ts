@@ -91,10 +91,8 @@ export const tenantProfileService: TenantProfilePort = {
     context: FinanceUserTenantContext,
   ): Promise<TenantProfileCompletion> {
     return withTenantTransaction(context.tenantId, async (client) => {
-      const [profile, addresses] = await Promise.all([
-        tenantProfileRepository.getProfile(client, context.tenantId),
-        tenantProfileRepository.listActiveAddresses(client, context.tenantId),
-      ]);
+      const profile = await tenantProfileRepository.getProfile(client, context.tenantId);
+      const addresses = await tenantProfileRepository.listActiveAddresses(client, context.tenantId);
       const missingRequirements: string[] = [];
       if (!profile) missingRequirements.push("TENANT_PROFILE");
       if (!addresses.some((address) => address.addressType === "REGISTERED")) {
