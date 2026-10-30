@@ -7,6 +7,7 @@ import { PlatformAdminAccessError, platformAdminAccessService } from "../service
 export const platformAdminRouter = Router();
 
 platformAdminRouter.get("/tax/jurisdictions", requireUserAuth(), async (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
   try {
     await platformAdminAccessService.assertActiveOperator(req.financeUser);
   } catch (error) {
