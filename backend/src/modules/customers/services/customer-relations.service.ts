@@ -1,5 +1,4 @@
 import { withTenantTransaction } from "../../../db/transaction.js";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
 import type { FinanceCustomerReadContext, FinanceCustomerOperationContext } from "../types/customer-operation-context.js";
 import { recordCustomerAudit } from "../repositories/customer-audit.repository.js";
 import { customerRepository } from "../repositories/customer.repository.js";
