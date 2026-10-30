@@ -61,7 +61,16 @@ export function CustomerManagementDialog({ kind, mode, initial, onClose, onSave 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true); setError("");
-    try { await onSave(values); }
+    try {
+      const payload: CustomerEditorRecord = { ...values };
+      for (const field of fields[kind]) {
+        if (!field.required && payload[field.name] === "") {
+          if (mode === "edit") payload[field.name] = null;
+          else delete payload[field.name];
+        }
+      }
+      await onSave(payload);
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Enregistrement impossible."); }
     finally { setBusy(false); }
   }
