@@ -11,6 +11,18 @@ import type { FinanceUserTenantContext } from "../../tenants/application/tenant-
 export const userTenantProfileRouter = Router();
 const uuidSchema = z.string().uuid();
 
+function sameOrigin(req: Request): boolean {
+  const origin = req.header("origin");
+  if (!origin) return false;
+  try {
+    const parsed = new URL(origin);
+    return (parsed.protocol === "https:" || parsed.protocol === "http:") &&
+      parsed.host.toLowerCase() === (req.get("host") ?? "").toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
 userTenantProfileRouter.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
   next();
@@ -96,6 +108,10 @@ userTenantProfileRouter.get("/:tenantId/profile", requireUserAuth(), async (req,
 userTenantProfileRouter.put("/:tenantId/profile", requireUserAuth(), async (req, res, next) => {
   const tenantId = parseTenantId(req, res);
   if (!tenantId) return;
+  if (!sameOrigin(req)) {
+    res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "The request origin is not allowed." } });
+    return;
+  }
   const parsed = updateTenantProfileSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: { code: "INVALID_TENANT_PROFILE", message: "The tenant profile payload is invalid." } });
@@ -126,6 +142,10 @@ userTenantProfileRouter.get("/:tenantId/addresses", requireUserAuth(), async (re
 userTenantProfileRouter.post("/:tenantId/addresses", requireUserAuth(), async (req, res, next) => {
   const tenantId = parseTenantId(req, res);
   if (!tenantId) return;
+  if (!sameOrigin(req)) {
+    res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "The request origin is not allowed." } });
+    return;
+  }
   const parsed = createTenantAddressSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: { code: "INVALID_TENANT_ADDRESS", message: "The tenant address payload is invalid." } });
