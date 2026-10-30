@@ -15,3 +15,6 @@
 .pad-refresh-button:focus-visible,.pad-search-clear:focus-visible{outline:2px solid var(--pad-blue);outline-offset:2px}
 .pad-inline-error .pad-refresh-button{margin-top:10px}
 @media(max-width:760px){.pad-module-actions{justify-content:flex-start}.pad-module-tools{align-items:flex-start;flex-direction:column}.pad-topbar{gap:10px}.pad-search kbd{display:none}}
+
+/* Keep the platform dashboard navigation visible while scrolling. */
+.pad-topbar{position:sticky;top:0;z-index:25}
