@@ -1,35 +1,49 @@
 # M04 — Clients et contacts
 
-Le module possède les parcours client (création, liste paginée, détail, mise à jour partielle et archivage) et expose les contacts et adresses du client via l'API v1.
-
 ## Responsabilités
+- Répertoire client tenant-scoped : création, consultation, recherche, mise à jour et archivage logique.
+- Contacts et adresses : création, consultation paginée, mise à jour et archivage logique.
+- Références externes client, identifiants métier uniques par tenant et devise par défaut validée par M06.
+- Validation stricte des entrées, erreurs métier stables et pagination bornée.
+- Contrats API d'intégration et adaptateur utilisateur distincts.
 
-- Répertoire client tenant-scoped et identifiants externes uniques dans le tenant.
-- Validation stricte des payloads et recherche paginée bornée.
-- Contacts de client : création et liste paginée, types GENERAL/BILLING/TECHNICAL/LEGAL/OTHER.
-- Adresses de client : création et liste paginée, types REGISTERED/BILLING/SHIPPING/OTHER.
-- Contrats HTTP et persistance dans les frontières du module clients.
-- Les devises restent propriétaires du module M06 et sont lues via son repository.
+## Architecture
+- Routes HTTP : validation et traduction des erreurs; aucune requête SQL.
+- Services applicatifs : orchestration, transactions tenant-scoped et règles métier.
+- Repositories : SQL paramétré exclusivement dans cette couche.
+- M06 reste propriétaire des devises; M04 consomme son contrat de lecture.
+- L'adaptateur utilisateur appelle les services M04 in-process; aucune auto-appel HTTP ni fabrication d'identité machine.
 
-## Sécurité et persistance
+## Sécurité
+- Tenant déterminé côté serveur après vérification de la session et de l'appartenance ACTIVE.
+- Lecture : permission `customers:read`.
+- Écriture : permission `customers:manage` (OWNER, ADMIN, FINANCE_MANAGER).
+- Acteur USER construit à partir de l'issuer, du subject et de l'identifiant d'appartenance; aucune donnée d'acteur acceptée depuis le navigateur.
+- Chaque mutation écrit un événement `finance_audit_events` dans la même transaction que la mutation.
+- Les opérations d'intégration restent protégées par les scopes `customer:read` et `customer:write`.
+- Contacts/adresses restent liés au client et au tenant par les contraintes composites; RLS + FORCE RLS et politiques tenant-scoped.
+- Archivage logique uniquement; pas de suppression physique.
 
-- Le tenant provient exclusivement du contexte d'authentification d'intégration validé par M03.
-- Les opérations relationnelles utilisent withTenantTransaction.
-- finance_customer_contacts et finance_customer_addresses ont ENABLE ROW LEVEL SECURITY, FORCE ROW LEVEL SECURITY et une policy tenant-scoped.
-- Les clés étrangères composites (tenant_id, customer_id) interdisent d'attacher une relation au client d'un autre tenant.
-- Les accès runtime sont provisionnés explicitement dans la préparation de la base d'intégration jetable.
-- Pas de suppression physique d'un client ni de migration distante automatique.
+## API utilisateur
+Base : `/api/v1/user/tenants/:tenantId/customers`
+- `GET /` — liste et recherche.
+- `GET /:customerId` — détail.
+- `POST /` — création.
+- `PATCH /:customerId` — mise à jour.
+- `POST /:customerId/archive` — archivage.
+- `GET|POST /:customerId/contacts` — liste/création.
+- `PATCH /:customerId/contacts/:contactId` — mise à jour.
+- `POST /:customerId/contacts/:contactId/archive` — archivage.
+- `GET|POST /:customerId/addresses` — liste/création.
+- `PATCH /:customerId/addresses/:addressId` — mise à jour.
+- `POST /:customerId/addresses/:addressId/archive` — archivage.
 
-## Endpoints
+## API d'intégration
+- `/api/v1/customers` et sous-routes contacts/adresses; authentification service et scopes explicites.
+- Les identifiants tenant et principal proviennent du contexte d'authentification vérifié, jamais du corps de requête.
 
-- POST /api/v1/customers — customer:write
-- GET /api/v1/customers — customer:read
-- GET /api/v1/customers/:customerId — customer:read
-- POST /api/v1/customers/:customerId/contacts — customer:write
-- GET /api/v1/customers/:customerId/contacts — customer:read
-- POST /api/v1/customers/:customerId/addresses — customer:write
-- GET /api/v1/customers/:customerId/addresses — customer:read
-
-## Statut M04
-
-En cours. La gestion des contacts et adresses a été ajoutée au backend; restent notamment les opérations de mise à jour/archivage client et relations, les tests API ciblés, l'interface frontend et la validation CI finale. Voir docs/checkpoints/2026-10-29-M04-customers-contacts.md.
+## Limites
+- Aucun import/export de masse ni fusion de doublons dans M04.
+- Pas de suppression physique.
+- Les migrations sont additives et testées sur PostgreSQL jetable; aucune migration Supabase distante n'est autorisée par ce module.
+- Les rôles personnalisés configurables ne sont pas créés ici; M04 utilise le modèle de permissions validé du socle.
