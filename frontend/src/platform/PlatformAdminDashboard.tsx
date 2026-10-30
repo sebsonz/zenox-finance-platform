@@ -5,6 +5,7 @@ import {
   Menu, Moon, RefreshCw, Search, ShieldCheck, Sun, Users, X, type LucideIcon,
 } from "lucide-react";
 import { PlatformReviewWorkspace } from "./PlatformReviewWorkspace.js";
+import { PlatformTaxJurisdictions } from "../features/platform-admin/PlatformTaxJurisdictions.js";
 import "./PlatformAdminDashboard.css";
 
 type Section = "dashboard" | "requests" | "orgs" | "users" | "audit" | "finance" | "tax";
@@ -115,7 +116,7 @@ export function PlatformAdminDashboard({ email, onSignOut }: { email: string; on
         {section === "users" && <ModulePlaceholder icon={Users} title="Utilisateurs & permissions" description="Les comptes, rôles et rattachements seront affichés après connexion aux endpoints plateforme autorisés."/>}
         {section === "audit" && <ModulePlaceholder icon={Activity} title="Journal d’audit" description="Les événements d’audit seront consultables ici dès que l’API plateforme de lecture sera disponible."/>}
         {section === "finance" && <ModulePlaceholder icon={CreditCard} title="Facturation & paiements" description="Les indicateurs globaux ne seront affichés qu’à partir d’agrégats fournis par le backend, sans mélanger les tenants."/>}
-        {section === "tax" && <ModulePlaceholder icon={Globe2} title="Fiscalité & juridictions" description="Les règles et juridictions seront intégrées depuis les services Finance autorisés, avec leur version et leur statut."/>}
+        {section === "tax" && <PlatformTaxJurisdictions/>}
         <footer className="pad-footer"><span>© 2026 ZENOX Finance</span><span><ShieldCheck size={13}/> Accès contrôlé côté serveur</span><span>Console plateforme V3</span></footer>
       </div>
     </main>
