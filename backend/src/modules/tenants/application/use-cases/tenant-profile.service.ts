@@ -1,4 +1,4 @@
-import { withTenantTransaction } from "../../../db/transaction.js";
+import { withTenantTransaction } from "../../../../db/transaction.js";
 import type { TenantAddress, TenantProfile } from "../../domain/tenant-profile.types.js";
 import type { FinanceUserTenantContext } from "../tenant-profile-operation-context.js";
 import type { TenantProfileCompletion, TenantProfilePort } from "../tenant-profile.port.js";
