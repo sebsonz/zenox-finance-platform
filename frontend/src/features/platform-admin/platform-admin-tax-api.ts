@@ -48,7 +48,7 @@ export async function loadPlatformTaxJurisdictions(
   if (filters.countryCode) params.set("countryCode", filters.countryCode);
   if (filters.level) params.set("level", filters.level);
 
-  const response = await fetch(`/api/v1/platform-admin/tax/jurisdictions?${params.toString()}`, {
+  const response = await fetch(`/api/v1/user/platform/tax/jurisdictions?${params.toString()}`, {
     credentials: "same-origin",
     cache: "no-store",
     signal,
