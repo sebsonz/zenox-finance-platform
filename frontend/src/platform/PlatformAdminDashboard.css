@@ -16,7 +16,7 @@
 .pad-inline-error .pad-refresh-button{margin-top:10px}
 @media(max-width:760px){.pad-module-actions{justify-content:flex-start}.pad-module-tools{align-items:flex-start;flex-direction:column}.pad-topbar{gap:10px}.pad-search kbd{display:none}}
 
-.pad-brand .zf-brand-symbol{width:36px;height:36px;flex:0 0 36px}
+.pad-brand .zf-brand-symbol{width:46px;height:38px;flex:0 0 46px}
 .pad-brand .zf-brand-wordmark strong{font:800 15px Manrope,sans-serif;color:#fff;letter-spacing:.7px}
 .pad-brand .zf-brand-wordmark>span{font-size:11px;color:#78a3ff}
 .pad-brand-caption{font-size:8px;letter-spacing:1.2px;color:#8194b1;margin-left:2px}
