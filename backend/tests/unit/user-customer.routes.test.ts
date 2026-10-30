@@ -18,7 +18,7 @@ vi.mock("../../src/modules/tenants/repositories/user-tenant-membership.repositor
 }));
 vi.mock("../../src/modules/tenants/services/user-tenant-permissions.service.js", () => ({
   assertActiveMembershipCan: vi.fn((membership: { status: string; role_code: string }, permission: string) => {
-    if (membership.status !== "ACTIVE" || membership.role_code === "NO_CUSTOMER_ACCESS" || permission !== "customers:read") {
+    if (membership.status !== "ACTIVE" || membership.role_code === "NO_CUSTOMER_ACCESS" || (permission === "customers:manage" && !["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(membership.role_code))) {
       throw new Error("User is not authorized");
     }
   }),
@@ -30,13 +30,13 @@ vi.mock("../../src/modules/customers/services/customer.service.js", () => ({
   CustomerServiceError: class CustomerServiceError extends Error {
     constructor(readonly code: string, message: string) { super(message); }
   },
-  customerService: { list: vi.fn(), findById: vi.fn() },
+  customerService: { list: vi.fn(), findById: vi.fn(), create: vi.fn(), update: vi.fn(), archive: vi.fn() },
 }));
 vi.mock("../../src/modules/customers/services/customer-relations.service.js", () => ({
   CustomerRelationsServiceError: class CustomerRelationsServiceError extends Error {
     constructor(readonly code: string, message: string) { super(message); }
   },
-  customerRelationsService: { listContacts: vi.fn(), listAddresses: vi.fn() },
+  customerRelationsService: { listContacts: vi.fn(), listAddresses: vi.fn(), createContact: vi.fn(), updateContact: vi.fn(), archiveContact: vi.fn(), createAddress: vi.fn(), updateAddress: vi.fn(), archiveAddress: vi.fn() },
 }));
 
 import { userTenantMembershipRepository } from "../../src/modules/tenants/repositories/user-tenant-membership.repository.js";
@@ -78,6 +78,48 @@ const membership = (role_code = "VIEWER") => ({
   role_code,
   status: "ACTIVE" as const,
   activated_at: new Date("2026-10-16T00:00:00.000Z"),
+  it("allows an active owner to create a customer with a server-derived actor context", async () => {
+    vi.mocked(userTenantMembershipRepository.findActiveMembership).mockResolvedValue(membership("OWNER") as never);
+    const server = app();
+    const listener = await new Promise<ReturnType<typeof import("node:http").createServer>>((resolve) => {
+      const httpServer = server.listen(0, "127.0.0.1", () => resolve(httpServer));
+    });
+    const address = listener.address();
+    if (!address || typeof address === "string") throw new Error("Test server did not bind a TCP port");
+    try {
+      const response = await fetch(`http://127.0.0.1:${address.port}/user/tenants/${TENANT_ID}/customers`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ customerCode: "CUST-01", customerType: "BUSINESS", legalName: "Example Ltd", countryCode: "BJ" }),
+      });
+      expect(response.status).toBe(201);
+      expect(customerService.create).toHaveBeenCalledWith(expect.objectContaining({
+        tenantId: TENANT_ID,
+        actor: { type: "USER", ref: `${USER_ISSUER}|${USER_ID}`, membershipId: expect.any(String), identityIssuer: USER_ISSUER, identitySubject: USER_ID },
+      }), expect.objectContaining({ customerCode: "CUST-01" }));
+    } finally {
+      await new Promise<void>((resolve, reject) => listener.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+
+  it("denies customer writes to a viewer before invoking the domain service", async () => {
+    const server = app();
+    const listener = await new Promise<ReturnType<typeof import("node:http").createServer>>((resolve) => {
+      const httpServer = server.listen(0, "127.0.0.1", () => resolve(httpServer));
+    });
+    const address = listener.address();
+    if (!address || typeof address === "string") throw new Error("Test server did not bind a TCP port");
+    try {
+      const response = await fetch(`http://127.0.0.1:${address.port}/user/tenants/${TENANT_ID}/customers`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ customerCode: "CUST-01", customerType: "BUSINESS", legalName: "Example Ltd", countryCode: "BJ" }),
+      });
+      expect(response.status).toBe(403);
+      expect(customerService.create).not.toHaveBeenCalled();
+    } finally {
+      await new Promise<void>((resolve, reject) => listener.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+
 });
 
 describe("user customer read routes", () => {
@@ -89,6 +131,11 @@ describe("user customer read routes", () => {
     });
     vi.mocked(customerService.list).mockResolvedValue([{ id: CUSTOMER_ID, legalName: "Example Ltd" }] as never);
     vi.mocked(customerService.findById).mockResolvedValue({ id: CUSTOMER_ID, legalName: "Example Ltd" } as never);
+    vi.mocked(customerService.create).mockResolvedValue({ id: CUSTOMER_ID, customerCode: "CUST-01" } as never);
+    vi.mocked(customerService.update).mockResolvedValue({ id: CUSTOMER_ID, customerCode: "CUST-01" } as never);
+    vi.mocked(customerService.archive).mockResolvedValue({ id: CUSTOMER_ID, status: "ARCHIVED" } as never);
+    vi.mocked(customerRelationsService.createContact).mockResolvedValue({ id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee" } as never);
+    vi.mocked(customerRelationsService.createAddress).mockResolvedValue({ id: "ffffffff-ffff-4fff-8fff-ffffffffffff" } as never);
     vi.mocked(customerRelationsService.listContacts).mockResolvedValue([] as never);
     vi.mocked(customerRelationsService.listAddresses).mockResolvedValue([] as never);
   });
