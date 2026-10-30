@@ -27,7 +27,7 @@ export const updateTenantProfileSchema = z.object({
   generalPhone: z.string().trim().max(40).nullable().optional(),
 }).strict().superRefine((value, ctx) => {
   if (!value.supportedLanguages.some(
-    (language) => language.toLowerCase() === value.primaryLanguage.toLowerCase(),
+    (language) => language === value.primaryLanguage,
   )) {
     ctx.addIssue({
       code: "custom",
