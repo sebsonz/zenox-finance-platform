@@ -18,13 +18,13 @@ const nullableTrimmed = (max: number) =>
   z.string().trim().max(max).nullable().optional();
 
 export const updateTenantProfileSchema = z.object({
-  tradeName: nullableTrimmed(200),
+  tradeName: z.string().trim().max(200).nullable(),
   timezone: ianaTimezoneSchema,
   primaryLanguage: languageTagSchema,
   supportedLanguages: z.array(languageTagSchema).min(1).max(20),
-  websiteUrl: z.string().trim().url().max(2048).nullable().optional(),
-  generalEmail: z.string().trim().email().max(254).nullable().optional(),
-  generalPhone: z.string().trim().max(40).nullable().optional(),
+  websiteUrl: z.string().trim().url().max(2048).nullable(),
+  generalEmail: z.string().trim().email().max(254).nullable(),
+  generalPhone: z.string().trim().max(40).nullable(),
 }).strict().superRefine((value, ctx) => {
   if (!value.supportedLanguages.some(
     (language) => language === value.primaryLanguage,
