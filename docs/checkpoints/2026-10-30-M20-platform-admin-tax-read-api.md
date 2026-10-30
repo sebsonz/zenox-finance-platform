@@ -13,6 +13,7 @@ Connect the platform administration console's Fiscalité & juridictions section 
 - M20 Platform Admin owns platform operator authorization and the platform-facing HTTP endpoint.
 - M10 Tax owns jurisdiction query validation, persistence access and the application use case.
 - M20 calls the M10 application use case through its public module interface; no cross-domain SQL or direct table writes are introduced.
+- The new read endpoint is composed inside the existing user-auth router at `GET /api/v1/user/platform/tax/jurisdictions`, preserving the session cookie path `/api/v1/user`.
 - Existing registration review endpoints and the existing platform operator bootstrap process remain unchanged.
 - No jurisdiction data is seeded and no country is declared legally supported by this work.
 
@@ -33,14 +34,18 @@ Connect the platform administration console's Fiscalité & juridictions section 
 - `backend/src/modules/tax/schemas/tax-jurisdiction-list.schema.ts`
 - `backend/src/modules/tax/repositories/tax-jurisdiction.repository.ts`
 - `backend/src/modules/tax/application/list-tax-jurisdictions.use-case.ts`
-- `backend/src/routes/v1/index.ts`
+- `backend/src/modules/user-auth/routes/index.ts`
 - `backend/tests/unit/platform-admin-tax.routes.test.ts`
+- `backend/tests/unit/platform-admin-access.service.test.ts`
+- `backend/tests/unit/tax-jurisdiction.repository.test.ts`
 - `backend/tests/unit/tax-jurisdiction-list.schema.test.ts`
 - `backend/tests/integration/platform-tax-jurisdictions.postgres.test.ts`
 - `frontend/src/features/platform-admin/platform-admin-tax-api.ts`
 - `frontend/src/features/platform-admin/PlatformTaxJurisdictions.tsx`
 - `frontend/src/features/platform-admin/PlatformTaxJurisdictions.css`
 - `frontend/src/platform/PlatformAdminDashboard.tsx`
+- `docs/api/platform-admin-tax-jurisdictions.md`
+- `docs/runbooks/finance-auth-environment-readiness.md`
 - `supabase/migrations/20261030000100_platform_tax_jurisdiction_read_grants.sql`
 
 ## Validation gates
