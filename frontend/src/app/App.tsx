@@ -15,6 +15,7 @@ import { CustomersWorkspace } from "../features/customers/CustomersWorkspace.js"
 import { PlatformReviewWorkspace } from "../platform/PlatformReviewWorkspace.js";
 import { PlatformAdminDashboard } from "../platform/PlatformAdminDashboard.js";
 import { LandingPage } from "../public/LandingPage.js";
+import { BrandLogo } from "../shared/components/BrandLogo.js";
 
 type SessionUser = { id: string; email?: string; emailConfirmedAt?: string | null };
 type ActiveTenant = { id: string; tenantCode: string; legalName: string; role: string };
@@ -107,7 +108,7 @@ export function App() {
     : navigation.filter((item) => item.id !== "platform");
   const title = visibleNavigation.find((item) => item.id === page)?.label ?? "Vue d’ensemble";
 
-  if (entryChecking) return <main className="entry-loading"><div className="brand-mark">Z</div><p>Vérification sécurisée de votre espace…</p></main>;
+  if (entryChecking) return <main className="entry-loading"><BrandLogo variant="light" /><p>Vérification sécurisée de votre espace…</p></main>;
   const authParams = new URLSearchParams(location.search);
   const authRequested = authParams.get("auth") === "1";
   const requestedMode = authParams.get("mode") === "signup" ? "signup" : "login";
@@ -148,7 +149,7 @@ export function App() {
   return <div className="app-shell">
     {mobileOpen && <button className="mobile-scrim" aria-label="Fermer le menu" onClick={() => setMobileOpen(false)} />}
     <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`}>
-      <div className="brand"><div className="brand-mark">Z</div><div><strong>ZENOX<span>FINANCE</span></strong><small>Financial workspace</small></div><button className="close-menu" onClick={() => setMobileOpen(false)} aria-label="Fermer"><X size={18}/></button></div>
+      <div className="brand"><BrandLogo variant="light" /><button className="close-menu" onClick={() => setMobileOpen(false)} aria-label="Fermer"><X size={18}/></button></div>
       <div className="workspace-label">ESPACE DE TRAVAIL</div>
       <button className="workspace-switch"><div className="workspace-avatar"><Building2 size={17}/></div><span><strong>{activeTenant?.legalName ?? "Administration plateforme"}</strong><small>{activeTenant?.role ?? "Opérateur plateforme"}</small></span><ChevronDown size={15}/></button>
       <div className="nav-label">MENU PRINCIPAL</div>
