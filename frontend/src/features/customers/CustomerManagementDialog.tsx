@@ -57,14 +57,15 @@ export function CustomerManagementDialog({ kind, mode, initial, onClose, onSave 
   const [error, setError] = useState("");
 
   useEffect(() => { setValues({ ...defaults[kind], ...(initial ?? {}) }); }, [kind, initial]);
+  const visibleFields = fields[kind].filter((field) => !(kind === "customer" && mode === "edit" && ["customerCode", "customerType"].includes(field.name)));
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true); setError("");
     try {
-      const payload: CustomerEditorRecord = Object.fromEntries(fields[kind].map((field) => [field.name, values[field.name]]));
+      const payload: CustomerEditorRecord = Object.fromEntries(visibleFields.map((field) => [field.name, values[field.name]]));
       if (kind !== "customer") payload.isPrimary = Boolean(values.isPrimary);
-      for (const field of fields[kind]) {
+      for (const field of visibleFields) {
         if (!field.required && payload[field.name] === "") {
           if (mode === "edit") payload[field.name] = null;
           else delete payload[field.name];
@@ -82,7 +83,7 @@ export function CustomerManagementDialog({ kind, mode, initial, onClose, onSave 
       <header><div><span className="eyebrow">GESTION CLIENTS · M04</span><h2 id="customer-dialog-title">{title} {kind === "customer" ? "un client" : kind === "contact" ? "un contact" : "une adresse"}</h2></div><button type="button" className="text-button" onClick={onClose} disabled={busy}>Fermer</button></header>
       <form onSubmit={submit}>
         <div className="customer-dialog-fields">
-          {fields[kind].map((field) => <label key={field.name}>
+          {visibleFields.map((field) => <label key={field.name}>
             <span>{field.label}{field.required ? " *" : ""}</span>
             {field.options ? <select required={field.required} value={String(values[field.name] ?? "")} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))}>{field.options.map((option) => <option key={option} value={option}>{option}</option>)}</select>
               : <input type={field.type ?? "text"} required={field.required} value={String(values[field.name] ?? "")} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} />}
