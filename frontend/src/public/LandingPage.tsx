@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   ArrowRight, BadgeCheck, CheckCircle2, ChevronDown, FileCheck2, FileText,
-  Globe2, Layers3, LockKeyhole, Menu, ShieldCheck, WalletCards, X,
+  Globe2, Layers3, LockKeyhole, Menu, ShieldCheck, Users, X,
 } from "lucide-react";
 import "./landing.css";
 
@@ -101,7 +101,7 @@ export function LandingPage({ onLogin, onCreateAccount }: LandingPageProps) {
         <div className="zf-section-heading"><div className="zf-eyebrow">UN ESPACE DE TRAVAIL UNIFIÉ</div><h2>Une expérience pensée pour le quotidien.</h2><p>Les outils disponibles s'appuient sur les mêmes règles d'identité, de tenant et de contrôle des accès.</p></div>
         <div className="zf-feature-grid">
           <article className="zf-feature-card zf-feature-large"><div className="zf-feature-icon"><FileText size={22}/></div><span>FACTURATION</span><h3>Du brouillon à l'émission.</h3><p>Préparez les documents, contrôlez les informations et respectez le cycle de vie de vos factures.</p><ul><li>Gestion des brouillons</li><li>Snapshots fiscaux</li><li>Documents d'émission</li></ul></article>
-          <article className="zf-feature-card"><div className="zf-feature-icon"><UsersIcon/></div><span>RELATION CLIENT</span><h3>Un répertoire organisé.</h3><p>Clients, contacts et adresses restent rattachés à la bonne organisation.</p></article>
+          <article className="zf-feature-card"><div className="zf-feature-icon"><Users size={22}/></div><span>RELATION CLIENT</span><h3>Un répertoire organisé.</h3><p>Clients, contacts et adresses restent rattachés à la bonne organisation.</p></article>
           <article className="zf-feature-card"><div className="zf-feature-icon"><Globe2 size={22}/></div><span>RÉFÉRENTIELS</span><h3>Des règles explicites.</h3><p>Devises, formats et règles fiscales sont gérés par des domaines spécialisés.</p></article>
         </div>
       </section>
@@ -126,8 +126,4 @@ export function LandingPage({ onLogin, onCreateAccount }: LandingPageProps) {
       <footer className="zf-footer"><a className="zf-brand" href="#accueil"><span className="zf-brand-mark">Z</span><span className="zf-brand-name">ZENOX <b>FINANCE</b></span></a><span>© 2026 ZENOX Finance</span><span>Finance indépendante · API-first</span><button className="zf-footer-login" onClick={onLogin}>Connexion</button></footer>
     </main>
   );
-}
-
-function UsersIcon() {
-  return <span className="zf-users-glyph" aria-hidden="true">◎</span>;
 }
