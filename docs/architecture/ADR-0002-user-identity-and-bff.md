@@ -1,6 +1,6 @@
 # ADR-0002: User Identity and Backend-for-Frontend
 
-- **Status:** Proposed implementation decision; not yet implemented
+- **Status:** Partially implemented for non-production read-only slices; production approval pending
 - **Date:** 2026-10-16
 - **Scope:** ZENOX Finance web workspace and Finance API
 
@@ -16,7 +16,7 @@ Use a **server-side BFF boundary** for all authenticated browser operations. Kee
 
 For the initial user identity provider, evaluate **Supabase Auth** as the preferred candidate because the project already targets Supabase-hosted PostgreSQL. Do not treat this candidate as approved for production until the implementation spike confirms the exact JWT verification, issuer/audience configuration, key rotation behavior, session lifecycle, and deployment topology.
 
-The BFF must:
+The server-side boundary (BFF or equivalent narrow in-process adapter) must:
 
 1. Validate user identity server-side using the selected provider's supported verification mechanism. Never trust a decoded but unverified JWT.
 2. Resolve active Finance tenant membership and role from authoritative server-side data.
@@ -74,3 +74,15 @@ A first non-production implementation slice now exists on the unmerged `feature/
 This is an implementation spike, not production approval. The session cookie currently contains the Supabase access token, with a one-hour cookie lifetime; token refresh, explicit revocation behavior, deployment/proxy configuration, rate limiting, and a full CSRF review for future state-changing financial routes remain open. Production must use HTTPS and same-origin hosting. The invoice screen still requires a tenant UUID; tenant discovery is not implemented. No financial write routes are exposed to this session.
 
 The spike must pass GitHub Actions before further UI expansion. All database tests remain confined to disposable PostgreSQL; no live Finance or ZENOX FRET V2 migration is authorized by this work.
+
+## Implementation update — 2026-10-30 (M04 customer read-only)
+
+A second non-production slice is now present on `feat/m04-customers-contacts`:
+
+- The frontend customer workspace uses the existing application session and active tenant context; it does not create a parallel login or tenant selector.
+- The user-authenticated customer routes verify the session, active membership, `customers:read` permission, and active tenant status on every request.
+- The adapter is implemented in-process in the Express application and invokes the customer application services directly with a trusted tenant read context. It does not make an HTTP call to the integration API and does not manufacture an integration principal.
+- The UI exposes only customer, contact, and address reads. User-session writes remain disabled pending actor identity, audit semantics, CSRF/origin protection, and operational controls.
+- Customer reads use tenant-scoped transactions and the existing RLS boundary.
+
+This update does not supersede the open validation items above. The slice is non-production and does not authorize live migrations, financial writes, or PR merge.
