@@ -251,9 +251,8 @@ export function RegistrationWorkspace({
 
   return <main className="registration-shell">
     <section className="registration-brand">
-      <div className="registration-brand-mark">Z</div>
+      <BrandLogo variant="light" className="registration-brand-logo" />
       <p className="registration-kicker">PLATEFORME FINANCIÈRE INTERNATIONALE</p>
-      <h1>ZENOX <span>FINANCE</span></h1>
       <p className="registration-intro">Votre espace professionnel pour préparer, émettre et suivre vos factures en toute sécurité.</p>
       <div className="registration-promise"><ShieldCheck size={18}/><span>Chaque organisation dispose d’un espace isolé. L’inscription ne donne pas automatiquement accès aux opérations financières.</span></div>
       <div className="registration-steps">
