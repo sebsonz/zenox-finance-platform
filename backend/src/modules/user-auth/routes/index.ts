@@ -8,7 +8,6 @@ import { userInvoiceRouter } from "./user-invoice.routes.js";
 import { userCustomerRouter } from "./user-customer.routes.js";
 import { registrationRouter } from "../../registration/routes/registration.routes.js";
 import { platformRegistrationRouter } from "../../registration/routes/platform-registration.routes.js";
-import { platformAdminRouter } from "../../platform-admin/routes/platform-admin.routes.js";
 
 /** Composes authenticated user, tenant and platform-registration endpoints. */
 export const userAuthRouter = Router();
@@ -20,7 +19,6 @@ userAuthRouter.use("/", userTenantMemberManagementRouter);
 userAuthRouter.use("/", userSessionRouter);
 userAuthRouter.use("/registration", registrationRouter);
 userAuthRouter.use("/platform", platformRegistrationRouter);
-userAuthRouter.use("/platform", platformAdminRouter);
 
 // Register the M04 customer routes before invoice routes: both expose
 // /:tenantId/customers, but their permissions are intentionally different.
