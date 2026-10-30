@@ -62,7 +62,7 @@ export const customerRepository = {
   async create(
     client: PoolClient,
     tenantId: string,
-    principalId: string,
+    principalId: string | null,
     input: CreateCustomerInput,
   ): Promise<FinanceCustomer> {
     const result = await client.query<CustomerRow>(
