@@ -78,49 +78,6 @@ const membership = (role_code = "VIEWER") => ({
   role_code,
   status: "ACTIVE" as const,
   activated_at: new Date("2026-10-16T00:00:00.000Z"),
-  it("allows an active owner to create a customer with a server-derived actor context", async () => {
-    vi.mocked(userTenantMembershipRepository.findActiveMembership).mockResolvedValue(membership("OWNER") as never);
-    const server = app();
-    const listener = await new Promise<ReturnType<typeof import("node:http").createServer>>((resolve) => {
-      const httpServer = server.listen(0, "127.0.0.1", () => resolve(httpServer));
-    });
-    const address = listener.address();
-    if (!address || typeof address === "string") throw new Error("Test server did not bind a TCP port");
-    try {
-      const response = await fetch(`http://127.0.0.1:${address.port}/user/tenants/${TENANT_ID}/customers`, {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ customerCode: "CUST-01", customerType: "BUSINESS", legalName: "Example Ltd", countryCode: "BJ" }),
-      });
-      expect(response.status).toBe(201);
-      expect(customerService.create).toHaveBeenCalledWith(expect.objectContaining({
-        tenantId: TENANT_ID,
-        actor: { type: "USER", ref: `${USER_ISSUER}|${USER_ID}`, membershipId: expect.any(String), identityIssuer: USER_ISSUER, identitySubject: USER_ID },
-      }), expect.objectContaining({ customerCode: "CUST-01" }));
-    } finally {
-      await new Promise<void>((resolve, reject) => listener.close((error) => error ? reject(error) : resolve()));
-    }
-  });
-
-  it("denies customer writes to a viewer before invoking the domain service", async () => {
-    const server = app();
-    const listener = await new Promise<ReturnType<typeof import("node:http").createServer>>((resolve) => {
-      const httpServer = server.listen(0, "127.0.0.1", () => resolve(httpServer));
-    });
-    const address = listener.address();
-    if (!address || typeof address === "string") throw new Error("Test server did not bind a TCP port");
-    try {
-      const response = await fetch(`http://127.0.0.1:${address.port}/user/tenants/${TENANT_ID}/customers`, {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ customerCode: "CUST-01", customerType: "BUSINESS", legalName: "Example Ltd", countryCode: "BJ" }),
-      });
-      expect(response.status).toBe(403);
-      expect(customerService.create).not.toHaveBeenCalled();
-    } finally {
-      await new Promise<void>((resolve, reject) => listener.close((error) => error ? reject(error) : resolve()));
-    }
-  });
-
-});
 
 describe("user customer read routes", () => {
   beforeEach(() => {
@@ -196,4 +153,46 @@ describe("user customer read routes", () => {
     expect(customerRelationsService.listContacts).toHaveBeenCalledWith(expect.objectContaining({ tenantId: TENANT_ID }), CUSTOMER_ID, expect.any(Object));
     expect(customerRelationsService.listAddresses).toHaveBeenCalledWith(expect.objectContaining({ tenantId: TENANT_ID }), CUSTOMER_ID, expect.any(Object));
   });
+  it("allows an active owner to create a customer with a server-derived actor context", async () => {
+    vi.mocked(userTenantMembershipRepository.findActiveMembership).mockResolvedValue(membership("OWNER") as never);
+    const server = app();
+    const listener = await new Promise<ReturnType<typeof import("node:http").createServer>>((resolve) => {
+      const httpServer = server.listen(0, "127.0.0.1", () => resolve(httpServer));
+    });
+    const address = listener.address();
+    if (!address || typeof address === "string") throw new Error("Test server did not bind a TCP port");
+    try {
+      const response = await fetch(`http://127.0.0.1:${address.port}/user/tenants/${TENANT_ID}/customers`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ customerCode: "CUST-01", customerType: "BUSINESS", legalName: "Example Ltd", countryCode: "BJ" }),
+      });
+      expect(response.status).toBe(201);
+      expect(customerService.create).toHaveBeenCalledWith(expect.objectContaining({
+        tenantId: TENANT_ID,
+        actor: { type: "USER", ref: `${USER_ISSUER}|${USER_ID}`, membershipId: expect.any(String), identityIssuer: USER_ISSUER, identitySubject: USER_ID },
+      }), expect.objectContaining({ customerCode: "CUST-01" }));
+    } finally {
+      await new Promise<void>((resolve, reject) => listener.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+
+  it("denies customer writes to a viewer before invoking the domain service", async () => {
+    const server = app();
+    const listener = await new Promise<ReturnType<typeof import("node:http").createServer>>((resolve) => {
+      const httpServer = server.listen(0, "127.0.0.1", () => resolve(httpServer));
+    });
+    const address = listener.address();
+    if (!address || typeof address === "string") throw new Error("Test server did not bind a TCP port");
+    try {
+      const response = await fetch(`http://127.0.0.1:${address.port}/user/tenants/${TENANT_ID}/customers`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ customerCode: "CUST-01", customerType: "BUSINESS", legalName: "Example Ltd", countryCode: "BJ" }),
+      });
+      expect(response.status).toBe(403);
+      expect(customerService.create).not.toHaveBeenCalled();
+    } finally {
+      await new Promise<void>((resolve, reject) => listener.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+
 });
