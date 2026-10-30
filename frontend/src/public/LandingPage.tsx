@@ -1,7 +1,7 @@
 import {
   ArrowRight, BarChart3, BellRing, BookOpen, Boxes, Building2, CheckCircle2,
   ChevronRight, Cloud, CreditCard, FileCheck2, FileText, Globe2, Headphones,
-  Link2, LockKeyhole, Menu, PieChart, ReceiptText, ShieldCheck, Smartphone,
+  Link2, Menu, PieChart, ReceiptText, ShieldCheck, Smartphone,
   Truck, Users, WalletCards, Webhook, X
 } from "lucide-react";
 import { useState } from "react";
