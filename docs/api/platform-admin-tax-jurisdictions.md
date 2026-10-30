@@ -1,7 +1,7 @@
 # API — Consultation des juridictions fiscales par la plateforme
 
 **Méthode :** `GET`  
-**Chemin :** `/api/v1/platform-admin/tax/jurisdictions`  
+**Chemin :** `/api/v1/user/platform/tax/jurisdictions`  
 **Authentification :** session utilisateur Finance vérifiée  
 **Autorisation :** opérateur plateforme actif, identité Supabase exacte (`issuer + subject`) et email confirmé.
 
