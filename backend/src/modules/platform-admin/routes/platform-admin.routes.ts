@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { requireUserAuth } from "../../../middleware/require-user-auth.js";
-import { listTaxJurisdictions, type TaxJurisdictionListQuery } from "../../tax/index.js";
-import { taxJurisdictionListQuerySchema } from "../../tax/schemas/tax-jurisdiction-list.schema.js";
+import { listTaxJurisdictions, taxJurisdictionListQuerySchema } from "../../tax/index.js";
 import { PlatformAdminAccessError, platformAdminAccessService } from "../services/platform-admin-access.service.js";
 
 export const platformAdminRouter = Router();
