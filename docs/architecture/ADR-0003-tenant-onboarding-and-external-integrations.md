@@ -143,3 +143,26 @@ Les réponses d'erreur doivent être stables et ne pas divulguer l'existence de 
 5. Confirmer si un tenant peut avoir plusieurs entités externes dans le même système consommateur; ajuster la contrainte d'unicité en conséquence.
 6. Définir le cycle de vie/révocation d'une association tenant-juridiction et la gestion des périodes qui se chevauchent.
 7. Harmoniser `WEB_API_SECURITY_BOUNDARY.md` avec les routes d'écriture utilisateur M04 déjà livrées et documenter les contrôles CSRF/origin encore requis avant activation de nouveaux parcours d'écriture.
+
+
+## Addendum — constat corrigé après inventaire exhaustif (2026-10-30)
+
+Le dépôt contient déjà une première implémentation M02 dans les migrations `20261024000100_tenant_registration_onboarding.sql` et `20261024000200_platform_registration_review.sql`, ainsi que dans `backend/src/modules/registration`.
+
+En conséquence, les décisions D2 et la séquence d'implémentation doivent être lues comme des exigences d'extension et de consolidation, et non comme la création initiale d'un onboarding. Le flux existant :
+- soumet une organisation sous statut PENDING et crée le tenant + membership OWNER PENDING + demande + audit dans une transaction;
+- dérive l'identité depuis la session backend et impose l'e-mail confirmé;
+- permet à un PLATFORM_ADMIN explicitement provisionné de lister et décider les demandes;
+- active le tenant et l'OWNER lors de l'approbation; désactive le tenant et révoque l'OWNER lors du rejet;
+- interdit l'auto-examen et possède des tests unitaires et PostgreSQL jetables.
+
+Les routes actuelles sont montées sous `/api/v1/user/registration` et `/api/v1/user/platform`. Les dossiers `modules/onboarding` et `modules/platform-admin` sont des squelettes; ne pas dupliquer le module `registration` sans refactorisation explicite.
+
+Les lacunes identifiées restent :
+1. profil légal/commercial complet du tenant (adresse de l'entreprise, nom commercial, fuseau horaire, langues, identifiants fiscaux typés);
+2. association datée et vérifiée entre tenant et juridictions fiscales;
+3. références externes entreprise-consommateur distinctes des principals et grants;
+4. contrats M21 documentés et tests d'intégration machine de bout en bout pour ces références;
+5. harmonisation de `WEB_API_SECURITY_BOUNDARY.md` avec les écritures M04 déjà implémentées et revue des protections CSRF/session/proxy/rate-limit.
+
+**Correction de statut :** les endpoints et fonctions d'inscription/revue mentionnés dans cet ADR ne sont pas de simples propositions; ils existent déjà sous les chemins précités. Les endpoints M21 de références externes et d'association tenant-juridiction restent des propositions à concevoir.
