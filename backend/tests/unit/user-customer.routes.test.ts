@@ -78,6 +78,7 @@ const membership = (role_code = "VIEWER") => ({
   role_code,
   status: "ACTIVE" as const,
   activated_at: new Date("2026-10-16T00:00:00.000Z"),
+});
 
 describe("user customer read routes", () => {
   beforeEach(() => {
