@@ -25,7 +25,7 @@ vi.mock("../../src/modules/tenants/repositories/tenant-profile-audit.repository.
   recordTenantProfileAudit: mocks.recordAudit,
 }));
 
-import { tenantProfileService } from "../../src/modules/tenants/services/tenant-profile.service.js";
+import { tenantProfileService } from "../../src/modules/tenants/application/use-cases/tenant-profile.service.js";
 
 const context = {
   tenantId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
