@@ -19,6 +19,14 @@ describe("tenant profile schemas", () => {
     expect(parsed.supportedLanguages).toEqual(["fr", "en"]);
   });
 
+  it("rejects invalid IANA timezones", () => {
+    expect(updateTenantProfileSchema.safeParse({
+      timezone: "Africa/Not-A-Real-City",
+      primaryLanguage: "fr",
+      supportedLanguages: ["fr"],
+    }).success).toBe(false);
+  });
+
   it("requires the primary language in the supported language list", () => {
     expect(updateTenantProfileSchema.safeParse({
       timezone: "Africa/Porto-Novo",
