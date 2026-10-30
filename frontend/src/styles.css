@@ -66,7 +66,7 @@
 
 /* Shared ZENOX identity across authenticated workspaces */
 .brand .zf-brand-lockup{gap:9px}
-.brand .zf-brand-symbol{width:39px;height:39px}
+.brand .zf-brand-symbol{width:46px;height:38px}
 .brand .zf-brand-wordmark strong{font:800 16px Manrope,sans-serif;letter-spacing:.3px;color:#fff}
 .brand .zf-brand-wordmark>span{font:600 11px Manrope,sans-serif;color:#78a3ff;margin-top:4px}
-.entry-loading .zf-brand-symbol{width:54px;height:54px}
+.entry-loading .zf-brand-symbol{width:60px;height:50px}
