@@ -3,6 +3,10 @@ import type {
   TenantProfile,
 } from "../domain/tenant-profile.types.js";
 import type { FinanceUserTenantContext } from "./tenant-profile-operation-context.js";
+import type {
+  CreateTenantAddressInput,
+  UpdateTenantProfileInput,
+} from "../schemas/tenant-profile.schema.js";
 
 export interface TenantProfileCompletion {
   readonly complete: boolean;
@@ -15,6 +19,8 @@ export interface TenantProfileCompletion {
  */
 export interface TenantProfilePort {
   getProfile(context: FinanceUserTenantContext): Promise<TenantProfile | null>;
+  updateProfile(context: FinanceUserTenantContext, input: UpdateTenantProfileInput): Promise<TenantProfile>;
   listActiveAddresses(context: FinanceUserTenantContext): Promise<readonly TenantAddress[]>;
+  createAddress(context: FinanceUserTenantContext, input: CreateTenantAddressInput): Promise<TenantAddress>;
   checkProfileCompletion(context: FinanceUserTenantContext): Promise<TenantProfileCompletion>;
 }
