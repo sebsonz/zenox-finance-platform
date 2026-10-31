@@ -81,7 +81,13 @@ BEGIN
 
   IF length(btrim(coalesce(p_payload #>> '{organization,legalName}', ''))) NOT BETWEEN 2 AND 200
      OR upper(btrim(coalesce(p_payload #>> '{organization,countryCode}', ''))) !~ '^[A-Z]{2}$'
-     OR upper(btrim(coalesce(p_payload #>> '{organization,defaultCurrency}', ''))) !~ '^[A-Z]{3}$' THEN
+     OR upper(btrim(coalesce(p_payload #>> '{organization,defaultCurrency}', ''))) !~ '^[A-Z]{3}$'
+     OR length(btrim(coalesce(p_payload #>> '{address,addressLine1}', ''))) NOT BETWEEN 1 AND 200
+     OR length(btrim(coalesce(p_payload #>> '{address,city}', ''))) NOT BETWEEN 1 AND 120
+     OR upper(btrim(coalesce(p_payload #>> '{address,countryCode}', ''))) !~ '^[A-Z]{2}$'
+     OR length(btrim(coalesce(p_payload #>> '{representative,fullName}', ''))) NOT BETWEEN 2 AND 200
+     OR length(btrim(coalesce(p_payload #>> '{representative,email}', ''))) NOT BETWEEN 3 AND 254
+     OR length(btrim(coalesce(p_payload #>> '{contact,businessEmail}', ''))) NOT BETWEEN 3 AND 254 THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'INVALID_REGISTRATION_DRAFT';
   END IF;
 
@@ -132,7 +138,13 @@ BEGIN
   IF p_payload IS NULL OR jsonb_typeof(p_payload) <> 'object'
      OR length(btrim(coalesce(p_payload #>> '{organization,legalName}', ''))) NOT BETWEEN 2 AND 200
      OR upper(btrim(coalesce(p_payload #>> '{organization,countryCode}', ''))) !~ '^[A-Z]{2}$'
-     OR upper(btrim(coalesce(p_payload #>> '{organization,defaultCurrency}', ''))) !~ '^[A-Z]{3}$' THEN
+     OR upper(btrim(coalesce(p_payload #>> '{organization,defaultCurrency}', ''))) !~ '^[A-Z]{3}$'
+     OR length(btrim(coalesce(p_payload #>> '{address,addressLine1}', ''))) NOT BETWEEN 1 AND 200
+     OR length(btrim(coalesce(p_payload #>> '{address,city}', ''))) NOT BETWEEN 1 AND 120
+     OR upper(btrim(coalesce(p_payload #>> '{address,countryCode}', ''))) !~ '^[A-Z]{2}$'
+     OR length(btrim(coalesce(p_payload #>> '{representative,fullName}', ''))) NOT BETWEEN 2 AND 200
+     OR length(btrim(coalesce(p_payload #>> '{representative,email}', ''))) NOT BETWEEN 3 AND 254
+     OR length(btrim(coalesce(p_payload #>> '{contact,businessEmail}', ''))) NOT BETWEEN 3 AND 254 THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'INVALID_REGISTRATION_DRAFT';
   END IF;
 
