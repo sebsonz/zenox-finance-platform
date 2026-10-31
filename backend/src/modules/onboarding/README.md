@@ -14,6 +14,7 @@ M02 possède le parcours d'inscription d'une organisation : brouillon, reprise, 
 4. L'utilisateur accepte séparément une version des conditions et une version de la politique de confidentialité.
 5. La soumission appelle une fonction SQL transactionnelle qui réutilise `finance_submit_organization_registration` : tenant PENDING, membership OWNER PENDING, demande PENDING, audit existant et conservation du payload déclaré.
 6. La soumission répétée du même brouillon retourne la demande initiale.
+7. Lors de l'approbation M20, un déclencheur transactionnel appelle la frontière de persistance M03 pour matérialiser le profil et l'adresse déclarés dans les tables canoniques du tenant.
 
 ## Contrats HTTP
 
@@ -35,12 +36,13 @@ Les anciennes routes `/organizations` et les fonctions SQL existantes restent en
 - Les brouillons ne sont accessibles que par des fonctions SQL SECURITY DEFINER étroitement limitées.
 - Les tables privées ont RLS ENABLE et FORCE ; les rôles navigateur n'ont aucun accès direct.
 - Le payload ne collecte pas de numéro fiscal brut. Les identifiants fiscaux/réglementaires sont exclus jusqu'à l'intégration du chiffrement et de l'empreinte HMAC définis par M03.
-- Les références de fichiers ne sont pas simulées : l'intégration M11 reste un critère avant de déclarer le parcours documentaire complet.
-- Les exigences pays ne sont pas inventées : l'intégration M22 et les sources réglementaires approuvées restent un critère avant de déclarer le contrôle de conformité complet.
+- Le transfert M03 du profil général et de l'adresse à l'approbation est implémenté par la migration `20261031000200_registration_approval_tenant_profile_handoff.sql` ; il reste à valider sur PostgreSQL jetable.
+- Les pièces justificatives restent à intégrer par M11 Documents ; aucun stockage fictif n'est utilisé.
+- Les exigences pays restent à intégrer par M22 Compliance à partir de sources réglementaires approuvées ; aucune obligation légale n'est inventée.
 
 ## Migration
 
-`20261031000100_registration_drafts_and_extended_profile.sql` est additive et destinée uniquement à la base ZENOX Finance. Elle n'a pas été exécutée sur Supabase distant. Elle doit être appliquée et testée uniquement sur PostgreSQL jetable pendant la validation locale/CI.
+`20261031000100_registration_drafts_and_extended_profile.sql` et `20261031000200_registration_approval_tenant_profile_handoff.sql` sont additives et destinées uniquement à la base ZENOX Finance. Elles n'ont pas été exécutées sur Supabase distant. Elles doivent être appliquées et testées uniquement sur PostgreSQL jetable pendant la validation locale/CI.
 
 ## Tests et critères de complétude
 
@@ -50,4 +52,4 @@ Les anciennes routes `/organizations` et les fonctions SQL existantes restent en
 - Frontend : parcours multiétape, erreurs, reprise, validations HTML et consentements séparés.
 - CI : backend typecheck/build, migrations, drift-check, tests et frontend typecheck/build.
 
-**Non terminé tant que** la migration n'a pas passé PostgreSQL jetable, que la CI n'est pas verte, et que les intégrations M03/M11/M20/M22 ne sont pas validées. Aucune migration distante ni aucun merge sans accord explicite.
+**Non terminé tant que** les migrations n'ont pas passé PostgreSQL jetable, que la CI n'est pas verte, et que M11/M22 ainsi que la revue complète M20 ne sont pas validés. Aucune migration distante ni aucun merge sans accord explicite.
