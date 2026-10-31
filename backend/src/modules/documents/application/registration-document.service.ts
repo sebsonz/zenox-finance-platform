@@ -71,12 +71,24 @@ export const registrationDocumentService = {
   },
 
   async remove(issuer:string,subject:string,draftId:string,documentId:string) {
-    const metadata=await pool.query<{storage_path:string}>("SELECT * FROM public.finance_get_registration_document($1,$2,$3,$4)", [issuer,subject,draftId,documentId]);
+    const metadata=await pool.query<{storage_path:string}>(
+      "SELECT * FROM public.finance_get_registration_document($1,$2,$3,$4)",
+      [issuer,subject,draftId,documentId],
+    );
     const row=metadata.rows[0];
     if(!row) throw new RegistrationDocumentError("DOCUMENT_NOT_REMOVABLE","Ce justificatif ne peut plus être supprimé.");
+    const marked=await pool.query<{finance_remove_registration_document:boolean}>(
+      "SELECT public.finance_remove_registration_document($1,$2,$3,$4) AS finance_remove_registration_document",
+      [issuer,subject,draftId,documentId],
+    );
+    if(!marked.rows[0]?.finance_remove_registration_document) {
+      throw new RegistrationDocumentError("DOCUMENT_NOT_REMOVABLE","Ce justificatif ne peut plus être supprimé.");
+    }
     const deleted=await storageRequest(row.storage_path,{method:"DELETE"});
-    if(!deleted.ok && deleted.status!==404) throw new RegistrationDocumentError("DOCUMENT_STORAGE_FAILED","Le fichier n’a pas pu être supprimé.");
-    const marked=await pool.query<{finance_remove_registration_document:boolean}>("SELECT public.finance_remove_registration_document($1,$2,$3,$4) AS finance_remove_registration_document", [issuer,subject,draftId,documentId]);
-    if(!marked.rows[0]?.finance_remove_registration_document) throw new RegistrationDocumentError("DOCUMENT_NOT_REMOVABLE","Ce justificatif ne peut plus être supprimé.");
-  },
+    if(!deleted.ok && deleted.status!==404) {
+      // Metadata is already tombstoned; never restore browser access to the object.
+      // An operator/storage cleanup can retry deletion without exposing the file.
+      throw new RegistrationDocumentError("DOCUMENT_STORAGE_CLEANUP_PENDING","Le fichier est marqué supprimé; son nettoyage du stockage reste à terminer.");
+    }
+  }
 };
