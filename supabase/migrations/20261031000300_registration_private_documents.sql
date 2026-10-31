@@ -38,8 +38,16 @@ BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'finance_runtime') THEN REVOKE ALL ON TABLE public.finance_registration_documents FROM finance_runtime; END IF;
 END
 $revokes$;
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES ('zenox-registration-documents','zenox-registration-documents',false,10485760,ARRAY['application/pdf','image/jpeg','image/png']::text[])
-ON CONFLICT (id) DO UPDATE SET public=false,file_size_limit=10485760,allowed_mime_types=ARRAY['application/pdf','image/jpeg','image/png']::text[];
+-- Supabase provides storage.buckets. Plain PostgreSQL CI does not, so keep the
+-- schema migration testable there while still provisioning the private bucket on Supabase.
+DO $bucket$
+BEGIN
+  IF to_regclass('storage.buckets') IS NOT NULL THEN
+    INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    VALUES ('zenox-registration-documents','zenox-registration-documents',false,10485760,ARRAY['application/pdf','image/jpeg','image/png']::text[])
+    ON CONFLICT (id) DO UPDATE SET public=false,file_size_limit=10485760,allowed_mime_types=ARRAY['application/pdf','image/jpeg','image/png']::text[];
+  END IF;
+END
+$bucket$;
 COMMENT ON TABLE public.finance_registration_documents IS
   'Private onboarding evidence metadata. Browser-facing roles have no direct access.';
