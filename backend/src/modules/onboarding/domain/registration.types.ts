@@ -38,9 +38,9 @@ export interface RegistrationContact {
 
 export interface RegistrationPayload {
   readonly organization: RegistrationOrganization;
-  readonly address: RegistrationAddress | null;
-  readonly representative: RegistrationRepresentative | null;
-  readonly contact: RegistrationContact | null;
+  readonly address: RegistrationAddress;
+  readonly representative: RegistrationRepresentative;
+  readonly contact: RegistrationContact;
 }
 
 export interface RegistrationDraft {
