@@ -74,6 +74,10 @@ integrationDescribe("organization onboarding drafts PostgreSQL functions", () =>
     expect(draftId).toBeTruthy();
     expect(created.rows[0]?.payload).toMatchObject(payload);
 
+    await expect(runtimePool.query(
+      "SELECT * FROM public.finance_registration_drafts",
+    )).rejects.toMatchObject({ code: "42501" });
+
     const resumed = await runtimePool.query<{ draft_id: string; status: string }>(
       `SELECT draft_id, status
          FROM public.finance_get_current_registration_draft($1, $2)`,
@@ -116,6 +120,11 @@ integrationDescribe("organization onboarding drafts PostgreSQL functions", () =>
       request_id: request?.request_id,
       tenant_id: request?.tenant_id,
     });
+
+    await expect(runtimePool.query(
+      `SELECT * FROM public.finance_create_registration_draft($1, $2, $3::jsonb)`,
+      [issuer, subject, JSON.stringify(updatedPayload)],
+    )).rejects.toMatchObject({ code: "P0001", message: "REGISTRATION_ALREADY_SUBMITTED" });
 
     const stored = await adminPool.query<{
       status: string; accepted_privacy_version: string; registration_data: { organization: { tradeName: string } };
