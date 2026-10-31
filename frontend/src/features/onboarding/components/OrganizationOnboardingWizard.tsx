@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import countries from "i18n-iso-countries";
 import { Building2, CheckCircle2, ChevronLeft, ChevronRight, FileText, LoaderCircle, Save, ShieldCheck, Trash2, Upload } from "lucide-react";
 import "./OrganizationOnboardingWizard.css";
 
@@ -30,6 +31,53 @@ const steps = ["Organisation", "Adresse", "Représentant & contact", "Justificat
 const documentTypes = ["BUSINESS_REGISTRATION", "TAX_REGISTRATION", "IDENTITY_DOCUMENT", "PROOF_OF_ADDRESS", "AUTHORIZATION_LETTER", "OTHER"] as const;
 type RegistrationDocument = { id: string; document_type: string; original_filename: string; status: string };
 type RegistrationRequirement = { requirement_id: string; requirement_code: string; title: string; description: string; is_required: boolean; accepted_document_types: string[]; source_authority: string; source_reference: string };
+
+const countryDisplayNames = new Intl.DisplayNames(["fr"], { type: "region" });
+
+const countryOptions = Object.keys(countries.getAlpha2Codes())
+  .map((code) => ({ code, name: countryDisplayNames.of(code) ?? code }))
+  .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+
+function CountrySelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (code: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const normalizedSearch = search.trim().toLocaleLowerCase("fr");
+  const filteredCountries = countryOptions.filter((country) =>
+    `${country.name} ${country.code}`.toLocaleLowerCase("fr").includes(normalizedSearch),
+  );
+
+  return (
+    <div className="country-select">
+      <input
+        type="search"
+        aria-label="Rechercher un pays"
+        placeholder="Rechercher un pays..."
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+      />
+      <select
+        required
+        aria-label="Pays"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {!filteredCountries.some((country) => country.code === value) && value && (
+          <option value={value}>{value}</option>
+        )}
+        {filteredCountries.map((country) => (
+          <option key={country.code} value={country.code}>
+            {country.name} ({country.code})
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 export function OrganizationOnboardingWizard({
   currencies,
@@ -198,7 +246,7 @@ export function OrganizationOnboardingWizard({
         <label>Raison sociale<input required minLength={2} maxLength={200} value={payload.organization.legalName} onChange={(event) => update("organization", { legalName: event.target.value })} placeholder="Nom légal de l’organisation"/></label>
         <label>Nom commercial (facultatif)<input maxLength={200} value={payload.organization.tradeName ?? ""} onChange={(event) => update("organization", { tradeName: event.target.value || null })}/></label>
         <div className="registration-form-grid">
-          <label>Pays d’établissement<input required minLength={2} maxLength={2} pattern="[A-Za-z]{2}" value={payload.organization.countryCode} onChange={(event) => { const code = event.target.value.toUpperCase(); update("organization", { countryCode: code }); update("address", { countryCode: code }); }} placeholder="BJ"/><small>Code ISO 3166-1 alpha-2</small></label>
+          <label>Pays d’établissement<CountrySelect value={payload.organization.countryCode} onChange={(code) => { update("organization", { countryCode: code }); update("address", { countryCode: code }); }}/><small>Choisissez le pays de domiciliation de votre organisation. Le code ISO 3166-1 alpha-2 est enregistré.</small></label>
           <label>Devise par défaut<select required value={payload.organization.defaultCurrency} onChange={(event) => update("organization", { defaultCurrency: event.target.value })} disabled={!currencies.length}><option value="">Sélectionner</option>{currencies.map((currency) => <option key={currency.code} value={currency.code}>{currency.code} — {currency.name}</option>)}</select></label>
         </div>
         <label>Forme juridique<input maxLength={80} value={payload.organization.legalForm ?? ""} onChange={(event) => update("organization", { legalForm: event.target.value || null })} placeholder="Ex. SARL, SA, entreprise individuelle"/></label>
@@ -214,7 +262,7 @@ export function OrganizationOnboardingWizard({
         </div>
         <div className="registration-form-grid">
           <label>Code postal<input maxLength={24} value={payload.address.postalCode ?? ""} onChange={(event) => update("address", { postalCode: event.target.value || null })}/></label>
-          <label>Pays<input required minLength={2} maxLength={2} pattern="[A-Za-z]{2}" value={payload.address.countryCode} onChange={(event) => update("address", { countryCode: event.target.value.toUpperCase() })}/></label>
+          <label>Pays<CountrySelect value={payload.address.countryCode} onChange={(code) => update("address", { countryCode: code})}/></label>
         </div>
       </>}
       {step === 2 && <>
