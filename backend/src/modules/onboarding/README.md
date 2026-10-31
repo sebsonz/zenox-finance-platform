@@ -37,8 +37,8 @@ Les anciennes routes `/organizations` et les fonctions SQL existantes restent en
 - Les tables privées ont RLS ENABLE et FORCE ; les rôles navigateur n'ont aucun accès direct.
 - Le payload ne collecte pas de numéro fiscal brut. Les identifiants fiscaux/réglementaires sont exclus jusqu'à l'intégration du chiffrement et de l'empreinte HMAC définis par M03.
 - Le transfert M03 du profil général et de l'adresse à l'approbation est implémenté par la migration `20261031000200_registration_approval_tenant_profile_handoff.sql` ; il reste à valider sur PostgreSQL jetable.
-- Les pièces justificatives restent à intégrer par M11 Documents ; aucun stockage fictif n'est utilisé.
-- Les exigences pays restent à intégrer par M22 Compliance à partir de sources réglementaires approuvées ; aucune obligation légale n'est inventée.
+- Les pièces justificatives M11 disposent d'un stockage privé Supabase, de fonctions SQL à périmètre limité, d'une vérification de signature, d'une interface de dépôt candidat et de routes de revue opérateur M20. Antivirus, rétention, audit formel et tests Storage réels restent à faire.
+- M22 fournit un registre versionné et une route de lecture des exigences approuvées par juridiction et forme juridique. Aucune exigence n'est préchargée ; l'absence de configuration n'est jamais présentée comme une absence d'obligation. La gouvernance opérateur et la validation juridique restent à faire.
 
 ## Migration
 
@@ -52,4 +52,4 @@ Les anciennes routes `/organizations` et les fonctions SQL existantes restent en
 - Frontend : parcours multiétape, erreurs, reprise, validations HTML et consentements séparés.
 - CI : backend typecheck/build, migrations, drift-check, tests et frontend typecheck/build.
 
-**Non terminé tant que** les migrations n'ont pas passé PostgreSQL jetable, que la CI n'est pas verte, et que M11/M22 ainsi que la revue complète M20 ne sont pas validés. Aucune migration distante ni aucun merge sans accord explicite.
+**Non terminé tant que** les migrations n'ont pas passé PostgreSQL jetable, que la CI n'est pas verte, que les tests Storage réels et antivirus/rétention ne sont pas traités, que l'interface opérateur M20 n'est pas raccordée et que la gouvernance réglementaire M22 n'est pas validée. Aucune migration distante ni aucun merge sans accord explicite.
