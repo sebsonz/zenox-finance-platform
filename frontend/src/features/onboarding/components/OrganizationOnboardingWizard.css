@@ -89,3 +89,8 @@
   .onboarding-stepper { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .onboarding-form-grid { grid-template-columns: 1fr; }
 }
+
+.country-select {
+  display: grid;
+  gap: 0.45rem;
+}
