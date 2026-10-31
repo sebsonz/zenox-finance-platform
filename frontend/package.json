@@ -18,7 +18,8 @@
     "typescript": "^5.9.3",
     "vite": "^8.3.4",
     "react-router": "^7.18.5",
-    "@zenox/finance-workspace": "file:.."
+    "@zenox/finance-workspace": "file:..",
+    "i18n-iso-countries": "^7.14.0"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
