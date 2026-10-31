@@ -50,7 +50,11 @@ function sendError(error: unknown, res: Response, next: (error?: unknown) => voi
     return;
   }
   if (db.code === "P0001") {
-    res.status(409).json({ error: { code: db.message ?? "REGISTRATION_DRAFT_NOT_EDITABLE", message: "Ce brouillon ne peut plus être modifié." } });
+    const pending = db.message === "REGISTRATION_ALREADY_SUBMITTED";
+    res.status(409).json({ error: {
+      code: pending ? "REGISTRATION_ALREADY_SUBMITTED" : (db.message ?? "REGISTRATION_DRAFT_NOT_EDITABLE"),
+      message: pending ? "Une demande d’organisation est déjà en cours pour ce compte." : "Ce brouillon ne peut plus être modifié.",
+    } });
     return;
   }
   if (db.code === "22023") {
