@@ -39,6 +39,16 @@ export const onboardingRepository = {
     return { id: row.draft_id, payload: row.payload, status: "DRAFT", createdAt: row.created_at.toISOString(), updatedAt: row.updated_at.toISOString() };
   },
 
+  async findCurrentDraft(identityIssuer: string, identitySubject: string): Promise<RegistrationDraft | null> {
+    const result = await pool.query<DraftRow & { status: "DRAFT" | "SUBMITTED" }>(
+      `SELECT draft_id, payload, status, created_at, updated_at
+         FROM public.finance_get_current_registration_draft($1, $2)`,
+      [identityIssuer, identitySubject],
+    );
+    const row = result.rows[0];
+    return row ? { id: row.draft_id, payload: row.payload, status: row.status, createdAt: row.created_at.toISOString(), updatedAt: row.updated_at.toISOString() } : null;
+  },
+
   async findDraft(identityIssuer: string, identitySubject: string, draftId: string): Promise<RegistrationDraft | null> {
     const result = await pool.query<DraftRow & { status: "DRAFT" | "SUBMITTED" }>(
       `SELECT draft_id, payload, status, created_at, updated_at
