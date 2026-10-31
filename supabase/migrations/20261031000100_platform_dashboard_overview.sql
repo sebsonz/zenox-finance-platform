@@ -17,7 +17,7 @@ BEGIN
   END IF;
 
   SELECT jsonb_build_object(
-    'generatedAt', clock_timestamp(),
+    'generatedAt', statement_timestamp(),
     'organizations', (
       SELECT jsonb_build_object(
         'total', count(*)::bigint,
@@ -51,7 +51,7 @@ BEGIN
       ) FROM public.finance_invoices
     ),
     'registrationTrend', (
-      SELECT coalesce(jsonb_agg(jsonb_build_object('date', d.day::text, 'count', coalesce(r.total, 0)::bigint) ORDER BY d.day), '[]'::jsonb)
+      SELECT coalesce(jsonb_agg(jsonb_build_object('date', d.day::date::text, 'count', coalesce(r.total, 0)::bigint) ORDER BY d.day), '[]'::jsonb)
       FROM generate_series(current_date - 13, current_date, interval '1 day') AS d(day)
       LEFT JOIN (
         SELECT submitted_at::date AS day, count(*) AS total
