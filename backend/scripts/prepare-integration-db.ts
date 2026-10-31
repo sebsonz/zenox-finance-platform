@@ -162,6 +162,7 @@ async function prepare(): Promise<void> {
     await client.query("GRANT EXECUTE ON FUNCTION public.finance_get_my_registration_request(text, text, uuid) TO finance_runtime_test");
     await client.query("GRANT EXECUTE ON FUNCTION public.finance_is_active_platform_operator(text, text) TO finance_runtime_test");
     await client.query("GRANT EXECUTE ON FUNCTION public.finance_list_pending_registration_requests(text, text) TO finance_runtime_test");
+    await client.query("GRANT EXECUTE ON FUNCTION public.finance_get_platform_dashboard_overview(text, text) TO finance_runtime_test");
     await client.query("GRANT EXECUTE ON FUNCTION public.finance_review_registration_request(text, text, uuid, text, text, text) TO finance_runtime_test");
     await client.query("REVOKE ALL ON TABLE public.finance_user_tenant_memberships FROM finance_runtime_test");
     await client.query("REVOKE ALL ON TABLE public.finance_user_tenant_memberships FROM PUBLIC");
