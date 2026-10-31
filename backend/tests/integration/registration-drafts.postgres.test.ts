@@ -144,5 +144,54 @@ integrationDescribe("organization onboarding drafts PostgreSQL functions", () =>
       [request?.tenant_id],
     );
     expect(tenantCount.rows[0]?.count).toBe("1");
+
+    const operatorIssuer = "https://platform.example.test";
+    const operatorSubject = randomUUID();
+    await adminPool.query(
+      `INSERT INTO public.finance_platform_operators
+        (identity_issuer, identity_subject, role_code, status)
+       VALUES ($1, $2, 'PLATFORM_ADMIN', 'ACTIVE')`,
+      [operatorIssuer, operatorSubject],
+    );
+
+    const decision = await runtimePool.query<{ status: string }>(
+      `SELECT status
+         FROM public.finance_review_registration_request($1, $2, $3, 'APPROVE', NULL, $4)`,
+      [operatorIssuer, operatorSubject, request?.request_id, `approval-${suffix}`],
+    );
+    expect(decision.rows[0]?.status).toBe("APPROVED");
+
+    const approvedTenant = await adminPool.query<{ status: string }>(
+      "SELECT status FROM public.finance_tenants WHERE id = $1",
+      [request?.tenant_id],
+    );
+    expect(approvedTenant.rows[0]?.status).toBe("ACTIVE");
+
+    const profile = await adminPool.query<{
+      trade_name: string | null; general_email: string | null;
+    }>(
+      `SELECT trade_name, general_email
+         FROM public.finance_tenant_profiles WHERE tenant_id = $1`,
+      [request?.tenant_id],
+    );
+    expect(profile.rows[0]).toMatchObject({
+      trade_name: "Updated Trade",
+      general_email: "contact@example.test",
+    });
+
+    const registeredAddress = await adminPool.query<{
+      address_type: string; address_line1: string; city: string; country_code: string;
+    }>(
+      `SELECT address_type, address_line1, city, country_code
+         FROM public.finance_tenant_addresses
+        WHERE tenant_id = $1 AND status = 'ACTIVE'`,
+      [request?.tenant_id],
+    );
+    expect(registeredAddress.rows[0]).toMatchObject({
+      address_type: "REGISTERED",
+      address_line1: "Rue de test",
+      city: "Cotonou",
+      country_code: "BJ",
+    });
   });
 });
