@@ -52,7 +52,7 @@ export function OrganizationOnboardingWizard({
         if (!response.ok) throw new Error(result.error?.message ?? "Impossible de reprendre le brouillon.");
         if (active && result.data?.draft) {
           setDraftId(result.data.draft.id);
-          setPayload({ ...initialPayload, ...result.data.draft.payload });
+          setPayload({ ...initialPayload, ...result.data.draft.payload } as Payload);
           setNotice("Votre brouillon précédent a été récupéré.");
         }
       })
