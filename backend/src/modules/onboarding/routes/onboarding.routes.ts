@@ -61,6 +61,16 @@ function sendError(error: unknown, res: Response, next: (error?: unknown) => voi
   next(error);
 }
 
+onboardingRouter.get("/drafts/current", requireUserAuth(), async (req, res, next) => {
+  const user = context(req, res);
+  if (!user) return;
+  try {
+    const draft = await onboardingService.getCurrentDraft(user);
+    res.setHeader("Cache-Control", "no-store");
+    res.status(200).json({ data: { draft } });
+  } catch (error) { sendError(error, res, next); }
+});
+
 onboardingRouter.post("/drafts", requireUserAuth(), async (req, res, next) => {
   if (!sameOrigin(req)) {
     res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origine de requête non autorisée." } });
