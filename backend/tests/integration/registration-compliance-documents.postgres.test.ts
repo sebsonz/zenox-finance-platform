@@ -75,4 +75,51 @@ suite("M11 documents and M22 registration compliance PostgreSQL boundaries", () 
     );
     expect(removed.rows[0]?.finance_remove_registration_document).toBe(true);
   });
+
+  it("allows an active platform operator to review evidence only after submission", async () => {
+    const issuer = "https://auth.example.test";
+    const subject = randomUUID();
+    const suffix = randomUUID().slice(0,8);
+    const payload = {
+      organization:{legalName:"Review Test " + suffix,tradeName:null,legalForm:"SARL",countryCode:"BJ",defaultCurrency:"XOF",registrationNumber:null},
+      address:{addressType:"REGISTERED",addressLine1:"Rue de test",addressLine2:null,city:"Cotonou",region:"Littoral",postalCode:null,countryCode:"BJ"},
+      representative:{fullName:"Review Owner",role:"Gérant",email:"owner@example.test",phone:null},
+      contact:{businessEmail:"contact@example.test",businessPhone:null,websiteUrl:null},
+    };
+    const draft = await runtime.query<{draft_id:string}>(
+      "SELECT draft_id FROM public.finance_create_registration_draft($1,$2,$3::jsonb)",
+      [issuer,subject,JSON.stringify(payload)],
+    );
+    const draftId = draft.rows[0]?.draft_id;
+    const documentId = randomUUID();
+    await runtime.query(
+      "SELECT * FROM public.finance_create_registration_document($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+      [documentId,draftId,issuer,subject,"BUSINESS_REGISTRATION","proof.pdf","application/pdf",5,"b".repeat(64),draftId + "/" + documentId],
+    );
+    const submitted = await runtime.query<{request_id:string}>(
+      "SELECT request_id FROM public.finance_submit_registration_draft($1,$2,$3,$4,$5,$6)",
+      [issuer,subject,draftId,"terms-v1","privacy-v1","review-" + suffix],
+    );
+    const requestId = submitted.rows[0]?.request_id;
+    expect(requestId).toBeTruthy();
+
+    const operatorIssuer = "https://platform.example.test";
+    const operatorSubject = randomUUID();
+    await admin.query(
+      "INSERT INTO public.finance_platform_operators (identity_issuer,identity_subject,role_code,status) VALUES ($1,$2,'PLATFORM_ADMIN','ACTIVE')",
+      [operatorIssuer,operatorSubject],
+    );
+    const listed = await runtime.query<{id:string}>(
+      "SELECT id FROM public.finance_list_registration_documents_for_review($1,$2,$3)",
+      [operatorIssuer,operatorSubject,requestId],
+    );
+    expect(listed.rows.map((row)=>row.id)).toContain(documentId);
+
+    const reviewed = await runtime.query<{status:string}>(
+      "SELECT status FROM public.finance_review_registration_document($1,$2,$3,$4,'ACCEPT',NULL)",
+      [operatorIssuer,operatorSubject,requestId,documentId],
+    );
+    expect(reviewed.rows[0]?.status).toBe("ACCEPTED");
+  });
+
 });
