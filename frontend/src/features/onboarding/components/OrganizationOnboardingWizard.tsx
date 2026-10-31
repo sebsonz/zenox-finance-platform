@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Building2, CheckCircle2, ChevronLeft, ChevronRight, LoaderCircle, Save, ShieldCheck } from "lucide-react";
+import "./OrganizationOnboardingWizard.css";
 
 type Currency = { code: string; name: string; minorUnit: number };
 type Payload = {
@@ -136,20 +137,20 @@ export function OrganizationOnboardingWizard({
     }
   }
 
-  return <section className="registration-form">
+  return <section className="onboarding-wizard">
     <div className="registration-status">
       <Building2 size={18}/>
       <div><strong>Inscription de votre organisation</strong><p>Les informations sont sauvegardées à chaque étape. Vous pourrez reprendre ce dossier avant sa soumission.</p></div>
     </div>
-    <div className="registration-steps" aria-label="Étapes du dossier">
-      {steps.map((label, index) => <div key={label} aria-current={step === index ? "step" : undefined} className={step === index ? "active" : index < step ? "complete" : ""}>
+    <div className="onboarding-stepper" aria-label="Étapes du dossier">
+      {steps.map((label, index) => <div key={label} aria-current={step === index ? "step" : undefined} className={step === index ? "active" : index < step ? "complete" : "upcoming"}>
         <span>{index < step ? <CheckCircle2 size={16}/> : String(index + 1).padStart(2, "0")}</span><p><strong>{label}</strong></p>
       </div>)}
     </div>
     {notice && <div className="registration-notice"><CheckCircle2 size={17}/><span>{notice}</span></div>}
     {error && <div className="registration-error" role="alert">{error}</div>}
 
-    {step < 3 ? <form onSubmit={handleNext}>
+    {step < 3 ? <form className="onboarding-form" onSubmit={handleNext}>
       {step === 0 && <>
         <label>Raison sociale<input required minLength={2} maxLength={200} value={payload.organization.legalName} onChange={(event) => update("organization", { legalName: event.target.value })} placeholder="Nom légal de l’organisation"/></label>
         <label>Nom commercial (facultatif)<input maxLength={200} value={payload.organization.tradeName ?? ""} onChange={(event) => update("organization", { tradeName: event.target.value || null })}/></label>
@@ -190,7 +191,7 @@ export function OrganizationOnboardingWizard({
         </button>
         {step > 0 && <button type="button" className="registration-signout" disabled={busy} onClick={() => setStep((current) => current - 1)}><ChevronLeft size={17}/> Retour</button>}
       </div>
-    </form> : <form onSubmit={submit}>
+    </form> : <form className="onboarding-form" onSubmit={submit}>
       <h3>Vérifiez les informations avant l’envoi</h3>
       <div className="registration-status"><div><strong>{payload.organization.legalName}</strong><p>{payload.organization.tradeName ?? "Sans nom commercial"} · {payload.organization.countryCode} · {payload.organization.defaultCurrency}</p><small>{payload.address.addressLine1}, {payload.address.city}, {payload.address.countryCode}</small><p>{payload.representative.fullName} — {payload.representative.role}</p><small>{payload.contact.businessEmail}</small></div></div>
       <label className="registration-consent"><input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)}/><span>J’accepte les conditions d’utilisation, version {TERMS_VERSION}.</span></label>
