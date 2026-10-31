@@ -106,6 +106,16 @@ export const registrationRepository = {
     return result.rows[0]?.is_active === true;
   },
 
+  async getPlatformDashboardOverview(identityIssuer: string, identitySubject: string): Promise<Record<string, unknown>> {
+    const result = await pool.query<{ overview: Record<string, unknown> }>(
+      "SELECT public.finance_get_platform_dashboard_overview($1, $2) AS overview",
+      [identityIssuer, identitySubject],
+    );
+    const overview = result.rows[0]?.overview;
+    if (!overview) throw new Error("PLATFORM_DASHBOARD_OVERVIEW_UNAVAILABLE");
+    return overview;
+  },
+
   async listPendingForOperator(identityIssuer: string, identitySubject: string): Promise<PendingReviewRecord[]> {
     const result = await pool.query<PendingReviewRecord>(
       `SELECT request_id, tenant_id, legal_name, country_code, default_currency, submitted_at
