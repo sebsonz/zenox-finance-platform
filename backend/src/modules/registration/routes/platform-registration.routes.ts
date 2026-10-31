@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { requireUserAuth } from "../../../middleware/require-user-auth.js";
 import { registrationRepository } from "../repositories/registration.repository.js";
+import { registrationDocumentReviewRouter } from "../../documents/routes/registration-document-review.routes.js";
 
 export const platformRegistrationRouter = Router();
 
@@ -148,3 +149,6 @@ platformRegistrationRouter.post("/registration-requests/:requestId/decision", re
     next(error);
   }
 });
+
+// Operator-only document review endpoints for a submitted registration request.
+platformRegistrationRouter.use("/registration-requests/:requestId/documents", registrationDocumentReviewRouter);
