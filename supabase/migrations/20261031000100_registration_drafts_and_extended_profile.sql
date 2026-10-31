@@ -274,3 +274,35 @@ $grants$;
 
 COMMENT ON TABLE public.finance_registration_drafts IS
   'Private pre-submission organization onboarding drafts. Access only through identity-scoped SECURITY DEFINER functions.';
+
+CREATE OR REPLACE FUNCTION public.finance_get_current_registration_draft(
+  p_identity_issuer text,
+  p_identity_subject text
+)
+RETURNS TABLE (draft_id uuid, payload jsonb, status text, created_at timestamptz, updated_at timestamptz)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+  SELECT d.id, d.payload, d.status, d.created_at, d.updated_at
+    FROM public.finance_registration_drafts d
+   WHERE d.identity_issuer = p_identity_issuer
+     AND d.identity_subject = p_identity_subject
+     AND d.status = 'DRAFT'
+   ORDER BY d.updated_at DESC
+   LIMIT 1
+$function$;
+
+REVOKE ALL ON FUNCTION public.finance_get_current_registration_draft(text, text) FROM PUBLIC;
+
+DO $current_draft_grants$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    GRANT EXECUTE ON FUNCTION public.finance_get_current_registration_draft(text, text) TO service_role;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'finance_runtime') THEN
+    GRANT EXECUTE ON FUNCTION public.finance_get_current_registration_draft(text, text) TO finance_runtime;
+  END IF;
+END
+$current_draft_grants$;
