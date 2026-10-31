@@ -46,7 +46,9 @@ export const registrationDocumentService = {
     const id = randomUUID();
     const path = `${input.draftId}/${id}`;
     const digest = createHash("sha256").update(input.bytes).digest("hex");
-    const uploaded = await storageRequest(path,{method:"POST",headers:{"content-type":input.contentType,"x-upsert":"false"},body:input.bytes});
+    // Copy Buffer into a plain Uint8Array backed by an ArrayBuffer for the DOM Fetch BodyInit type.
+    const uploadBody = Uint8Array.from(input.bytes);
+    const uploaded = await storageRequest(path,{method:"POST",headers:{"content-type":input.contentType,"x-upsert":"false"},body:uploadBody});
     if (!uploaded.ok) throw new RegistrationDocumentError("DOCUMENT_STORAGE_FAILED", "Le fichier n’a pas pu être stocké de manière sécurisée.");
     try {
       const saved = await pool.query("SELECT * FROM public.finance_create_registration_document($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", [id,input.draftId,input.issuer,input.subject,input.type,filename,input.contentType,input.bytes.length,digest,path]);
