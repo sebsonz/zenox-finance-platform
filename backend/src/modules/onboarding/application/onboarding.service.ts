@@ -23,6 +23,11 @@ export const onboardingService = {
     return onboardingRepository.updateDraft(context.identityIssuer, context.identitySubject, draftId, payload);
   },
 
+  async getCurrentDraft(context: OnboardingUserContext): Promise<RegistrationDraft | null> {
+    assertConfirmed(context);
+    return onboardingRepository.findCurrentDraft(context.identityIssuer, context.identitySubject);
+  },
+
   async getDraft(context: OnboardingUserContext, draftId: string): Promise<RegistrationDraft | null> {
     assertConfirmed(context);
     return onboardingRepository.findDraft(context.identityIssuer, context.identitySubject, draftId);
