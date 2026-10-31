@@ -12,7 +12,7 @@ interface DraftRow {
 interface SubmittedRow {
   request_id: string;
   tenant_id: string;
-  status: "PENDING";
+  status: "PENDING" | "APPROVED" | "REJECTED";
   submitted_at: Date;
 }
 
