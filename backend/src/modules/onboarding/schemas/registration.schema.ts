@@ -23,18 +23,18 @@ export const registrationPayloadSchema = z.object({
     region: nullableText(120).default(null),
     postalCode: nullableText(24).default(null),
     countryCode,
-  }).strict().nullable().default(null),
+  }).strict(),
   representative: z.object({
     fullName: z.string().trim().min(2).max(200),
     role: z.string().trim().min(2).max(100),
     email,
     phone,
-  }).strict().nullable().default(null),
+  }).strict(),
   contact: z.object({
     businessEmail: email,
     businessPhone: phone,
     websiteUrl: z.string().trim().url().max(2048).nullable().default(null),
-  }).strict().nullable().default(null),
+  }).strict(),
 }).strict();
 
 export const registrationConsentSchema = z.object({
