@@ -1,4 +1,4 @@
--- Seed the active ISO 4217 currency reference used by ZENOX Finance.
+-- Seed a reviewed set of active ISO 4217 currencies used by ZENOX Finance.
 -- Source: SIX, official ISO 4217 Maintenance Agency, List One (current currencies).
 -- This migration is additive and idempotent. Historical and fund-only codes are excluded.
 
@@ -16,7 +16,6 @@ VALUES
   ('BAM', 'Convertible Mark', 2, true, 'ISO_4217_SIX_LIST_ONE'),
   ('BBD', 'Barbados Dollar', 2, true, 'ISO_4217_SIX_LIST_ONE'),
   ('BDT', 'Taka', 2, true, 'ISO_4217_SIX_LIST_ONE'),
-  ('BGN', 'Euro', 2, true, 'ISO_4217_SIX_LIST_ONE'),
   ('BHD', 'Bahraini Dinar', 3, true, 'ISO_4217_SIX_LIST_ONE'),
   ('BIF', 'Burundi Franc', 0, true, 'ISO_4217_SIX_LIST_ONE'),
   ('BMD', 'Bermudian Dollar', 2, true, 'ISO_4217_SIX_LIST_ONE'),
