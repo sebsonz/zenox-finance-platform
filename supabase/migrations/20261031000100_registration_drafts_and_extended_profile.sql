@@ -85,6 +85,15 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'INVALID_REGISTRATION_DRAFT';
   END IF;
 
+  IF EXISTS (
+    SELECT 1 FROM public.finance_registration_requests r
+     WHERE r.identity_issuer = p_identity_issuer
+       AND r.identity_subject = p_identity_subject
+       AND r.status = 'PENDING'
+  ) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REGISTRATION_ALREADY_SUBMITTED';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM public.finance_currencies c
      WHERE c.code = upper(btrim(p_payload #>> '{organization,defaultCurrency}'))
