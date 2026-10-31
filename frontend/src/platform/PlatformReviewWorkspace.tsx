@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { RegistrationDocumentReview } from "./RegistrationDocumentReview.js";
 import { CheckCircle2, CircleAlert, ClipboardCheck, LoaderCircle, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 
 type PendingRegistration = {
@@ -104,6 +105,7 @@ export function PlatformReviewWorkspace({ searchQuery = "" }: { searchQuery?: st
       : <div className="platform-review-list">{visibleRequests.map((request) => <article className="platform-review-card" key={request.id}>
         <div className="platform-review-card-header"><div><span className="platform-review-status">EN ATTENTE</span><h2>{request.legalName}</h2><p>{request.countryCode} · Devise par défaut : {request.defaultCurrency}</p></div><small>{new Date(request.submittedAt).toLocaleString()}</small></div>
         <p className="platform-review-reference">Référence : {request.id}</p>
+        <RegistrationDocumentReview requestId={request.id} />
         <label className="platform-review-reason">Motif de refus (obligatoire uniquement en cas de refus)<textarea value={reasons[request.id] ?? ""} onChange={(event) => setReasons((current) => ({ ...current, [request.id]: event.target.value }))} minLength={10} maxLength={1000} placeholder="Expliquez les informations manquantes ou non vérifiables…"/></label>
         <div className="platform-review-actions">
           <button type="button" className="platform-review-reject" disabled={Boolean(busyId)} onClick={() => void decide(request, "REJECT")}>{busyId === request.id ? <LoaderCircle size={16} className="spin"/> : <XCircle size={16}/>} Refuser</button>
