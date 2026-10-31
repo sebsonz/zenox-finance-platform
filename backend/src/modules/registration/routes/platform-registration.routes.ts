@@ -65,6 +65,25 @@ function sendReviewError(error: unknown, res: Response): boolean {
   return false;
 }
 
+platformRegistrationRouter.get("/dashboard-overview", requireUserAuth(), async (req, res, next) => {
+  const user = currentOperator(req, res);
+  if (!user) return;
+  try {
+    const overview = await registrationRepository.getPlatformDashboardOverview(user.issuer, user.id);
+    res.setHeader("Cache-Control", "no-store");
+    res.status(200).json({ data: { overview } });
+  } catch (error) {
+    const databaseError = error as { code?: string; message?: string };
+    if (databaseError.code === "42501") {
+      res.status(403).json({
+        error: { code: "PLATFORM_OPERATOR_REQUIRED", message: "Une autorisation d’administration de la plateforme est requise." },
+      });
+      return;
+    }
+    next(error);
+  }
+});
+
 platformRegistrationRouter.get("/me", requireUserAuth(), async (req, res, next) => {
   const user = currentOperator(req, res);
   if (!user) return;
