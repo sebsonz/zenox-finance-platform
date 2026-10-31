@@ -10,6 +10,7 @@ import { userTenantProfileRouter } from "../../tenants/routes/user-tenant-profil
 import { registrationRouter } from "../../registration/routes/registration.routes.js";
 import { platformRegistrationRouter } from "../../registration/routes/platform-registration.routes.js";
 import { onboardingRouter } from "../../onboarding/routes/onboarding.routes.js";
+import { registrationDocumentRouter } from "../../documents/routes/registration-document.routes.js";
 
 /** Composes authenticated user, tenant and platform-registration endpoints. */
 export const userAuthRouter = Router();
@@ -21,6 +22,7 @@ userAuthRouter.use("/", userTenantMemberManagementRouter);
 userAuthRouter.use("/", userSessionRouter);
 userAuthRouter.use("/registration", registrationRouter);
 userAuthRouter.use("/registration", onboardingRouter);
+userAuthRouter.use("/registration/drafts/:draftId/documents", registrationDocumentRouter);
 userAuthRouter.use("/platform", platformRegistrationRouter);
 userAuthRouter.use("/tenants", userInvoiceRouter);
 userAuthRouter.use("/tenants", userCustomerRouter);
