@@ -2,7 +2,8 @@
 Date: 2026-10-31
 Branch: `feat/m02-complete-organization-onboarding`
 Base: `feat/m02-m21-tenant-onboarding-integration-foundation`
-Current branch HEAD at checkpoint creation: `ebc2101c7c34ef20865330d62806140543f359d9`
+Implementation branch HEAD before checkpoint refresh: `09a784801a23496938f5596b5b09a0973a43a2a2`
+Draft PR: [#23](https://github.com/sebsonz/zenox-finance-platform/pull/23)
 
 ## Objectif
 Construire le parcours d'inscription des organisations dans GitHub avant import dans le workspace local, sans créer de dossier de travail parallèle. Une fonctionnalité ne sera déclarée terminée qu'après implémentation complète, tests sur PostgreSQL jetable, CI verte et revue des frontières modulaires.
@@ -26,6 +27,7 @@ Construire le parcours d'inscription des organisations dans GitHub avant import 
 - PR #14 reste ouverte, DRAFT et non fusionnée.
 - Aucune modification de ZENOX FRET V2.
 - Aucun import local, aucune modification de fichiers locaux.
+- PR #23 créée en mode DRAFT, non fusionnée.
 
 ## Validation non encore acquise
 Les tests n'ont pas été exécutés dans un runtime local/CI depuis cette série de commits. Ne pas présenter cette branche comme validée ou M02 terminé avant :
