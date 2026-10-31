@@ -1,5 +1,20 @@
-# Squelette de module
+# M02 — Parcours frontend Onboarding
 
-Dossier réservé au domaine décrit dans l'architecture modulaire ZENOX Finance. Ce fichier ne signifie pas que la fonctionnalité est implémentée.
+Le composant `OrganizationOnboardingWizard` est intégré au parcours d'inscription existant `RegistrationWorkspace`. Il ne remplace pas les fonctions d'authentification, confirmation d'e-mail, récupération ou réinitialisation du mot de passe.
 
-Compléter progressivement les exigences, contrats, validations, autorisations, services, persistance, tests et documentation. Respecter l'isolation multi-tenant, l'audit et les critères d'acceptation du projet.
+## Parcours
+
+1. Identité légale de l'organisation et devise issue du référentiel Finance.
+2. Adresse déclarée.
+3. Représentant et coordonnées professionnelles.
+4. Récapitulatif et consentements distincts aux conditions et à la politique de confidentialité.
+
+Le brouillon est sauvegardé à chaque étape, récupéré au retour sur la page et soumis uniquement à la confirmation finale. Les appels passent par l'API same-origin ; aucun accès direct à Supabase n'est ajouté.
+
+## Limites explicites
+
+Le dépôt de pièces justificatives et l'affichage des exigences par pays ne sont pas simulés. Ils seront intégrés lorsque les contrats backend M11 Documents et M22 Compliance seront effectivement disponibles. Les textes de consentement restent des versions de travail tant que leur validation juridique n'est pas effectuée.
+
+## Validation
+
+Le parcours n'est complet qu'après tests navigateur, contrôle responsive/accessibilité, tests API/PostgreSQL et CI verte sur le SHA livré.
