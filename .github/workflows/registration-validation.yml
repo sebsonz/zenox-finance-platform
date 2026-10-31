@@ -2,9 +2,9 @@ name: ZENOX Finance Registration Validation
 
 on:
   push:
-    branches: [feature/tenant-registration-onboarding]
+    branches: [feature/tenant-registration-onboarding, feat/m02-complete-organization-onboarding]
   pull_request:
-    branches: [feature/tax-rule-extensibility]
+    branches: [feature/tax-rule-extensibility, feat/m02-m21-tenant-onboarding-integration-foundation]
   workflow_dispatch:
 
 permissions:
