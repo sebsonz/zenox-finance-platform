@@ -95,6 +95,25 @@ describe("organization registration routes", () => {
 
   afterEach(() => vi.clearAllMocks());
 
+  it("returns the active currency reference without caching", async () => {
+    mocks.listActive.mockResolvedValue([
+      { code: "EUR", name: "Euro", minorUnit: 2 },
+      { code: "XOF", name: "CFA Franc BCEAO", minorUnit: 0 },
+    ]);
+    const response = await request(app(), "GET", "/registration/currencies");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.body).toEqual({
+      data: {
+        currencies: [
+          { code: "EUR", name: "Euro", minorUnit: 2 },
+          { code: "XOF", name: "CFA Franc BCEAO", minorUnit: 0 },
+        ],
+      },
+    });
+    expect(mocks.listActive).toHaveBeenCalledOnce();
+  });
+
   it("rejects registration submission without a same-origin request", async () => {
     const response = await request(app(), "POST", "/registration/organizations", {
       body: { legalName: "Example Ltd", countryCode: "BJ", defaultCurrency: "XOF", acceptedTermsVersion: "2026-10-draft" },
