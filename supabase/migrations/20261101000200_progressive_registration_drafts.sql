@@ -175,9 +175,9 @@ BEGIN
      OR upper(btrim(coalesce(v_addr ->> 'countryCode', ''))) !~ '^[A-Z]{2}$'
      OR length(btrim(coalesce(v_rep ->> 'fullName', ''))) NOT BETWEEN 2 AND 200
      OR length(btrim(coalesce(v_rep ->> 'role', ''))) NOT BETWEEN 2 AND 100
-     OR coalesce(v_rep ->> 'email', '') !~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$'
+     OR coalesce(v_rep ->> 'email', '') !~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+[.][A-Z]{2,}$'
      OR length(btrim(coalesce(v_contact ->> 'businessEmail', ''))) NOT BETWEEN 3 AND 254
-     OR coalesce(v_contact ->> 'businessEmail', '') !~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$' THEN
+     OR coalesce(v_contact ->> 'businessEmail', '') !~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+[.][A-Z]{2,}$' THEN
     RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REGISTRATION_DRAFT_INCOMPLETE';
   END IF;
 
