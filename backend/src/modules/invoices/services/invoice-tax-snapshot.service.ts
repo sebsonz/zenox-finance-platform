@@ -5,6 +5,7 @@ import { invoiceActor } from "../types/invoice-operation-context.js";
 import { recordInvoiceAudit } from "../repositories/invoice-audit.repository.js";
 import { currencyRepository } from "../../currencies/repositories/currency.repository.js";
 import { taxRuleRepository } from "../../tax/repositories/tax-rule.repository.js";
+import { matchesTaxApplicability, resolveApplicableTaxRulePrecedence } from "../../tax/services/tax-applicability.service.js";
 import { taxSnapshotRepository, type TaxCalculationSnapshot } from "../../tax/repositories/tax-snapshot.repository.js";
 import type { CreateTaxSnapshotInput } from "../../tax/validators/tax-snapshot.schema.js";
 import { calculateTaxStack } from "../../tax/engine/tax-stack.engine.js";
@@ -100,12 +101,18 @@ export const invoiceTaxSnapshotService = {
         throw new Error("INVOICE_REQUIRES_AT_LEAST_ONE_LINE");
       }
 
-      const rules = await taxRuleRepository.listEffectiveForJurisdiction(
+      const candidates = await taxRuleRepository.listEffectiveForJurisdiction(
         client,
         input.jurisdictionId,
         input.appliesTo,
         input.taxDate,
       );
+      // Apply declarative business conditions before precedence: an unmatched tenant
+      // override must never hide a matching global rule with the same code.
+      const matchingCandidates = candidates.filter((rule) =>
+        matchesTaxApplicability(rule.applicabilityConditions, input.taxFacts ?? {}),
+      );
+      const rules = resolveApplicableTaxRulePrecedence(matchingCandidates, input.appliesTo);
       if (rules.length === 0) {
         throw new InvoiceTaxSnapshotServiceError(
           "NO_ACTIVE_TAX_RULES",
@@ -232,6 +239,7 @@ export const invoiceTaxSnapshotService = {
           currencyMinorUnit: currency.minorUnit,
           jurisdictionId: input.jurisdictionId,
           taxDate: input.taxDate,
+          taxFacts: input.taxFacts ?? {},
           invoiceTotalsBeforeAuthoritativeTax: {
             subtotal: invoice.subtotal,
             discountTotal: invoice.discount_total,
@@ -271,6 +279,8 @@ export const invoiceTaxSnapshotService = {
           version: rule.version,
           validFrom: rule.validFrom,
           validTo: rule.validTo,
+          accountingTreatment: rule.accountingTreatment,
+          applicabilityConditions: rule.applicabilityConditions,
         })),
       };
 
