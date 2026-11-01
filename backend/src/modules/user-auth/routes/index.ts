@@ -12,6 +12,7 @@ import { platformRegistrationRouter } from "../../registration/routes/platform-r
 import { onboardingRouter } from "../../onboarding/routes/onboarding.routes.js";
 import { registrationDocumentRouter } from "../../documents/routes/registration-document.routes.js";
 import { registrationRequirementsRouter } from "../../compliance/routes/registration-requirements.routes.js";
+import { platformOrganizationLifecycleRouter } from "../../platform-admin/routes/organization-lifecycle.routes.js";
 
 /** Composes authenticated user, tenant and platform-registration endpoints. */
 export const userAuthRouter = Router();
@@ -26,6 +27,7 @@ userAuthRouter.use("/registration", onboardingRouter);
 userAuthRouter.use("/registration/drafts/:draftId/documents", registrationDocumentRouter);
 userAuthRouter.use("/registration/requirements", registrationRequirementsRouter);
 userAuthRouter.use("/platform", platformRegistrationRouter);
+userAuthRouter.use("/platform", platformOrganizationLifecycleRouter);
 userAuthRouter.use("/tenants", userInvoiceRouter);
 userAuthRouter.use("/tenants", userCustomerRouter);
 userAuthRouter.use("/tenants", userTenantProfileRouter);
