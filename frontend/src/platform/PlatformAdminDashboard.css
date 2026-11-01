@@ -32,3 +32,13 @@
 @media(max-width:620px){.platform-document-list>article{grid-template-columns:1fr auto}.platform-document-file{grid-column:1/-1}.platform-document-actions{flex-wrap:wrap}.platform-document-review>header{align-items:flex-start}}
 :root[data-platform-theme="dark"] .platform-document-notice{background:#12392e;color:#8ce0b6}
 :root[data-platform-theme="dark"] .platform-document-error{background:#3b2028;color:#ffb7bd}
+
+.pad-collapse{display:grid;place-items:center;flex:0 0 24px;width:24px;height:26px;margin-left:4px;border:1px solid #2b456d;border-radius:6px;background:#10284d;color:#b9cbe5;cursor:pointer}
+.pad-collapse:hover{background:#17365f;color:#fff}
+.pad-collapsed .pad-collapse svg{transform:rotate(90deg)}
+.pad-collapsed .pad-brand{justify-content:center;padding-inline:0}
+.pad-collapsed .pad-brand .zf-brand-wordmark,.pad-collapsed .pad-brand-context,.pad-collapsed .pad-nav-label,.pad-collapsed .pad-nav-item span,.pad-collapsed .pad-secure div,.pad-collapsed .pad-user-copy{display:none}
+.pad-collapsed .pad-nav-item{justify-content:center;padding-inline:0}
+.pad-collapsed .pad-secure{justify-content:center;padding-inline:0}
+.pad-collapsed .pad-signout{display:none}
+@media(max-width:900px){.pad-collapse{display:none}}
