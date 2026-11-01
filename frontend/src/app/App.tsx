@@ -76,7 +76,7 @@ export function App() {
         nextIsPlatformOperator = platformData.isPlatformOperator;
       }
       setIsPlatformOperator(nextIsPlatformOperator);
-      if (!nextTenant && nextIsPlatformOperator) routerNavigate(pagePaths.platform, { replace: true });
+      if (availableTenants.length === 0 && nextIsPlatformOperator) routerNavigate(pagePaths.platform, { replace: true });
       else if (page === "platform" && !nextIsPlatformOperator) routerNavigate(pagePaths.dashboard, { replace: true });
     } catch (error) {
       setSessionUser(null);
