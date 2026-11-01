@@ -97,7 +97,7 @@ export function PlatformAdminDashboard({ email, onSignOut }: { email: string; on
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    try { document.documentElement.dataset.platformTheme = dark ? "dark" : "light"; }
+    document.documentElement.dataset.platformTheme = dark ? "dark" : "light";
     return () => { delete document.documentElement.dataset.platformTheme; };
   }, [dark]);
   useEffect(() => {
