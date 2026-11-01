@@ -1,9 +1,9 @@
 import { pool } from "../../../db/pool.js";
-import type { RegistrationDraft, RegistrationPayload, RegistrationRequestSummary } from "../domain/registration.types.js";
+import type { RegistrationDraft, RegistrationDraftPayload, RegistrationRequestSummary } from "../domain/registration.types.js";
 
 interface DraftRow {
   draft_id: string;
-  payload: RegistrationPayload;
+  payload: RegistrationDraftPayload;
   status?: "DRAFT" | "SUBMITTED";
   created_at: Date;
   updated_at: Date;
@@ -17,7 +17,7 @@ interface SubmittedRow {
 }
 
 export const onboardingRepository = {
-  async saveDraft(identityIssuer: string, identitySubject: string, payload: RegistrationPayload): Promise<RegistrationDraft> {
+  async saveDraft(identityIssuer: string, identitySubject: string, payload: RegistrationDraftPayload): Promise<RegistrationDraft> {
     const result = await pool.query<DraftRow>(
       `SELECT draft_id, payload, created_at, updated_at
          FROM public.finance_create_registration_draft($1, $2, $3::jsonb)`,
@@ -28,7 +28,7 @@ export const onboardingRepository = {
     return { id: row.draft_id, payload: row.payload, status: "DRAFT", createdAt: row.created_at.toISOString(), updatedAt: row.updated_at.toISOString() };
   },
 
-  async updateDraft(identityIssuer: string, identitySubject: string, draftId: string, payload: RegistrationPayload): Promise<RegistrationDraft> {
+  async updateDraft(identityIssuer: string, identitySubject: string, draftId: string, payload: RegistrationDraftPayload): Promise<RegistrationDraft> {
     const result = await pool.query<DraftRow>(
       `SELECT draft_id, payload, created_at, updated_at
          FROM public.finance_update_registration_draft($1, $2, $3, $4::jsonb)`,
