@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { requireUserAuth } from "../../../middleware/require-user-auth.js";
 import { onboardingService } from "../application/onboarding.service.js";
-import { registrationConsentSchema, registrationPayloadSchema } from "../schemas/registration.schema.js";
+import { registrationConsentSchema, registrationDraftPayloadSchema } from "../schemas/registration.schema.js";
 
 export const onboardingRouter = Router();
 const uuidSchema = z.string().uuid();
@@ -51,9 +51,10 @@ function sendError(error: unknown, res: Response, next: (error?: unknown) => voi
   }
   if (db.code === "P0001") {
     const pending = db.message === "REGISTRATION_ALREADY_SUBMITTED";
+    const incomplete = db.message === "REGISTRATION_DRAFT_INCOMPLETE";
     res.status(409).json({ error: {
-      code: pending ? "REGISTRATION_ALREADY_SUBMITTED" : (db.message ?? "REGISTRATION_DRAFT_NOT_EDITABLE"),
-      message: pending ? "Une demande d’organisation est déjà en cours pour ce compte." : "Ce brouillon ne peut plus être modifié.",
+      code: pending ? "REGISTRATION_ALREADY_SUBMITTED" : incomplete ? "REGISTRATION_DRAFT_INCOMPLETE" : (db.message ?? "REGISTRATION_DRAFT_NOT_EDITABLE"),
+      message: pending ? "Une demande d’organisation est déjà en cours pour ce compte." : incomplete ? "Complétez toutes les informations obligatoires avant de soumettre le dossier." : "Ce brouillon ne peut plus être modifié.",
     } });
     return;
   }
@@ -82,7 +83,7 @@ onboardingRouter.post("/drafts", requireUserAuth(), async (req, res, next) => {
   }
   const user = context(req, res);
   if (!user) return;
-  const parsed = registrationPayloadSchema.safeParse(req.body);
+  const parsed = registrationDraftPayloadSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: { code: "VALIDATION_ERROR", details: parsed.error.issues.map((issue) => ({ field: issue.path.join("."), code: issue.code })) } });
     return;
@@ -102,7 +103,7 @@ onboardingRouter.patch("/drafts/:draftId", requireUserAuth(), async (req, res, n
   const user = context(req, res);
   if (!user) return;
   const id = uuidSchema.safeParse(req.params["draftId"]);
-  const parsed = registrationPayloadSchema.safeParse(req.body);
+  const parsed = registrationDraftPayloadSchema.safeParse(req.body);
   if (!id.success || !parsed.success) {
     res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Référence ou contenu du brouillon invalide." } });
     return;
