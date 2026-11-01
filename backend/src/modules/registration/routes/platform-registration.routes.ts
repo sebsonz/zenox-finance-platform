@@ -82,6 +82,31 @@ platformRegistrationRouter.get("/me", requireUserAuth(), async (req, res, next) 
   }
 });
 
+platformRegistrationRouter.get("/organizations", requireUserAuth(), async (req, res, next) => {
+  const user = currentOperator(req, res);
+  if (!user) return;
+  try {
+    const organizations = await registrationRepository.listOrganizationsForOperator(user.issuer, user.id);
+    res.setHeader("Cache-Control", "no-store");
+    res.status(200).json({
+      data: {
+        organizations: organizations.map((row) => ({
+          id: row.tenant_id,
+          tenantCode: row.tenant_code,
+          legalName: row.legal_name,
+          countryCode: row.country_code,
+          defaultCurrency: row.default_currency,
+          status: row.status,
+          createdAt: row.created_at.toISOString(),
+        })),
+      },
+    });
+  } catch (error) {
+    if (sendReviewError(error, res)) return;
+    next(error);
+  }
+});
+
 platformRegistrationRouter.get("/registration-requests", requireUserAuth(), async (req, res, next) => {
   const user = currentOperator(req, res);
   if (!user) return;
