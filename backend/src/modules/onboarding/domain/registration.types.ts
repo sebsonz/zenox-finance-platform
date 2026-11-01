@@ -44,10 +44,11 @@ export interface RegistrationPayload {
 }
 
 export type RegistrationDraftPayload = {
-  readonly organization?: Partial<RegistrationOrganization>;
-  readonly address?: Partial<RegistrationAddress>;
-  readonly representative?: Partial<RegistrationRepresentative>;
-  readonly contact?: Partial<RegistrationContact>;
+  // Zod's optional properties include undefined with exactOptionalPropertyTypes.
+  readonly organization?: Partial<RegistrationOrganization> | undefined;
+  readonly address?: Partial<RegistrationAddress> | undefined;
+  readonly representative?: Partial<RegistrationRepresentative> | undefined;
+  readonly contact?: Partial<RegistrationContact> | undefined;
 };
 
 export interface RegistrationDraft {
