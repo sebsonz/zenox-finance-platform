@@ -7,6 +7,21 @@ type TenantAccess = { id: string; tenantCode: string; legalName: string; role: s
 type Customer = { id: string; customerCode: string; legalName: string; displayName: string | null; status: "ACTIVE" | "ARCHIVED"; defaultCurrency: string | null };
 type Currency = { code: string; name: string; minorUnit: number };
 type Jurisdiction = { id: string; code: string; countryCode: string; name: string; level: string };
+type TaxFactsForm = {
+  transactionType: string;
+  supplierIfuStatus: string;
+  customerIfuStatus: string;
+  customerTaxStatus: string;
+  customerCountryCode: string;
+  supplierCountryCode: string;
+  isImport: string;
+  isExport: string;
+  goodsCategory: string;
+};
+const emptyTaxFacts = (): TaxFactsForm => ({
+  transactionType: "", supplierIfuStatus: "", customerIfuStatus: "", customerTaxStatus: "",
+  customerCountryCode: "", supplierCountryCode: "", isImport: "", isExport: "", goodsCategory: "",
+});
 type InvoiceLine = { id?: string; description: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string };
 type Invoice = {
   id: string; customerId: string; invoiceCode: string | null; status: "DRAFT" | "ISSUED" | "CANCELLED";
@@ -52,6 +67,7 @@ export function InvoiceWorkspace() {
   const [jurisdictionId, setJurisdictionId] = useState("");
   const [taxDate, setTaxDate] = useState(new Date().toISOString().slice(0, 10));
   const [appliesTo, setAppliesTo] = useState("GOODS");
+  const [taxFacts, setTaxFacts] = useState<TaxFactsForm>(emptyTaxFacts);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
@@ -226,7 +242,20 @@ export function InvoiceWorkspace() {
     try {
       const response = await fetch(`/api/v1/user/tenants/${tenantId}/invoices/${invoice.id}/tax-snapshot`, {
         method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ expectedUpdatedAt: invoice.updatedAt, taxDate, jurisdictionId, appliesTo }),
+        body: JSON.stringify({
+          expectedUpdatedAt: invoice.updatedAt, taxDate, jurisdictionId, appliesTo,
+          taxFacts: {
+            ...(taxFacts.transactionType.trim() ? { transactionType: taxFacts.transactionType.trim() } : {}),
+            ...(taxFacts.supplierIfuStatus ? { supplierIfuStatus: taxFacts.supplierIfuStatus } : {}),
+            ...(taxFacts.customerIfuStatus ? { customerIfuStatus: taxFacts.customerIfuStatus } : {}),
+            ...(taxFacts.customerTaxStatus.trim() ? { customerTaxStatus: taxFacts.customerTaxStatus.trim() } : {}),
+            ...(taxFacts.customerCountryCode.trim() ? { customerCountryCode: taxFacts.customerCountryCode.trim().toUpperCase() } : {}),
+            ...(taxFacts.supplierCountryCode.trim() ? { supplierCountryCode: taxFacts.supplierCountryCode.trim().toUpperCase() } : {}),
+            ...(taxFacts.isImport ? { isImport: taxFacts.isImport === "true" } : {}),
+            ...(taxFacts.isExport ? { isExport: taxFacts.isExport === "true" } : {}),
+            ...(taxFacts.goodsCategory.trim() ? { goodsCategory: taxFacts.goodsCategory.trim() } : {}),
+          },
+        }),
       });
       await readData(response, "Le calcul fiscal a échoué.");
       setNotice("Snapshot fiscal calculé et attaché. Le brouillon peut être émis.");
@@ -376,6 +405,20 @@ export function InvoiceWorkspace() {
             <label>Nature de l’opération<select value={appliesTo} onChange={(event) => setAppliesTo(event.target.value)}><option value="GOODS">Biens</option><option value="SERVICES">Services</option><option value="DIGITAL_SERVICES">Services numériques</option><option value="FREIGHT">Transport / fret</option><option value="INSURANCE">Assurance</option></select></label>
             <label>Facture sélectionnée<input readOnly value={selectedInvoice?.invoiceCode ?? selectedInvoice?.id ?? "Sélectionnez une facture"} /></label>
           </div>
+          <details className="tax-facts-details">
+            <summary>Contexte fiscal de l’opération <span className="muted-note">Informations utilisées pour sélectionner les règles applicables</span></summary>
+            <div className="invoice-form-grid">
+              <label>Type de transaction<input value={taxFacts.transactionType} onChange={(event) => setTaxFacts({ ...taxFacts, transactionType: event.target.value })} placeholder="VENTE, PRESTATION…"/></label>
+              <label>Statut IFU fournisseur<select value={taxFacts.supplierIfuStatus} onChange={(event) => setTaxFacts({ ...taxFacts, supplierIfuStatus: event.target.value })}><option value="">Non renseigné</option><option value="REGISTERED">Immatriculé</option><option value="NOT_REGISTERED">Non immatriculé</option><option value="UNKNOWN">Inconnu</option></select></label>
+              <label>Statut IFU client<select value={taxFacts.customerIfuStatus} onChange={(event) => setTaxFacts({ ...taxFacts, customerIfuStatus: event.target.value })}><option value="">Non renseigné</option><option value="REGISTERED">Immatriculé</option><option value="NOT_REGISTERED">Non immatriculé</option><option value="UNKNOWN">Inconnu</option></select></label>
+              <label>Statut fiscal client<input value={taxFacts.customerTaxStatus} onChange={(event) => setTaxFacts({ ...taxFacts, customerTaxStatus: event.target.value })} placeholder="Statut fiscal documenté"/></label>
+              <label>Pays du fournisseur (ISO)<input maxLength={2} value={taxFacts.supplierCountryCode} onChange={(event) => setTaxFacts({ ...taxFacts, supplierCountryCode: event.target.value.toUpperCase() })} placeholder="BJ"/></label>
+              <label>Pays du client (ISO)<input maxLength={2} value={taxFacts.customerCountryCode} onChange={(event) => setTaxFacts({ ...taxFacts, customerCountryCode: event.target.value.toUpperCase() })} placeholder="BJ"/></label>
+              <label>Importation<select value={taxFacts.isImport} onChange={(event) => setTaxFacts({ ...taxFacts, isImport: event.target.value })}><option value="">Non renseigné</option><option value="true">Oui</option><option value="false">Non</option></select></label>
+              <label>Exportation<select value={taxFacts.isExport} onChange={(event) => setTaxFacts({ ...taxFacts, isExport: event.target.value })}><option value="">Non renseigné</option><option value="true">Oui</option><option value="false">Non</option></select></label>
+              <label>Catégorie de biens<input value={taxFacts.goodsCategory} onChange={(event) => setTaxFacts({ ...taxFacts, goodsCategory: event.target.value })} placeholder="Catégorie documentée"/></label>
+            </div>
+          </details>
           <p className="muted-note">L’émission exige un snapshot fiscal immuable. Après émission, la facture et ses documents ne peuvent plus être modifiés.</p>
         </section>
 
