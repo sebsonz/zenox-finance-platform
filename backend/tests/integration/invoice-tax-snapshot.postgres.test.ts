@@ -88,13 +88,34 @@ integrationDescribe("PostgreSQL invoice tax snapshot binding", () => {
          VALUES ($1, $2, 'BJ', 'Tax flow integration jurisdiction', 'COUNTRY', true)`,
         [jurisdictionId, `TF_${suffix}`],
       );
+      // A matching tenant override must shadow the global rule with the same code.
       await admin.query(
         `INSERT INTO public.finance_tax_rules
           (tenant_id, jurisdiction_id, rule_code, name, tax_type, treatment, rate_percent,
            price_mode, priority, is_compound, applies_to, version, valid_from, status)
-         VALUES ($1,$2,$3,'Tax flow integration VAT','VAT','STANDARD',18,'EXCLUSIVE',10,false,
+         VALUES (NULL,$1,$2,'Global VAT fallback','VAT','STANDARD',7,'EXCLUSIVE',10,false,
                  'FREIGHT',1,CURRENT_DATE,'ACTIVE')`,
+        [jurisdictionId, ruleCode],
+      );
+      await admin.query(
+        `INSERT INTO public.finance_tax_rules
+          (tenant_id, jurisdiction_id, rule_code, name, tax_type, treatment, rate_percent,
+           price_mode, priority, is_compound, applies_to, version, valid_from, status,
+           applicability_conditions)
+         VALUES ($1,$2,$3,'Tenant VAT override','VAT','STANDARD',18,'EXCLUSIVE',10,false,
+                 'FREIGHT',1,CURRENT_DATE,'ACTIVE',
+                 '{"schemaVersion":1,"all":[{"field":"supplierIfuStatus","operator":"EQ","value":"REGISTERED"}]}'::jsonb)`,
         [tenantA, jurisdictionId, ruleCode],
+      );
+      await admin.query(
+        `INSERT INTO public.finance_tax_rules
+          (tenant_id, jurisdiction_id, rule_code, name, tax_type, treatment, rate_percent,
+           price_mode, priority, is_compound, applies_to, version, valid_from, status,
+           applicability_conditions)
+         VALUES ($1,$2,$3,'Import-only environmental tax','ENVIRONMENTAL','STANDARD',5,'EXCLUSIVE',20,false,
+                 'FREIGHT',1,CURRENT_DATE,'ACTIVE',
+                 '{"schemaVersion":1,"all":[{"field":"isImport","operator":"EQ","value":true}]}'::jsonb)`,
+        [tenantA, jurisdictionId, `IMPORT_${suffix}`],
       );
       const invoice = await admin.query<{ updated_at: string }>(
         `INSERT INTO public.finance_invoices
@@ -136,12 +157,25 @@ integrationDescribe("PostgreSQL invoice tax snapshot binding", () => {
       taxDate: new Date().toISOString().slice(0, 10),
       jurisdictionId,
       appliesTo: "FREIGHT",
+      taxFacts: { supplierIfuStatus: "REGISTERED", isImport: false },
     });
 
     expect(result.snapshot.documentType).toBe("INVOICE");
     expect(result.snapshot.documentId).toBe(invoiceId);
     expect(result.snapshot.documentVersion).toBe(1);
     expect(result.snapshot.appliedRulesSnapshot).toHaveLength(1);
+    expect(result.snapshot.appliedRulesSnapshot[0]).toMatchObject({
+      tenantId: tenantA,
+      ruleCode,
+      ratePercent: "18",
+      applicabilityConditions: {
+        schemaVersion: 1,
+        all: [{ field: "supplierIfuStatus", operator: "EQ", value: "REGISTERED" }],
+      },
+    });
+    expect(result.snapshot.inputSnapshot).toMatchObject({
+      taxFacts: { supplierIfuStatus: "REGISTERED", isImport: false },
+    });
     expect(result.snapshot.resultSnapshot).toMatchObject({
       taxableTotal: "1000",
       taxTotal: "180",
