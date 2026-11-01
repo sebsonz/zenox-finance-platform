@@ -347,7 +347,7 @@ export function InvoiceWorkspace() {
         <section className="panel invoice-list-panel">
           <div className="panel-heading"><div><h2>Espace de facturation</h2><p>Connecté{user.email ? ` en tant que ${user.email}` : ""} · ${checkingResources ? "Chargement des référentiels…" : `${customers.length} client(s), ${currencies.length} devise(s)`}</p></div><span className="status-chip"><i/> Session active</span></div>
           <form className="tenant-lookup-form" onSubmit={(event) => void loadInvoices(event)}>
-            <label>Organisation autorisée<select value={tenantId} onChange={(event) => { setTenantId(event.target.value); setInvoices([]); setSelectedInvoiceId(""); setEditing(null); }} required disabled={loadingTenants || tenants.length === 0}>
+            <label>Organisation autorisée<select value={tenantId} onChange={(event) => { setTenantId(event.target.value); setInvoices([]); setSelectedInvoiceId(""); setEditing(null); setTaxFacts(emptyTaxFacts()); }} required disabled={loadingTenants || tenants.length === 0}>
               {tenants.length === 0 ? <option value="">{loadingTenants ? "Chargement…" : "Aucune organisation accessible"}</option> : tenants.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.legalName} · {tenant.tenantCode} · {tenant.role}</option>)}
             </select></label>
             <button className="primary-button" type="submit" disabled={loading || loadingTenants || !tenantId}>{loading ? "Chargement…" : "Actualiser"} <RefreshCw size={15}/></button>
