@@ -139,6 +139,31 @@ describe("M02 onboarding routes", () => {
     }), expect.objectContaining({ organization: expect.objectContaining({ legalName: "Example SARL" }) }));
   });
 
+  it("saves the first wizard step even when later sections are still empty", async () => {
+    const firstStep = {
+      organization: { legalName: "Example SARL", tradeName: null, legalForm: null, countryCode: "BJ", defaultCurrency: "XOF", registrationNumber: null },
+      address: { addressType: "REGISTERED", addressLine1: "", addressLine2: null, city: "", region: null, postalCode: null, countryCode: "BJ" },
+      representative: { fullName: "", role: "Représentant légal", email: "", phone: null },
+      contact: { businessEmail: "", businessPhone: null, websiteUrl: null },
+    };
+    const response = await request(app(), "POST", "/registration/drafts", firstStep);
+    expect(response.status).toBe(200);
+    expect(mocks.createOrSaveDraft).toHaveBeenCalledWith(expect.any(Object), expect.objectContaining({
+      organization: expect.objectContaining({ legalName: "Example SARL" }),
+      representative: expect.objectContaining({ email: "" }),
+    }));
+  });
+
+  it("rejects malformed non-empty email values even in an incomplete draft", async () => {
+    const invalidDraft = {
+      ...payload,
+      representative: { ...payload.representative, email: "not-an-email" },
+    };
+    const response = await request(app(), "POST", "/registration/drafts", invalidDraft);
+    expect(response.status).toBe(400);
+    expect(mocks.createOrSaveDraft).not.toHaveBeenCalled();
+  });
+
   it("submits only with separate terms and privacy consent versions", async () => {
     const invalid = await request(app(), "POST", "/registration/drafts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/submit", { acceptedTermsVersion: "terms-v1" });
     expect(invalid.status).toBe(400);
