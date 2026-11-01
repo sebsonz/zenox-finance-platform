@@ -21,10 +21,10 @@ BEGIN
      OR p_identity_subject IS NULL OR length(btrim(p_identity_subject)) NOT BETWEEN 1 AND 500
      OR p_identity_subject <> btrim(p_identity_subject)
      OR p_payload IS NULL OR jsonb_typeof(p_payload) <> 'object'
-     OR (p_payload ? 'organization' AND jsonb_typeof(p_payload -> 'organization') <> 'object')
-     OR (p_payload ? 'address' AND jsonb_typeof(p_payload -> 'address') <> 'object')
-     OR (p_payload ? 'representative' AND jsonb_typeof(p_payload -> 'representative') <> 'object')
-     OR (p_payload ? 'contact' AND jsonb_typeof(p_payload -> 'contact') <> 'object') THEN
+     OR (p_payload ? 'organization' AND jsonb_typeof(p_payload -> 'organization') IS DISTINCT FROM 'object')
+     OR (p_payload ? 'address' AND jsonb_typeof(p_payload -> 'address') IS DISTINCT FROM 'object')
+     OR (p_payload ? 'representative' AND jsonb_typeof(p_payload -> 'representative') IS DISTINCT FROM 'object')
+     OR (p_payload ? 'contact' AND jsonb_typeof(p_payload -> 'contact') IS DISTINCT FROM 'object') THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'INVALID_REGISTRATION_DRAFT';
   END IF;
 
@@ -74,10 +74,10 @@ DECLARE
   v_currency text;
 BEGIN
   IF p_payload IS NULL OR jsonb_typeof(p_payload) <> 'object'
-     OR (p_payload ? 'organization' AND jsonb_typeof(p_payload -> 'organization') <> 'object')
-     OR (p_payload ? 'address' AND jsonb_typeof(p_payload -> 'address') <> 'object')
-     OR (p_payload ? 'representative' AND jsonb_typeof(p_payload -> 'representative') <> 'object')
-     OR (p_payload ? 'contact' AND jsonb_typeof(p_payload -> 'contact') <> 'object') THEN
+     OR (p_payload ? 'organization' AND jsonb_typeof(p_payload -> 'organization') IS DISTINCT FROM 'object')
+     OR (p_payload ? 'address' AND jsonb_typeof(p_payload -> 'address') IS DISTINCT FROM 'object')
+     OR (p_payload ? 'representative' AND jsonb_typeof(p_payload -> 'representative') IS DISTINCT FROM 'object')
+     OR (p_payload ? 'contact' AND jsonb_typeof(p_payload -> 'contact') IS DISTINCT FROM 'object') THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'INVALID_REGISTRATION_DRAFT';
   END IF;
 
