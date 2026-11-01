@@ -4,7 +4,7 @@ import { FileText, RefreshCw, ShieldCheck, Plus, Trash2, Download, Pencil, Send,
 type ApiError = { error?: { code?: string; message?: string } };
 type SessionUser = { id: string; email?: string };
 type ActiveTenant = { id: string; tenantCode: string; legalName: string; role: string };
-type InvoiceWorkspaceProps = { sessionUser: SessionUser; activeTenant: ActiveTenant };
+type InvoiceWorkspaceProps = { sessionUser: SessionUser; activeTenant: ActiveTenant; tenants: ActiveTenant[]; onTenantChange: (tenantId: string) => void };
 type Customer = { id: string; customerCode: string; legalName: string; displayName: string | null; status: "ACTIVE" | "ARCHIVED"; defaultCurrency: string | null };
 type Currency = { code: string; name: string; minorUnit: number };
 type Jurisdiction = { id: string; code: string; countryCode: string; name: string; level: string };
@@ -55,7 +55,7 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function InvoiceWorkspace({ sessionUser, activeTenant }: InvoiceWorkspaceProps) {
+export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantChange }: InvoiceWorkspaceProps) {
   const tenantId = activeTenant.id;
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
@@ -281,9 +281,12 @@ export function InvoiceWorkspace({ sessionUser, activeTenant }: InvoiceWorkspace
         <div><h2>Espace de facturation</h2><p>Connecté{sessionUser.email ? ` en tant que ${sessionUser.email}` : ""} · Organisation : {activeTenant.legalName} ({activeTenant.tenantCode}) · {checkingResources ? "Chargement des référentiels…" : `${customers.length} client(s), ${currencies.length} devise(s)`}</p></div>
         <span className="status-chip"><i/> Session active · {activeTenant.role}</span>
       </div>
-      <div className="invoice-action-bar">
-        <button className="primary-button" type="button" onClick={() => void loadInvoices()} disabled={loading || checkingResources}>{loading ? "Chargement…" : "Actualiser les factures"} <RefreshCw size={15}/></button>
-      </div>
+      <form className="tenant-lookup-form" onSubmit={(event) => void loadInvoices(event)}>
+        <label>Organisation active<select value={activeTenant.id} onChange={(event) => onTenantChange(event.target.value)} disabled={tenants.length <= 1}>
+          {tenants.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.legalName} · {tenant.tenantCode} · {tenant.role}</option>)}
+        </select></label>
+        <button className="primary-button" type="submit" disabled={loading || checkingResources}>{loading ? "Chargement…" : "Actualiser"} <RefreshCw size={15}/></button>
+      </form>
     </section>
 
         <section className="panel invoice-list-panel">
