@@ -68,8 +68,7 @@ export function App() {
       );
       const availableTenants = tenantData.tenants ?? [];
       setTenants(availableTenants);
-      const nextTenant = availableTenants.find((tenant) => tenant.id === activeTenant?.id) ?? availableTenants[0] ?? null;
-      setActiveTenant(nextTenant);
+      setActiveTenant((current) => availableTenants.find((tenant) => tenant.id === current?.id) ?? availableTenants[0] ?? null);
       const platformResponse = await fetch("/api/v1/user/platform/me", { credentials: "same-origin", cache: "no-store" });
       let nextIsPlatformOperator = false;
       if (platformResponse.ok) {
@@ -168,7 +167,7 @@ export function App() {
         {notice && <div className="notice"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Fermer"><X size={16}/></button></div>}
         {page === "dashboard" && activeTenant && <Dashboard onNavigate={navigate} tenantId={activeTenant.id}/>}
         {page === "tax" && <TaxWorkspace amount={amount} setAmount={setAmount} currency={currency} setCurrency={setCurrency} onSubmit={() => setNotice("Calcul non exécuté : connectez le formulaire à l’API Finance sécurisée avant tout calcul réel.")}/>}
-        {page === "invoices" && activeTenant && <InvoiceWorkspace sessionUser={sessionUser} activeTenant={activeTenant} tenants={tenants} onTenantChange={(tenantId) => setActiveTenant(tenants.find((tenant) => tenant.id === tenantId) ?? null)}/>}
+        {page === "invoices" && activeTenant && <InvoiceWorkspace key={activeTenant.id} sessionUser={sessionUser} activeTenant={activeTenant} tenants={tenants} onTenantChange={(tenantId) => setActiveTenant(tenants.find((tenant) => tenant.id === tenantId) ?? null)}/>}
         {page === "customers" && activeTenant && <CustomersWorkspace tenantId={activeTenant.id} canManage={["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(activeTenant.role)}/>}
         {page === "payments" && <ComingSoon icon={WalletCards} title="Paiements & allocations" description="Les paiements, affectations et soldes seront servis par le backend Finance, avec idempotence et contrôle multi-tenant."/>}
         {page === "settings" && <ComingSoon icon={Settings2} title="Paramètres Finance" description="La configuration des organisations, devises et intégrations sera reliée aux services authentifiés."/>}
