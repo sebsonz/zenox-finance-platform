@@ -65,14 +65,20 @@ integrationDescribe("organization onboarding drafts PostgreSQL functions", () =>
       },
     };
 
+    const firstStepPayload = {
+      organization: payload.organization,
+      address: { addressType: "REGISTERED", addressLine1: "", addressLine2: null, city: "", region: null, postalCode: null, countryCode: "BJ" },
+      representative: { fullName: "", role: "Représentant légal", email: "", phone: null },
+      contact: { businessEmail: "", businessPhone: null, websiteUrl: null },
+    };
     const created = await runtimePool.query<{ draft_id: string; payload: unknown }>(
       `SELECT draft_id, payload
          FROM public.finance_create_registration_draft($1, $2, $3::jsonb)`,
-      [issuer, subject, JSON.stringify(payload)],
+      [issuer, subject, JSON.stringify(firstStepPayload)],
     );
     const draftId = created.rows[0]?.draft_id;
     expect(draftId).toBeTruthy();
-    expect(created.rows[0]?.payload).toMatchObject(payload);
+    expect(created.rows[0]?.payload).toMatchObject(firstStepPayload);
 
     await expect(runtimePool.query(
       "SELECT * FROM public.finance_registration_drafts",
@@ -90,6 +96,20 @@ integrationDescribe("organization onboarding drafts PostgreSQL functions", () =>
       [issuer, randomUUID(), draftId],
     );
     expect(otherIdentity.rows).toHaveLength(0);
+
+    const secondStepPayload = {
+      ...firstStepPayload,
+      address: { ...payload.address },
+    };
+    await runtimePool.query(
+      `SELECT * FROM public.finance_update_registration_draft($1, $2, $3, $4::jsonb)`,
+      [issuer, subject, draftId, JSON.stringify(secondStepPayload)],
+    );
+
+    await expect(runtimePool.query(
+      `SELECT * FROM public.finance_submit_registration_draft($1, $2, $3, $4, $5, $6)`,
+      [issuer, subject, draftId, "terms-v1", "privacy-v1", `incomplete-${suffix}`],
+    )).rejects.toMatchObject({ code: "P0001", message: "REGISTRATION_DRAFT_INCOMPLETE" });
 
     const updatedPayload = {
       ...payload,
