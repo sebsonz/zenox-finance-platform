@@ -43,9 +43,16 @@ export interface RegistrationPayload {
   readonly contact: RegistrationContact;
 }
 
+export type RegistrationDraftPayload = {
+  readonly organization?: Partial<RegistrationOrganization>;
+  readonly address?: Partial<RegistrationAddress>;
+  readonly representative?: Partial<RegistrationRepresentative>;
+  readonly contact?: Partial<RegistrationContact>;
+};
+
 export interface RegistrationDraft {
   readonly id: string;
-  readonly payload: RegistrationPayload;
+  readonly payload: RegistrationDraftPayload;
   readonly status: "DRAFT" | "SUBMITTED";
   readonly createdAt: string;
   readonly updatedAt: string;
