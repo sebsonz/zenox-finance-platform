@@ -12,6 +12,16 @@ export interface RegistrationRequestRecord {
   rejection_reason: string | null;
 }
 
+export interface PlatformOrganizationRecord {
+  tenant_id: string;
+  tenant_code: string;
+  legal_name: string;
+  country_code: string;
+  default_currency: string;
+  status: "PENDING" | "ACTIVE" | "SUSPENDED" | "DISABLED";
+  created_at: Date;
+}
+
 export interface PendingReviewRecord {
   request_id: string;
   tenant_id: string;
@@ -104,6 +114,15 @@ export const registrationRepository = {
       [identityIssuer, identitySubject],
     );
     return result.rows[0]?.is_active === true;
+  },
+
+  async listOrganizationsForOperator(identityIssuer: string, identitySubject: string): Promise<PlatformOrganizationRecord[]> {
+    const result = await pool.query<PlatformOrganizationRecord>(
+      `SELECT tenant_id, tenant_code, legal_name, country_code, default_currency, status, created_at
+         FROM public.finance_list_platform_organizations($1, $2)`,
+      [identityIssuer, identitySubject],
+    );
+    return result.rows;
   },
 
   async listPendingForOperator(identityIssuer: string, identitySubject: string): Promise<PendingReviewRecord[]> {
