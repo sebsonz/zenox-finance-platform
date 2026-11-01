@@ -43,12 +43,15 @@ export interface RegistrationPayload {
   readonly contact: RegistrationContact;
 }
 
+type RegistrationDraftSection<T> = {
+  readonly [K in keyof T]?: T[K] | undefined;
+};
+
 export type RegistrationDraftPayload = {
-  // Zod's optional properties include undefined with exactOptionalPropertyTypes.
-  readonly organization?: Partial<RegistrationOrganization> | undefined;
-  readonly address?: Partial<RegistrationAddress> | undefined;
-  readonly representative?: Partial<RegistrationRepresentative> | undefined;
-  readonly contact?: Partial<RegistrationContact> | undefined;
+  readonly organization?: RegistrationDraftSection<RegistrationOrganization> | undefined;
+  readonly address?: RegistrationDraftSection<RegistrationAddress> | undefined;
+  readonly representative?: RegistrationDraftSection<RegistrationRepresentative> | undefined;
+  readonly contact?: RegistrationDraftSection<RegistrationContact> | undefined;
 };
 
 export interface RegistrationDraft {
