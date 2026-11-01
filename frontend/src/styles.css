@@ -70,3 +70,13 @@
 .brand .zf-brand-wordmark strong{font:800 16px Manrope,sans-serif;letter-spacing:.3px;color:#fff}
 .brand .zf-brand-wordmark>span{font:600 11px Manrope,sans-serif;color:#78a3ff;margin-top:4px}
 .entry-loading .zf-brand-symbol{width:60px;height:50px}
+
+/* Shared official ZENOX brand lockup */
+.zf-brand-lockup{display:inline-flex;align-items:center;gap:9px;min-width:0;white-space:nowrap}
+.zf-brand-symbol{display:block;width:38px;height:38px;flex:0 0 38px;object-fit:contain}
+.zf-brand-wordmark{display:inline-flex;align-items:baseline;gap:4px;color:inherit;font:800 16px Manrope,sans-serif;letter-spacing:.15px}
+.zf-brand-wordmark strong{font-weight:800}
+.zf-brand-wordmark span{font-size:13px;font-weight:500}
+.zf-brand-lockup--light{color:#fff}
+.zf-brand-lockup--default{color:#14243e}
+.zf-brand-lockup--compact .zf-brand-symbol{width:34px;height:34px;flex-basis:34px}
