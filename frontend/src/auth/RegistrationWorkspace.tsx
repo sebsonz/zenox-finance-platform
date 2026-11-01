@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { RegistrationHomeLink } from "./RegistrationHomeLink";
 import { BrandLogo } from "../shared/components/BrandLogo.js";
+import { OrganizationOnboardingWizard } from "../features/onboarding/components/OrganizationOnboardingWizard.js";
 import { authConfig, exchangeSession, readData } from "./auth-api.js";
 import "./PlatformEntryWorkspace.css";
 import { Building2, CheckCircle2, CircleAlert, KeyRound, LoaderCircle, LogIn, Mail, ShieldCheck, UserPlus } from "lucide-react";
@@ -18,7 +19,6 @@ type RegistrationRequest = {
   updatedAt: string;
   rejectionReason?: string;
 };
-const TERMS_VERSION = "2026-10-draft";
 
 export function RegistrationWorkspace({
   user,
@@ -37,10 +37,6 @@ export function RegistrationWorkspace({
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [recoveryToken, setRecoveryToken] = useState("");
-  const [legalName, setLegalName] = useState("");
-  const [countryCode, setCountryCode] = useState("BJ");
-  const [defaultCurrency, setDefaultCurrency] = useState("XOF");
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [requests, setRequests] = useState<RegistrationRequest[]>([]);
   const [busy, setBusy] = useState(false);
@@ -86,8 +82,6 @@ export function RegistrationWorkspace({
       .then((response) => readData<{ currencies: Currency[] }>(response, "Le référentiel des devises est indisponible."))
       .then((data) => {
         setCurrencies(data.currencies ?? []);
-        setDefaultCurrency((current) => data.currencies?.some((item) => item.code === current)
-          ? current : (data.currencies?.[0]?.code ?? ""));
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Le référentiel des devises est indisponible."));
   }, [user?.id, user?.emailConfirmedAt]);
@@ -178,38 +172,6 @@ export function RegistrationWorkspace({
     }
   }
 
-  async function submitOrganization(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const response = await fetch("/api/v1/user/registration/organizations", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          legalName: legalName.trim(),
-          countryCode: countryCode.trim().toUpperCase(),
-          defaultCurrency,
-          acceptedTermsVersion: TERMS_VERSION,
-        }),
-      });
-      const payload = await response.json().catch(() => ({})) as {
-        request?: { id: string; status: string; submittedAt: string };
-        error?: { message?: string };
-      };
-      if (!response.ok || !payload.request) {
-        throw new Error(payload.error?.message ?? "La demande d’organisation n’a pas pu être soumise.");
-      }
-      setNotice(`Demande envoyée. Référence : ${payload.request.id}`);
-      await loadRequests();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "La demande n’a pas pu être envoyée.");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function resendConfirmation() {
     if (!user?.email) return;
@@ -285,16 +247,13 @@ export function RegistrationWorkspace({
           {loadingRequests ? <p className="registration-muted">Chargement de vos demandes…</p> : <>
             {pendingRequest && <div className="registration-status"><span className="registration-status-dot"/><div><strong>Demande en attente de validation</strong><p>{pendingRequest.legalName} · {pendingRequest.countryCode} · {pendingRequest.defaultCurrency}</p><small>Soumise le {new Date(pendingRequest.submittedAt).toLocaleString()}</small></div></div>}
             {rejectedRequests.map((request) => <div className="registration-status rejected" key={request.id}><CircleAlert size={18}/><div><strong>Demande précédente refusée</strong><p>{request.legalName} — {request.rejectionReason ?? "Consultez les instructions communiquées par l’équipe de validation."}</p></div></div>)}
-            {!pendingRequest && <form className="registration-form" onSubmit={submitOrganization}>
-              <label>Raison sociale<input required minLength={2} maxLength={200} value={legalName} onChange={(event) => setLegalName(event.target.value)} placeholder="Nom légal de l’organisation"/></label>
-              <div className="registration-form-grid">
-                <label>Pays d’établissement<input required minLength={2} maxLength={2} pattern="[A-Za-z]{2}" value={countryCode} onChange={(event) => setCountryCode(event.target.value.toUpperCase())} placeholder="BJ"/><small>Code pays ISO 3166-1 alpha-2</small></label>
-                <label>Devise par défaut<select required value={defaultCurrency} onChange={(event) => setDefaultCurrency(event.target.value)} disabled={!currencies.length}><option value="">Sélectionner</option>{currencies.map((currency) => <option key={currency.code} value={currency.code}>{currency.code} — {currency.name}</option>)}</select></label>
-              </div>
-              <label className="registration-consent"><input type="checkbox" checked={acceptedTerms} onChange={(event) => setAcceptedTerms(event.target.checked)} required/><span>J’accepte les conditions d’utilisation et la politique de confidentialité dans leur version de travail. <strong>Les textes doivent être validés juridiquement avant une ouverture publique.</strong></span></label>
-              <button className="registration-primary" type="submit" disabled={busy || !currencies.length || !acceptedTerms}>{busy ? <LoaderCircle size={17} className="spin"/> : <Building2 size={17}/>} Soumettre l’organisation</button>
-              <p className="registration-footnote">La demande restera en attente. Aucun accès aux factures ou aux paiements ne sera accordé avant activation par un processus d’approbation autorisé.</p>
-            </form>}
+            {!pendingRequest && <OrganizationOnboardingWizard
+              currencies={currencies}
+              onSubmitted={async (requestId) => {
+                setNotice(`Demande envoyée. Référence : ${requestId}`);
+                await loadRequests();
+              }}
+            />}
           </>}
           </>}
         </> : <>

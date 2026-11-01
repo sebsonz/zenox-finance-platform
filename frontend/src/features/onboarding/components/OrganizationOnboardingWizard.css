@@ -1,0 +1,96 @@
+.onboarding-wizard {
+  display: grid;
+  gap: 1.25rem;
+  width: 100%;
+}
+.onboarding-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .5rem;
+}
+.onboarding-stepper > div {
+  display: grid;
+  justify-items: center;
+  gap: .35rem;
+  padding: .7rem .35rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  color: var(--muted, #64748b);
+  text-align: center;
+}
+.onboarding-stepper > div > span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #eef2f7;
+  font-size: .75rem;
+  font-weight: 700;
+}
+.onboarding-stepper > div.active {
+  border-color: #2563eb;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+.onboarding-stepper > div.active > span,
+.onboarding-stepper > div.complete > span {
+  color: white;
+  background: #2563eb;
+}
+.onboarding-stepper > div.complete { color: #166534; }
+.onboarding-stepper p { margin: 0; font-size: .72rem; line-height: 1.25; }
+.onboarding-form { display: grid; gap: 1rem; }
+.onboarding-form label {
+  display: grid;
+  gap: .45rem;
+  font-size: .86rem;
+  font-weight: 600;
+}
+.onboarding-form input,
+.onboarding-form select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: .8rem .9rem;
+  border: 1px solid var(--border, #dbe1ea);
+  border-radius: 9px;
+  background: white;
+  color: #172033;
+  font: inherit;
+  font-weight: 400;
+}
+.onboarding-form input:focus,
+.onboarding-form select:focus {
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
+  border-color: #2563eb;
+}
+.onboarding-form small { color: #64748b; font-size: .75rem; font-weight: 400; }
+.onboarding-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.onboarding-form .registration-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+.onboarding-form .registration-consent input { width: 18px; min-width: 18px; margin-top: .15rem; }
+.onboarding-form .registration-primary,
+.onboarding-form .registration-signout {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+}
+.onboarding-wizard h3 { margin: 0; font-size: 1.05rem; }
+@media (max-width: 560px) {
+  .onboarding-stepper { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .onboarding-form-grid { grid-template-columns: 1fr; }
+}
+
+.country-select {
+  display: grid;
+  gap: 0.45rem;
+}

@@ -16,6 +16,7 @@ const envSchema = z.object({
   FINANCE_SERVICE_TOKEN: z.string().min(32, "FINANCE_SERVICE_TOKEN must be at least 32 characters"),
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_ANON_KEY: z.string().min(20).optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
