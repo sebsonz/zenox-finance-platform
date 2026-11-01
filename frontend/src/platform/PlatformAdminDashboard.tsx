@@ -128,9 +128,6 @@ export function PlatformAdminDashboard({ email, onSignOut }: { email: string; on
     (statusFilter === "ALL" || item.status === statusFilter) &&
     [item.legalName, item.tenantCode, item.countryCode, item.defaultCurrency, item.status, item.id]
       .some((value) => value.toLocaleLowerCase("fr").includes(normalizedQuery)));
-  const filteredRequests = requests.filter((item) =>
-    [item.legalName, item.countryCode, item.status ?? "PENDING", item.id]
-      .some((value) => value.toLocaleLowerCase("fr").includes(normalizedQuery)));
   const pendingCount = requests.length;
   const activeCount = organizations.filter((item) => item.status === "ACTIVE").length;
   const selectSection = (next: Section) => { setSection(next); setMobileOpen(false); setNotice(""); };
