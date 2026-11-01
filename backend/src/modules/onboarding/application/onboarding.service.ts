@@ -1,5 +1,5 @@
 import { onboardingRepository } from "../repositories/onboarding.repository.js";
-import type { RegistrationDraft, RegistrationPayload, RegistrationRequestSummary } from "../domain/registration.types.js";
+import type { RegistrationDraft, RegistrationDraftPayload, RegistrationRequestSummary } from "../domain/registration.types.js";
 
 export interface OnboardingUserContext {
   readonly identityIssuer: string;
@@ -13,12 +13,12 @@ function assertConfirmed(context: OnboardingUserContext): void {
 }
 
 export const onboardingService = {
-  async createOrSaveDraft(context: OnboardingUserContext, payload: RegistrationPayload): Promise<RegistrationDraft> {
+  async createOrSaveDraft(context: OnboardingUserContext, payload: RegistrationDraftPayload): Promise<RegistrationDraft> {
     assertConfirmed(context);
     return onboardingRepository.saveDraft(context.identityIssuer, context.identitySubject, payload);
   },
 
-  async updateDraft(context: OnboardingUserContext, draftId: string, payload: RegistrationPayload): Promise<RegistrationDraft> {
+  async updateDraft(context: OnboardingUserContext, draftId: string, payload: RegistrationDraftPayload): Promise<RegistrationDraft> {
     assertConfirmed(context);
     return onboardingRepository.updateDraft(context.identityIssuer, context.identitySubject, draftId, payload);
   },
