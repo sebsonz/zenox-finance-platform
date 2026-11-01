@@ -10,6 +10,7 @@ import { BrandLogo } from "../shared/components/BrandLogo.js";
 
 type Section = "dashboard" | "requests" | "orgs" | "users" | "audit" | "finance" | "tax";
 type RequestItem = { id: string; legalName: string; countryCode: string; status?: string; submittedAt: string };
+type PlatformOrganization = { id: string; tenantCode: string; legalName: string; countryCode: string; defaultCurrency: string; status: "PENDING" | "ACTIVE" | "SUSPENDED" | "DISABLED"; createdAt: string };
 type Payload<T> = { data?: T; error?: { message?: string } };
 
 const groups: { label: string; items: { id: Section; label: string; icon: LucideIcon }[] }[] = [
@@ -24,6 +25,15 @@ const groups: { label: string; items: { id: Section; label: string; icon: Lucide
     { id: "tax", label: "Fiscalité & juridictions", icon: Globe2 },
   ] },
 ];
+
+async function loadOrganizations(): Promise<PlatformOrganization[]> {
+  const response = await fetch("/api/v1/user/platform/organizations", {
+    credentials: "same-origin", cache: "no-store",
+  });
+  const payload = await response.json().catch(() => ({})) as Payload<{ organizations: PlatformOrganization[] }>;
+  if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "Impossible de charger les organisations.");
+  return payload.data.organizations ?? [];
+}
 
 async function loadRequests(): Promise<RequestItem[]> {
   const response = await fetch("/api/v1/user/platform/registration-requests", {
@@ -45,6 +55,9 @@ export function PlatformAdminDashboard({ email, onSignOut }: { email: string; on
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [requests, setRequests] = useState<RequestItem[]>([]);
+  const [organizations, setOrganizations] = useState<PlatformOrganization[]>([]);
+  const [organizationsError, setOrganizationsError] = useState("");
+  const [organizationsLoading, setOrganizationsLoading] = useState(false);
   const [requestsError, setRequestsError] = useState("");
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -65,6 +78,16 @@ export function PlatformAdminDashboard({ email, onSignOut }: { email: string; on
     void loadRequests().then((items) => { if (!cancelled) setRequests(items); })
       .catch((error: unknown) => { if (!cancelled) setRequestsError(error instanceof Error ? error.message : "Erreur de chargement."); })
       .finally(() => { if (!cancelled) setRequestsLoading(false); });
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setOrganizationsLoading(true);
+    setOrganizationsError("");
+    void loadOrganizations().then((items) => { if (!cancelled) setOrganizations(items); })
+      .catch((error: unknown) => { if (!cancelled) setOrganizationsError(error instanceof Error ? error.message : "Erreur de chargement."); })
+      .finally(() => { if (!cancelled) setOrganizationsLoading(false); });
     return () => { cancelled = true; };
   }, [refreshKey]);
 
@@ -112,7 +135,13 @@ export function PlatformAdminDashboard({ email, onSignOut }: { email: string; on
         {notice && <div className="pad-notice" role="status">{notice}<button onClick={() => setNotice("")} aria-label="Fermer"><X size={15}/></button></div>}
         {section === "dashboard" && <DashboardOverview pendingCount={pendingCount} requests={filteredRequests} loading={requestsLoading} error={requestsError} query={query} onRefresh={() => setRefreshKey((value) => value + 1)} onNavigate={selectSection}/>} 
         {section === "requests" && <div className="pad-module"><div className="pad-module-tools"><div><h2>Revue des inscriptions</h2><p>Examinez les demandes et prenez une décision motivée.</p></div><div className="pad-module-actions"><span className="pad-source-label">API sécurisée</span><button type="button" className="pad-refresh-button" onClick={() => setRefreshKey((value) => value + 1)}><RefreshCw size={14}/> Actualiser les indicateurs</button></div></div><PlatformReviewWorkspace key={refreshKey} searchQuery={query}/></div>}
-        {section === "orgs" && <ModulePlaceholder icon={Building2} title="Organisations" description="La gestion globale des organisations nécessite une API plateforme dédiée. Aucune donnée de démonstration n’est affichée."/>}
+        {section === "orgs" && <section className="pad-module">
+          <div className="pad-module-tools"><div><h2>Organisations enregistrées</h2><p>{organizations.length} organisation(s) · Répertoire global en lecture seule</p></div><div className="pad-module-actions"><span className="pad-source-label">API plateforme sécurisée</span><button type="button" className="pad-refresh-button" onClick={() => setRefreshKey((value) => value + 1)} disabled={organizationsLoading}><RefreshCw size={14}/> Actualiser</button></div></div>
+          {organizationsError ? <div className="pad-inline-error" role="alert"><span>{organizationsError}</span><button type="button" className="pad-refresh-button" onClick={() => setRefreshKey((value) => value + 1)}>Réessayer</button></div>
+          : organizationsLoading ? <div className="pad-empty-row">Chargement des organisations…</div>
+          : organizations.length === 0 ? <div className="pad-empty-row">Aucune organisation enregistrée n’est retournée par l’API plateforme.</div>
+          : <div className="pad-table-scroll"><table className="pad-table"><thead><tr><th>Organisation</th><th>Code</th><th>Pays</th><th>Devise</th><th>Statut</th><th>Créée le</th></tr></thead><tbody>{organizations.map((item) => <tr key={item.id}><td><strong>{item.legalName}</strong><small>{item.id}</small></td><td>{item.tenantCode}</td><td>{item.countryCode}</td><td>{item.defaultCurrency}</td><td><span className={`pad-status ${item.status.toLowerCase()}`}>{item.status}</span></td><td>{new Date(item.createdAt).toLocaleDateString("fr-FR")}</td></tr>)}</tbody></table></div>}
+        </section>}
         {section === "users" && <ModulePlaceholder icon={Users} title="Utilisateurs & permissions" description="Les comptes, rôles et rattachements seront affichés après connexion aux endpoints plateforme autorisés."/>}
         {section === "audit" && <ModulePlaceholder icon={Activity} title="Journal d’audit" description="Les événements d’audit seront consultables ici dès que l’API plateforme de lecture sera disponible."/>}
         {section === "finance" && <ModulePlaceholder icon={CreditCard} title="Facturation & paiements" description="Les indicateurs globaux ne seront affichés qu’à partir d’agrégats fournis par le backend, sans mélanger les tenants."/>}
