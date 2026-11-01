@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { FileText, KeyRound, LogOut, RefreshCw, ShieldCheck, Plus, Trash2, Download, Pencil, Send, ReceiptText } from "lucide-react";
+import { FileText, RefreshCw, ShieldCheck, Plus, Trash2, Download, Pencil, Send, ReceiptText } from "lucide-react";
 
 type ApiError = { error?: { code?: string; message?: string } };
 type SessionUser = { id: string; email?: string };
-type TenantAccess = { id: string; tenantCode: string; legalName: string; role: string };
+type ActiveTenant = { id: string; tenantCode: string; legalName: string; role: string };
+type InvoiceWorkspaceProps = { sessionUser: SessionUser; activeTenant: ActiveTenant };
 type Customer = { id: string; customerCode: string; legalName: string; displayName: string | null; status: "ACTIVE" | "ARCHIVED"; defaultCurrency: string | null };
 type Currency = { code: string; name: string; minorUnit: number };
 type Jurisdiction = { id: string; code: string; countryCode: string; name: string; level: string };
@@ -54,13 +55,8 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function InvoiceWorkspace() {
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [checking, setChecking] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [tenantId, setTenantId] = useState("");
-  const [tenants, setTenants] = useState<TenantAccess[]>([]);
+export function InvoiceWorkspace({ sessionUser, activeTenant }: InvoiceWorkspaceProps) {
+  const tenantId = activeTenant.id;
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([]);
@@ -75,44 +71,22 @@ export function InvoiceWorkspace() {
   const [form, setForm] = useState<DraftForm>(emptyForm());
   const [editing, setEditing] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingTenants, setLoadingTenants] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [checkingResources, setCheckingResources] = useState(false);
 
-  async function loadTenantDirectory(): Promise<boolean> {
-    setLoadingTenants(true);
-    try {
-      const data = await readData<{ tenants?: TenantAccess[] }>(await fetch("/api/v1/user/tenants", { credentials: "same-origin", cache: "no-store" }), "Impossible de charger vos organisations.");
-      const available = data.tenants ?? [];
-      setTenants(available);
-      setTenantId((current) => available.some((tenant) => tenant.id === current) ? current : (available[0]?.id ?? ""));
-      return true;
-    } catch (error) { setTenants([]); setTenantId(""); setNotice(error instanceof Error ? error.message : "Impossible de charger vos organisations."); return false; }
-    finally { setLoadingTenants(false); }
-  }
-
-  async function checkSession() {
-    setChecking(true);
-    try {
-      const response = await fetch("/api/v1/user/session", { credentials: "same-origin", cache: "no-store" });
-      if (response.ok) {
-        const payload = await response.json() as { data?: SessionUser };
-        setUser(payload.data ?? null);
-        if (payload.data) await loadTenantDirectory();
-      } else { setUser(null); setTenants([]); }
-    } catch { setUser(null); setNotice("L’API Finance est inaccessible. Vérifiez que le backend est démarré."); }
-    finally { setChecking(false); }
-  }
-  useEffect(() => { void checkSession(); }, []);
-
   useEffect(() => {
-    if (!user || !tenantId) return;
+    if (!sessionUser.id || !tenantId) return;
+    setInvoices([]);
+    setSelectedInvoiceId("");
+    setCreditNotes([]);
+    setEditing(null);
+    setTaxFacts(emptyTaxFacts());
     let cancelled = false;
     async function loadResources() {
       setCheckingResources(true);
       try {
-        const role = tenants.find((tenant) => tenant.id === tenantId)?.role ?? "";
+        const role = activeTenant.role;
         const canCreateInvoices = ["OWNER", "ADMIN", "FINANCE_MANAGER", "FINANCE_OPERATOR"].includes(role);
         const [customerData, currencyData, jurisdictionData] = await Promise.all([
           canCreateInvoices
@@ -140,41 +114,10 @@ export function InvoiceWorkspace() {
     }
     void loadResources();
     return () => { cancelled = true; };
-  }, [user, tenantId]);
-
-  async function signIn(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setNotice("");
-    try {
-      const configResponse = await fetch("/api/v1/user/session/config", { cache: "no-store" });
-      const config = await readData<{ supabaseUrl: string; supabaseAnonKey: string }>(configResponse, "Configuration d’authentification indisponible.");
-      const authResponse = await fetch(`${config.supabaseUrl.replace(/\/$/, "")}/auth/v1/token?grant_type=password`, {
-        method: "POST", headers: { "content-type": "application/json", apikey: config.supabaseAnonKey },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-      if (!authResponse.ok) throw new Error(await responseError(authResponse, "Connexion refusée. Vérifiez vos identifiants."));
-      const auth = await authResponse.json() as { access_token?: string; user?: { id?: string; email?: string } };
-      if (!auth.access_token) throw new Error("Le fournisseur d’identité n’a pas renvoyé de session valide.");
-      const exchange = await fetch("/api/v1/user/session", {
-        method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ accessToken: auth.access_token }),
-      });
-      const session = await readData<SessionUser>(exchange, "La session sécurisée n’a pas pu être créée.");
-      setUser(session ?? { id: auth.user?.id ?? "", ...(auth.user?.email ? { email: auth.user.email } : {}) });
-      setPassword("");
-      if (await loadTenantDirectory()) setNotice("Connexion sécurisée établie.");
-    } catch (error) { setNotice(error instanceof Error ? error.message : "Une erreur inattendue est survenue."); }
-    finally { setBusy(false); }
-  }
-
-  async function signOut() {
-    setBusy(true); let message = "Session fermée.";
-    try { const response = await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin", cache: "no-store" }); if (!response.ok) message = await responseError(response, "La fermeture de session n’a pas été confirmée."); }
-    catch { message = "Le serveur n’a pas confirmé la fermeture de session."; }
-    finally { setUser(null); setInvoices([]); setTenants([]); setTenantId(""); setSelectedInvoiceId(""); setBusy(false); setNotice(message); }
-  }
+  }, [sessionUser.id, tenantId, activeTenant.role]);
 
   async function loadInvoices(event?: FormEvent<HTMLFormElement>) {
-    event?.preventDefault(); if (!tenantId) { setNotice("Sélectionnez une organisation autorisée."); return; }
+    event?.preventDefault(); if (!tenantId) { setNotice("Aucune organisation active n’est disponible."); return; }
     setLoading(true); setNotice("");
     try {
       const data = await readData<{ invoices?: Invoice[] }>(await fetch(`/api/v1/user/tenants/${tenantId}/invoices?limit=100`, { credentials: "same-origin", cache: "no-store" }), "Impossible de charger les factures.");
@@ -322,37 +265,26 @@ export function InvoiceWorkspace() {
   }
 
   const selectedInvoice = invoices.find((invoice) => invoice.id === selectedInvoiceId) ?? editing;
-  const currentRole = tenants.find((tenant) => tenant.id === tenantId)?.role ?? "";
+  const currentRole = activeTenant.role;
   const canIssue = ["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(currentRole);
   const canManageTax = canIssue;
   const canCredit = canIssue;
   return <section className="invoice-workspace">
     <div className="invoice-heading">
       <div><div className="eyebrow"><FileText size={14}/> GESTION FINANCIÈRE</div><h1>Factures</h1><p className="subtitle">Brouillons, calcul fiscal, émission et documents immuables.</p></div>
-      {user && <button className="outline-button" disabled={busy} onClick={() => void signOut()}><LogOut size={15}/> Déconnexion</button>}
+
     </div>
     <div className="demo-banner"><div className="demo-icon"><ShieldCheck size={19}/></div><div><strong>Opérations sécurisées côté serveur</strong><p>Chaque écriture vérifie la session, le tenant et les permissions. L’émission est idempotente et irréversible.</p></div><span className="demo-pill">BFF</span></div>
 
-    {checking ? <section className="panel invoice-state"><RefreshCw className="spin" size={22}/><strong>Vérification de la session…</strong></section> :
-      !user ? <section className="panel invoice-auth-panel">
-        <div className="invoice-auth-icon"><KeyRound size={22}/></div><h2>Connexion à ZENOX Finance</h2>
-        <p>Utilisez votre compte existant du fournisseur d’identité configuré pour Finance.</p>
-        <form onSubmit={(event) => void signIn(event)} className="invoice-login-form">
-          <label>Adresse e-mail<input type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required placeholder="vous@entreprise.com"/></label>
-          <label>Mot de passe<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={1}/></label>
-          <button className="primary-button" type="submit" disabled={busy}>{busy ? "Connexion…" : "Se connecter"} <KeyRound size={16}/></button>
-        </form><small className="muted-note">Aucun mot de passe ni jeton d’accès n’est enregistré dans le stockage du navigateur.</small>
-      </section> :
-      <>
-        <section className="panel invoice-list-panel">
-          <div className="panel-heading"><div><h2>Espace de facturation</h2><p>Connecté{user.email ? ` en tant que ${user.email}` : ""} · ${checkingResources ? "Chargement des référentiels…" : `${customers.length} client(s), ${currencies.length} devise(s)`}</p></div><span className="status-chip"><i/> Session active</span></div>
-          <form className="tenant-lookup-form" onSubmit={(event) => void loadInvoices(event)}>
-            <label>Organisation autorisée<select value={tenantId} onChange={(event) => { setTenantId(event.target.value); setInvoices([]); setSelectedInvoiceId(""); setEditing(null); setTaxFacts(emptyTaxFacts()); }} required disabled={loadingTenants || tenants.length === 0}>
-              {tenants.length === 0 ? <option value="">{loadingTenants ? "Chargement…" : "Aucune organisation accessible"}</option> : tenants.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.legalName} · {tenant.tenantCode} · {tenant.role}</option>)}
-            </select></label>
-            <button className="primary-button" type="submit" disabled={loading || loadingTenants || !tenantId}>{loading ? "Chargement…" : "Actualiser"} <RefreshCw size={15}/></button>
-          </form>
-        </section>
+    <section className="panel invoice-list-panel">
+      <div className="panel-heading">
+        <div><h2>Espace de facturation</h2><p>Connecté{sessionUser.email ? ` en tant que ${sessionUser.email}` : ""} · Organisation : {activeTenant.legalName} ({activeTenant.tenantCode}) · {checkingResources ? "Chargement des référentiels…" : `${customers.length} client(s), ${currencies.length} devise(s)`}</p></div>
+        <span className="status-chip"><i/> Session active · {activeTenant.role}</span>
+      </div>
+      <div className="invoice-action-bar">
+        <button className="primary-button" type="button" onClick={() => void loadInvoices()} disabled={loading || checkingResources}>{loading ? "Chargement…" : "Actualiser les factures"} <RefreshCw size={15}/></button>
+      </div>
+    </section>
 
         <section className="panel invoice-list-panel">
           <div className="panel-heading"><div><h2>{editing ? "Modifier le brouillon" : "Créer une facture"}</h2><p>Le serveur calcule tous les montants. Une modification invalide le snapshot fiscal précédent.</p></div>{editing && <button className="outline-button" onClick={resetDraft}>Annuler la modification</button>}</div>
