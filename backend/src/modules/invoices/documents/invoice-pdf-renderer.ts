@@ -139,11 +139,11 @@ export async function renderInvoicePdfDocument(invoice: FinanceInvoice, document
     ["Base taxable", money(invoice.taxableTotal, invoice.currencyCode)],
     ["Taxes", money(invoice.taxTotal, invoice.currencyCode)],
     [
-      documentLabel === "AVOIR" ? "Total de l’avoir" : "Total brut",
+      documentLabel.startsWith("AVOIR") ? "Total de l’avoir" : "Total brut",
       money(invoice.grandTotal, invoice.currencyCode),
     ],
     [
-      documentLabel === "AVOIR" ? "Montant à créditer" : "Net à payer",
+      documentLabel.startsWith("AVOIR") ? "Montant à créditer" : "Net à payer",
       money(invoice.amountDue, invoice.currencyCode),
     ],
   ];
