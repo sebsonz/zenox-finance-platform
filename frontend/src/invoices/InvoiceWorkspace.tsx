@@ -7,6 +7,7 @@ import { InvoiceListPanel } from "../modules/billing/freight/invoices/list/Invoi
 import { useInvoiceResources } from "../modules/billing/freight/invoices/hooks/useInvoiceResources.js";
 import { useInvoiceDraft } from "../modules/billing/freight/invoices/hooks/useInvoiceDraft.js";
 import { useInvoiceLifecycle } from "../modules/billing/freight/invoices/hooks/useInvoiceLifecycle.js";
+import { useCreditNotes } from "../modules/billing/freight/invoices/hooks/useCreditNotes.js";
 import type { DraftForm, InvoiceDraftRecord } from "../modules/billing/freight/invoices/types/invoice-draft.js";
 import type { Customer, Currency, Jurisdiction } from "../modules/billing/freight/invoices/types/workspace-resources.js";
 import { FileText, RefreshCw, ShieldCheck } from "lucide-react";
@@ -31,7 +32,6 @@ const emptyTaxFacts = (): TaxFactsForm => ({
   transactionType: "", supplierIfuStatus: "", customerIfuStatus: "", customerTaxStatus: "",
   customerCountryCode: "", supplierCountryCode: "", isImport: "", isExport: "", goodsCategory: "",
 });
-type CreditNote = { id: string; originalInvoiceId: string; creditNoteCode: string; creditKind: "FULL" | "PARTIAL"; status: "ISSUED"; reason: string; currencyCode: string; grandTotal: string; amountDue: string; issuedAt: string };
 type ApiPayload<T> = { data?: T } & ApiError;
 async function responseError(response: Response, fallback: string): Promise<string> {
   try { const payload = await response.json() as ApiError; return payload.error?.message ?? fallback; }
@@ -60,20 +60,21 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const [invoiceSearch, setInvoiceSearch] = useState("");
   const [invoiceStatus, setInvoiceStatus] = useState("");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
-  const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
-  const [creditReason, setCreditReason] = useState("Correction commerciale / retour / annulation");
-  const [creditAmount, setCreditAmount] = useState("");
-  const [creditNoteReason, setCreditNoteReason] = useState("Correction commerciale / retour / annulation");
-  const [creditNoteAmount, setCreditNoteAmount] = useState("");
+  const {
+    creditNotes, creditReason, setCreditReason, creditAmount, setCreditAmount,
+    creditNoteReason, setCreditNoteReason, creditNoteAmount, setCreditNoteAmount,
+    resetCreditNotes, loadCreditNotes, createCreditNote, issueCreditNote,
+    downloadCreditNote, openCreditNoteDocument,
+  } = useCreditNotes({ tenantId, setSelectedInvoiceId, setBusy, setNotice });
 
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const onTenantReset = useCallback(() => {
     setSelectedInvoiceId("");
-    setCreditNotes([]);
+    resetCreditNotes();
     setTaxFacts(emptyTaxFacts());
-  }, []);
+  }, [resetCreditNotes]);
   const onCustomersLoaded = useCallback((loadedCustomers: Customer[]) => {
     setForm((current) => ({ ...current, customerId: current.customerId || loadedCustomers[0]?.id || "" }));
   }, []);
@@ -128,19 +129,8 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
       if (creditNoteAmount.trim() && !/^(?:0|[1-9][0-9]{0,15})(?:[.][0-9]{1,8})?$/.test(creditNoteAmount.trim())) {
         setNotice("Le montant de l’avoir doit être un montant positif valide."); return;
       }
-      setBusy(true); setNotice("");
-      try {
-        const response = await fetch(`/api/v1/user/tenants/${tenantId}/invoices/${source.id}/credit-notes`, {
-          method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
-          body: JSON.stringify({ reason: creditNoteReason.trim(), ...(creditNoteAmount.trim() ? { amount: creditNoteAmount.trim() } : {}) }),
-        });
-        await readData(response, "La création de l’avoir a échoué.");
-        setSelectedInvoiceId(source.id);
-        await loadCreditNotes(source);
-        setCreditNoteAmount("");
-        setNotice(creditNoteAmount.trim() ? "Avoir partiel émis et enregistré." : "Avoir intégral émis et enregistré.");
-      } catch (error) { setNotice(error instanceof Error ? error.message : "La création de l’avoir a échoué."); }
-      finally { setBusy(false); }
+      setSelectedInvoiceId(source.id);
+      await createCreditNote(source, creditNoteReason, creditNoteAmount);
       return;
     }
     if (!tenantId || !form.customerId || !form.currencyCode || form.lines.some((line) => !line.description.trim())) {
@@ -217,48 +207,6 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
       downloadBlob(await response.blob(), `${invoice.invoiceCode ?? "facture"}.${format.endsWith(".pdf") ? "pdf" : "html"}`);
     } catch (error) { setNotice(error instanceof Error ? error.message : "Téléchargement impossible."); }
     finally { setBusy(false); }
-  }
-
-  async function loadCreditNotes(invoice: Invoice) {
-    setSelectedInvoiceId(invoice.id);
-    try {
-      const data = await readData<{ creditNotes?: CreditNote[] }>(await fetch(`/api/v1/user/tenants/${tenantId}/invoices/${invoice.id}/credit-notes`, { credentials: "same-origin", cache: "no-store" }), "Impossible de charger les avoirs.");
-      setCreditNotes(data.creditNotes ?? []);
-    } catch (error) { setCreditNotes([]); setNotice(error instanceof Error ? error.message : "Impossible de charger les avoirs."); }
-  }
-  async function issueCreditNote(invoice: Invoice) {
-    if (!window.confirm(creditAmount.trim() ? `Émettre un avoir partiel irréversible de ${creditAmount} ${invoice.currencyCode} ?` : "Créer un avoir intégral irréversible pour cette facture ?")) return;
-    setBusy(true);
-    try {
-      const response = await fetch(`/api/v1/user/tenants/${tenantId}/invoices/${invoice.id}/credit-notes`, {
-        method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reason: creditReason, ...(creditAmount.trim() ? { amount: creditAmount.trim() } : {}) }),
-      });
-      await readData(response, "La création de l’avoir a échoué.");
-      setNotice(creditAmount.trim() ? "Avoir partiel émis et enregistré." : "Avoir intégral émis et enregistré.");
-      setCreditAmount("");
-      await loadCreditNotes(invoice);
-    } catch (error) { setNotice(error instanceof Error ? error.message : "La création de l’avoir a échoué."); }
-    finally { setBusy(false); }
-  }
-  async function downloadCreditNote(id: string, format: "document" | "document.pdf", code: string) {
-    setBusy(true);
-    try {
-      const response = await fetch(`/api/v1/user/tenants/${tenantId}/invoices/credit-notes/${id}/${format}`, { credentials: "same-origin", cache: "no-store" });
-      if (!response.ok) throw new Error(await responseError(response, "Téléchargement impossible."));
-      downloadBlob(await response.blob(), `${code}.${format.endsWith(".pdf") ? "pdf" : "html"}`);
-    } catch (error) { setNotice(error instanceof Error ? error.message : "Téléchargement impossible."); }
-    finally { setBusy(false); }
-  }
-
-  function openCreditNoteDocument(id: string) {
-    // Open synchronously from the user's click so the authenticated document
-    // response can be previewed and printed without a popup-blocker race.
-    window.open(
-      `/api/v1/user/tenants/${tenantId}/invoices/credit-notes/${id}/document`,
-      "_blank",
-      "noopener,noreferrer",
-    );
   }
 
   const selectedInvoice = invoices.find((invoice) => invoice.id === selectedInvoiceId) ?? editing;
