@@ -12,7 +12,8 @@ const invoice = {
   currencyMinorUnit: 0,
   issueDate: "2026-10-16",
   dueDate: "2026-10-30",
-  customerSnapshot: { legalName: "Client Exemple", countryCode: "BJ" },
+  issuerSnapshot: { legalName: "Société Émettrice", tradeName: "ZENOX Transport", address: "Rue du Port", city: "Cotonou", countryCode: "BJ", email: "facturation@example.com" },
+  customerSnapshot: { legalName: "Client Exemple", address: "Quartier Haie Vive", city: "Cotonou", postalCode: "01 BP 100", countryCode: "BJ" },
   subtotal: "3000.00000000",
   discountTotal: "100.00000000",
   taxableTotal: "2900.00000000",
@@ -46,6 +47,10 @@ describe("invoice document rendering", () => {
     const tbody = html.match(/<tbody>([\s\S]*?)<\/tbody>/)?.[1] ?? "";
     expect((tbody.match(/<tr>/g) ?? []).length).toBe(3);
     expect(html).toContain("3422.00000000");
+    expect(html).toContain("ZENOX Transport");
+    expect(html).toContain("Société Émettrice");
+    expect(html).toContain("Rue du Port");
+    expect(html).toContain("Quartier Haie Vive");
     expect(html).not.toContain(invoice.id);
     expect(html).not.toContain(invoice.taxSnapshotId!);
     expect(html).not.toContain("Données de calcul");
@@ -85,6 +90,7 @@ describe("invoice document rendering", () => {
     expect(output).not.toContain("Test multi-ligne");
     expect(output).toContain("/FontFile2");
     expect(output).toContain("/ToUnicode");
+    expect(output).toContain("ZENOX Transport");
     expect(output).toContain("startxref");
     expect(output).toContain("%%EOF");
   });
