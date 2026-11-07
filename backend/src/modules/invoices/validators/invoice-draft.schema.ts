@@ -1,6 +1,18 @@
 import { z } from "zod";
 
-const decimalString = z.string().regex(/^(?:0|[1-9]\d*)(?:\.\d+)?$/).max(30);
+// These limits mirror finance_invoice_lines: quantity/unit_price use
+// numeric(24, 8), while discount_percent/tax_rate_percent use numeric(9, 6).
+function decimalString(maxIntegerDigits: number, maxScale: number) {
+  return z.string()
+    .regex(/^(?:0|[1-9]\d*)(?:\.\d+)?$/)
+    .refine((value) => {
+      const [integerPart = "", fractionalPart = ""] = value.split(".");
+      return integerPart.length <= maxIntegerDigits && fractionalPart.length <= maxScale;
+    }, "Decimal precision exceeds the supported database precision.");
+}
+
+const moneyInput = decimalString(16, 8);
+const percentageInput = decimalString(3, 6);
 
 export const createInvoiceDraftSchema = z.object({
   customerId: z.string().uuid(),
@@ -9,10 +21,10 @@ export const createInvoiceDraftSchema = z.object({
   notes: z.string().trim().max(5000).optional(),
   lines: z.array(z.object({
     description: z.string().trim().min(1).max(500),
-    quantity: decimalString,
-    unitPrice: decimalString,
-    discountPercent: decimalString.optional().default("0"),
-    taxRatePercent: decimalString,
+    quantity: moneyInput,
+    unitPrice: moneyInput,
+    discountPercent: percentageInput.optional().default("0"),
+    taxRatePercent: percentageInput,
   }).strict()).min(1).max(500),
 }).strict();
 
