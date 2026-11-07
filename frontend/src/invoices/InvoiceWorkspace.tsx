@@ -104,23 +104,27 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
 
       // Reference data is deliberately loaded independently. A tax API outage
       // must never prevent the currency selector (or customer list) from loading.
+      const loadCustomers = async () => canCreateInvoices
+        ? readData<{ customers?: Customer[] }>(
+            await fetch(`/api/v1/user/tenants/${tenantId}/customers?status=ACTIVE&limit=100`, { credentials: "same-origin", cache: "no-store" }),
+            "Impossible de charger les clients.",
+          )
+        : { customers: [] as Customer[] };
+      const loadCurrencies = async () => canCreateInvoices
+        ? readData<{ currencies?: Currency[] }>(
+            await fetch(`/api/v1/user/tenants/${tenantId}/currencies`, { credentials: "same-origin", cache: "no-store" }),
+            "Impossible de charger les devises.",
+          )
+        : { currencies: [] as Currency[] };
+      const loadJurisdictions = async () => readData<{ jurisdictions?: Jurisdiction[] }>(
+        await fetch(`/api/v1/user/tenants/${tenantId}/tax-jurisdictions`, { credentials: "same-origin", cache: "no-store" }),
+        "Impossible de charger les juridictions fiscales.",
+      );
+
       const [customerResult, currencyResult, jurisdictionResult] = await Promise.allSettled([
-        canCreateInvoices
-          ? readData<{ customers?: Customer[] }>(
-              await fetch(`/api/v1/user/tenants/${tenantId}/customers?status=ACTIVE&limit=100`, { credentials: "same-origin", cache: "no-store" }),
-              "Impossible de charger les clients.",
-            )
-          : Promise.resolve({ customers: [] as Customer[] }),
-        canCreateInvoices
-          ? readData<{ currencies?: Currency[] }>(
-              await fetch(`/api/v1/user/tenants/${tenantId}/currencies`, { credentials: "same-origin", cache: "no-store" }),
-              "Impossible de charger les devises.",
-            )
-          : Promise.resolve({ currencies: [] as Currency[] }),
-        readData<{ jurisdictions?: Jurisdiction[] }>(
-          await fetch(`/api/v1/user/tenants/${tenantId}/tax-jurisdictions`, { credentials: "same-origin", cache: "no-store" }),
-          "Impossible de charger les juridictions fiscales.",
-        ),
+        loadCustomers(),
+        loadCurrencies(),
+        loadJurisdictions(),
       ]);
 
       if (cancelled) return;
