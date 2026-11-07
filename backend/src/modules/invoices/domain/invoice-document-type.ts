@@ -10,7 +10,16 @@ export function isContractTotalGreaterThanInvoiceTotal(
   contractTotal: string,
   invoiceGrandTotal: string,
 ): boolean {
-  const contract = new Decimal(contractTotal);
-  const invoice = new Decimal(invoiceGrandTotal);
-  return contract.isFinite() && invoice.isFinite() && contract.gt(invoice);
+  try {
+    const contract = new Decimal(contractTotal);
+    const invoice = new Decimal(invoiceGrandTotal);
+
+    return (
+      contract.isFinite() &&
+      invoice.isFinite() &&
+      contract.gt(invoice)
+    );
+  } catch {
+    return false;
+  }
 }
