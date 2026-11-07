@@ -164,6 +164,26 @@ userCommercialDocumentsRouter.get("/:tenantId/proformas/:proformaId/document",re
  }catch(e){next(e);}
 });
 
+
+userCommercialDocumentsRouter.post("/:tenantId/proformas/:proformaId/convert",requireUserAuth(),async(req,res,next)=>{
+ try{const id=uuid.safeParse(req.params["tenantId"]),pid=uuid.safeParse(req.params["proformaId"]);if(!id.success||!pid.success)return fail(res,"INVALID_ID","Invalid pro forma ID.",400);const ctx=await contextFor(id.data,req,res,"invoices:create");if(!ctx)return;
+ const invoice=await withTenantTransaction(id.data,async c=>{
+  const found=await c.query("SELECT * FROM public.finance_proformas WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,pid.data]);const p=found.rows[0];if(!p||p.status!=="ISSUED")throw new Error("PROFORMA_NOT_ISSUED");
+  const prior=await c.query("SELECT invoice_id FROM public.finance_proforma_conversions WHERE tenant_id=$1 AND proforma_id=$2",[id.data,pid.data]);if(prior.rows[0]){const existing=await invoiceRepository.findById(c,id.data,prior.rows[0].invoice_id);if(existing)return existing;throw new Error("PROFORMA_CONVERSION_RECORD_INVALID");}
+  const customer=await customerRepository.findById(c,p.customer_id);if(!customer||customer.status!=="ACTIVE")throw new Error("CUSTOMER_NOT_ACTIVE");
+  const currency=await currencyRepository.findActiveByCode(String(p.currency_code).trim());if(!currency)throw new Error("CURRENCY_NOT_SUPPORTED");
+  const lineResult=await c.query<{description:string;item_code:string|null;unit_label:string|null;line_note:string|null;quantity:string;unit_price:string;discount_percent:string;indicative_tax_rate:string}>("SELECT description,item_code,unit_label,line_note,quantity::text,unit_price::text,discount_percent::text,indicative_tax_rate::text FROM public.finance_proforma_lines WHERE tenant_id=$1 AND proforma_id=$2 ORDER BY line_number",[id.data,pid.data]);
+  const lines=lineResult.rows.map(l=>({lineType:"ITEM" as const,description:l.description,...(l.item_code?{itemCode:l.item_code}:{}),...(l.unit_label?{unit:l.unit_label}:{}),...(l.line_note?{lineNote:l.line_note}:{}),quantity:l.quantity,unitPrice:l.unit_price,discountPercent:l.discount_percent,taxRatePercent:l.indicative_tax_rate}));
+  const totals=calculateInvoiceTotals({currency:currency.code,currencyDecimalPlaces:currency.minorUnit,lines:lines.map(l=>({quantity:l.quantity,unitPrice:l.unitPrice,discountPercent:l.discountPercent,taxRatePercent:l.taxRatePercent}))});
+  const draft=await invoiceRepository.createDraft(c,ctx,{customerId:p.customer_id,currencyCode:currency.code,...(p.notes?{notes:p.notes}:{}),document:{title:"FACTURE",reference:p.proforma_code??"",invoiceKind:"STANDARD",sourceReference:p.proforma_code??""},lines},currency.minorUnit,totals,totals.lines,customer);
+  await c.query("INSERT INTO public.finance_proforma_conversions(tenant_id,proforma_id,invoice_id,converted_by_actor_type,converted_by_actor_ref) VALUES($1,$2,$3,'USER',$4)",[id.data,pid.data,draft.id,ctx.actor.ref]);
+  await recordInvoiceAudit(c,ctx,"proforma.converted","PROFORMA",pid.data,{invoiceId:draft.id});
+  return draft;
+ });
+ res.status(201).json({data:{invoice,correlationId:ctx.correlationId}});
+ }catch(e){if(e instanceof Error&&e.message==="PROFORMA_NOT_ISSUED")return fail(res,e.message,"Only an issued pro forma can be converted.",409);if(e instanceof Error&&["CUSTOMER_NOT_ACTIVE","CURRENCY_NOT_SUPPORTED"].includes(e.message))return fail(res,e.message,"Customer or currency is unavailable.",422);next(e);}
+});
+
 userCommercialDocumentsRouter.post("/:tenantId/proformas/:proformaId/issue",requireUserAuth(),async(req,res,next)=>{
  try{const id=uuid.safeParse(req.params["tenantId"]),pid=uuid.safeParse(req.params["proformaId"]);if(!id.success||!pid.success)return fail(res,"INVALID_ID","Invalid resource ID.",400);const ctx=await contextFor(id.data,req,res,"invoices:issue");if(!ctx)return;
  const result=await withTenantTransaction(id.data,async c=>{const p=await c.query("SELECT * FROM public.finance_proformas WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,pid.data]);if(!p.rows[0]||p.rows[0].status!=="DRAFT")throw new Error("PROFORMA_NOT_DRAFT");const today=new Date().toISOString().slice(0,10),year=Number(today.slice(0,4));const seq=await c.query("INSERT INTO public.finance_proforma_sequences(tenant_id,fiscal_year,next_number) VALUES($1,$2,2) ON CONFLICT(tenant_id,fiscal_year) DO UPDATE SET next_number=public.finance_proforma_sequences.next_number+1 RETURNING next_number-1 AS allocated",[id.data,year]);const code="PRO-"+year+"-"+String(seq.rows[0].allocated).padStart(6,"0");const out=await c.query("UPDATE public.finance_proformas SET status='ISSUED',proforma_code=$3,issue_date=$4,updated_at=now(),updated_by_actor_type='USER',updated_by_actor_ref=$5 WHERE tenant_id=$1 AND id=$2 RETURNING *",[id.data,pid.data,code,today,ctx.actor.ref]);await recordInvoiceAudit(c,ctx,"proforma.issued","PROFORMA",pid.data,{proformaCode:code});return out.rows[0];});res.json({data:{proforma:result,correlationId:ctx.correlationId}});
