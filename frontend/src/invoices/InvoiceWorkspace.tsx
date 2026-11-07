@@ -76,6 +76,8 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const [appliesTo, setAppliesTo] = useState("GOODS");
   const [taxFacts, setTaxFacts] = useState<TaxFactsForm>(emptyTaxFacts);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [invoiceStatus, setInvoiceStatus] = useState("");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [creditReason, setCreditReason] = useState("Annulation de la facture d’origine");
@@ -144,7 +146,10 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     event?.preventDefault(); if (!tenantId) { setNotice("Aucune organisation active n’est disponible."); return; }
     setLoading(true); setNotice("");
     try {
-      const data = await readData<{ invoices?: Invoice[] }>(await fetch(`/api/v1/user/tenants/${tenantId}/invoices?limit=100`, { credentials: "same-origin", cache: "no-store" }), "Impossible de charger les factures.");
+      const params = new URLSearchParams({ limit: "100" });
+      if (invoiceSearch.trim()) params.set("search", invoiceSearch.trim());
+      if (invoiceStatus) params.set("status", invoiceStatus);
+      const data = await readData<{ invoices?: Invoice[] }>(await fetch(`/api/v1/user/tenants/${tenantId}/invoices?${params.toString()}`, { credentials: "same-origin", cache: "no-store" }), "Impossible de charger les factures.");
       setInvoices(data.invoices ?? []);
       setSelectedInvoiceId((current) => (data.invoices ?? []).some((item) => item.id === current) ? current : "");
       setNotice(`${data.invoices?.length ?? 0} facture(s) chargée(s).`);
@@ -382,7 +387,12 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
         </section>
 
         <section className="panel invoice-list-panel">
-          <div className="panel-heading"><div><h2>Factures de l’organisation</h2><p>{invoices.length} facture(s) chargée(s). Choisissez une ligne pour voir les actions disponibles.</p></div></div>
+          <div className="panel-heading"><div><h2>Factures de l’organisation</h2><p>{invoices.length} résultat(s) · recherche et filtres appliqués côté serveur.</p></div></div>
+          <form className="tenant-lookup-form" onSubmit={(event) => void loadInvoices(event)}>
+            <label>Recherche<input value={invoiceSearch} maxLength={120} onChange={(event) => setInvoiceSearch(event.target.value)} placeholder="N° facture, client, référence externe ou commande"/></label>
+            <label>Statut<select value={invoiceStatus} onChange={(event) => setInvoiceStatus(event.target.value)}><option value="">Tous les statuts</option><option value="DRAFT">Brouillons</option><option value="ISSUED">Émises</option><option value="CANCELLED">Annulées</option></select></label>
+            <button className="primary-button" type="submit" disabled={loading}>{loading ? "Recherche…" : "Rechercher"} <RefreshCw size={15}/></button>
+          </form>
           <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Référence</th><th>Client</th><th>Statut</th><th>Taxe</th><th>Devise</th><th>Total</th><th>Actions</th></tr></thead>
             <tbody>{invoices.length ? invoices.map((invoice) => <tr key={invoice.id} className={selectedInvoiceId === invoice.id ? "selected-invoice-row" : ""}>
               <td><strong>{invoice.invoiceCode ?? "Brouillon"}</strong><small>{invoice.id.slice(0, 8)}…</small></td><td>{invoice.customerSnapshot?.displayName ?? invoice.customerSnapshot?.legalName ?? "—"}</td>
