@@ -4,7 +4,6 @@ import { invoiceTaxSnapshotRouter } from "./invoice-tax-snapshot.routes.js";
 import { invoiceIssuanceRouter } from "./invoice-issuance.routes.js";
 import { invoiceDocumentRouter } from "./invoice-document.routes.js";
 import { creditNoteRouter } from "./credit-note.routes.js";
-import { commercialDocumentRouter } from "./commercial-document.routes.js";
 
 /** Composes all invoice endpoints while preserving their existing URL prefixes. */
 export const invoicesRouter = Router();
@@ -13,5 +12,4 @@ invoicesRouter.use("/", invoiceTaxSnapshotRouter);
 invoicesRouter.use("/", invoiceIssuanceRouter);
 invoicesRouter.use("/", invoiceDocumentRouter);
 invoicesRouter.use("/", creditNoteRouter);
-invoicesRouter.use("/", commercialDocumentRouter);
 invoicesRouter.use("/", invoiceDraftRouter);
