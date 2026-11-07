@@ -1,4 +1,4 @@
-import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useState } from "react";
 import {
   createEmptyInvoiceDraft,
   type DraftForm,
@@ -90,7 +90,7 @@ export function useInvoiceDraft({ customers, currencies, setSelectedInvoiceId, s
 
   return {
     form,
-    setForm: setForm as Dispatch<SetStateAction<DraftForm>>,
+    setForm,
     editing,
     setEditing,
     resetDraft,
