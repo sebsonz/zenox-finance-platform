@@ -38,3 +38,4 @@ platformTaxAdminRouter.get("/tax/rules", requireUserAuth(), async (req, res, nex
   } catch (error) {
     next(error);
   }
+});
