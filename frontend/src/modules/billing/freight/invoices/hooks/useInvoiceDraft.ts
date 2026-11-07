@@ -88,6 +88,16 @@ export function useInvoiceDraft({ customers, currencies, setSelectedInvoiceId, s
     }));
   }, []);
 
+  const duplicateLine = useCallback((index: number) => {
+    setForm((current) => {
+      const source = current.lines[index];
+      if (!source || current.lines.length >= 500) return current;
+      const copy = { ...source };
+      delete copy.id;
+      return { ...current, lines: [...current.lines.slice(0, index + 1), copy, ...current.lines.slice(index + 1)] };
+    });
+  }, []);
+
   return {
     form,
     setForm,
