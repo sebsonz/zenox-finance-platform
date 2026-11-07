@@ -107,6 +107,8 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     if (autosaveSnapshotRef.current === snapshot || form.documentType === "CREDIT_NOTE") return;
     autosaveSnapshotRef.current = snapshot;
     if (!form.customerId || !form.currencyCode || form.lines.some((line) => !line.description.trim())) return;
+    if (form.documentType === "DEPOSIT" && !form.contractTotal.trim()) return;
+    if (form.documentType === "BALANCE" && !form.relatedInvoiceId) return;
     const timeout = window.setTimeout(() => {
       void saveStandardDraft();
     }, 900);
