@@ -18,6 +18,12 @@ export const createInvoiceDraftSchema = z.object({
   customerId: z.string().uuid(),
   currencyCode: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
   dueDate: z.iso.date().optional(),
+  purchaseOrderReference: z.string().trim().max(120).optional(),
+  serviceDate: z.iso.date().optional(),
+  paymentTerms: z.string().trim().max(500).optional(),
+  paymentInstructions: z.string().trim().max(2000).optional(),
+  externalReference: z.string().trim().max(120).optional(),
+  footerNote: z.string().trim().max(1000).optional(),
   notes: z.string().trim().max(5000).optional(),
   lines: z.array(z.object({
     description: z.string().trim().min(1).max(500),
