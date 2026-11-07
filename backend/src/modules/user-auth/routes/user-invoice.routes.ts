@@ -235,6 +235,7 @@ userInvoiceRouter.post(
       res.status(201).json({ data: { invoice, correlationId: context.correlationId } });
     } catch (error) {
       if (sendDraftServiceError(error, res)) return;
+      if (error instanceof Error && /^(INVALID_|EXCESSIVE_|QUANTITY_|UNIT_PRICE_|DISCOUNT_|GLOBAL_DISCOUNT_|TAX_RATE_|INVOICE_REQUIRES_|TOO_MANY_)/.test(error.message)) { res.status(422).json({ error: { code: error.message, message: "Les lignes et remises de la facture ne peuvent pas être calculées." } }); return; }
       next(error);
     }
   },
@@ -262,6 +263,7 @@ userInvoiceRouter.put(
       res.status(200).json({ data: { invoice, correlationId: context.correlationId } });
     } catch (error) {
       if (sendDraftServiceError(error, res)) return;
+      if (error instanceof Error && /^(INVALID_|EXCESSIVE_|QUANTITY_|UNIT_PRICE_|DISCOUNT_|GLOBAL_DISCOUNT_|TAX_RATE_|INVOICE_REQUIRES_|TOO_MANY_)/.test(error.message)) { res.status(422).json({ error: { code: error.message, message: "Les lignes et remises de la facture ne peuvent pas être calculées." } }); return; }
       next(error);
     }
   },
