@@ -117,6 +117,7 @@ export async function renderInvoicePdfDocument(invoice: FinanceInvoice, document
   const issuer = invoice.issuerSnapshot ?? {};
   const customer = invoice.customerSnapshot;
   const issuerName = text(issuer["tradeName"] || issuer["legalName"], "ZENOX Finance");
+  const issuerLegalName = text(issuer["legalName"], "");
   const issuerDetails = partyLines(issuer);
   const customerName = text(customer["legalName"] ?? customer["displayName"]);
   const customerDetails = partyLines(customer);
@@ -152,6 +153,7 @@ export async function renderInvoicePdfDocument(invoice: FinanceInvoice, document
           width: "*",
           stack: [
             { text: issuerName, style: "brand" },
+            ...(issuerLegalName && issuerLegalName !== issuerName ? [{ text: issuerLegalName, style: "muted" }] : []),
             ...issuerDetails.map((detail) => ({ text: detail, style: "muted" })),
             { text: documentLabel, style: "documentTitle", margin: [0, 5, 0, 0] },
           ],
