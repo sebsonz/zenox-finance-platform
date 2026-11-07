@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import Decimal from "decimal.js";
 import { withTenantTransaction } from "../../../db/transaction.js";
 import type { FinanceInvoiceOperationContext } from "../types/invoice-operation-context.js";
 import { invoiceActor, isUserInvoiceContext } from "../types/invoice-operation-context.js";
@@ -8,7 +9,7 @@ import { renderInvoiceHtmlDocument } from "../documents/invoice-html-renderer.js
 import { renderInvoicePdfDocument } from "../documents/invoice-pdf-renderer.js";
 
 export class CreditNoteServiceError extends Error {
-  constructor(readonly code: "SOURCE_INVOICE_NOT_ISSUED" | "SOURCE_TAX_SNAPSHOT_MISSING" | "CREDIT_NOTE_ALREADY_EXISTS", message: string) {
+  constructor(readonly code: "SOURCE_INVOICE_NOT_ISSUED" | "SOURCE_TAX_SNAPSHOT_MISSING" | "CREDIT_NOTE_ALREADY_EXISTS" | "INVALID_CREDIT_AMOUNT" | "CREDIT_AMOUNT_EXCEEDS_REMAINING", message: string) {
     super(message);
     this.name = "CreditNoteServiceError";
   }
@@ -121,6 +122,14 @@ export const creditNoteService = {
   },
 
   async issueFullReversal(context: FinanceInvoiceOperationContext, invoiceId: string, reason: string): Promise<FinanceCreditNote> {
+    return this.issue(context, invoiceId, reason, null);
+  },
+
+  async issuePartial(context: FinanceInvoiceOperationContext, invoiceId: string, reason: string, amount: string): Promise<FinanceCreditNote> {
+    return this.issue(context, invoiceId, reason, amount);
+  },
+
+  async issue(context: FinanceInvoiceOperationContext, invoiceId: string, reason: string, requestedAmount: string | null): Promise<FinanceCreditNote> {
     const actor = invoiceActor(context);
     const legacyPrincipalId = isUserInvoiceContext(context) ? null : context.principal.id;
     return withTenantTransaction(context.tenantId, async (client) => {
@@ -131,22 +140,72 @@ export const creditNoteService = {
       );
       const sourceRow = lock.rows[0];
       if (!sourceRow || sourceRow.status !== "ISSUED") {
-        throw new CreditNoteServiceError("SOURCE_INVOICE_NOT_ISSUED", "Only an issued invoice can be fully reversed by a credit note.");
+        throw new CreditNoteServiceError("SOURCE_INVOICE_NOT_ISSUED", "Only an issued invoice can be credited.");
       }
       if (!sourceRow.tax_snapshot_id) {
         throw new CreditNoteServiceError("SOURCE_TAX_SNAPSHOT_MISSING", "The source invoice has no tax evidence.");
       }
-      const existing = await client.query<{ id: string }>(
-        "SELECT id FROM public.finance_credit_notes WHERE tenant_id = $1 AND original_invoice_id = $2",
-        [context.tenantId, invoiceId],
-      );
-      if (existing.rows[0]) {
-        throw new CreditNoteServiceError("CREDIT_NOTE_ALREADY_EXISTS", "A full-reversal credit note already exists for this invoice.");
-      }
+
       const source = await invoiceRepository.findById(client, context.tenantId, invoiceId);
       if (!source || source.status !== "ISSUED" || !source.invoiceCode || !source.taxSnapshotId || source.taxStatus !== "CALCULATED") {
         throw new CreditNoteServiceError("SOURCE_INVOICE_NOT_ISSUED", "The issued source invoice could not be validated.");
       }
+      const already = await client.query<{ grand_total: string; amount_due: string }>(
+        `SELECT COALESCE(SUM(grand_total),0)::text AS grand_total,
+                COALESCE(SUM(amount_due),0)::text AS amount_due
+           FROM public.finance_credit_notes
+          WHERE tenant_id = $1 AND original_invoice_id = $2`,
+        [context.tenantId, invoiceId],
+      );
+      const credited = new Decimal(already.rows[0]?.grand_total ?? "0");
+      const sourceTotal = new Decimal(source.grandTotal);
+      const remaining = sourceTotal.minus(credited);
+      const precision = source.currencyMinorUnit;
+      if (!sourceTotal.isPositive() || !remaining.isPositive()) {
+        throw new CreditNoteServiceError("CREDIT_AMOUNT_EXCEEDS_REMAINING", "The source invoice has already been fully credited.");
+      }
+      let amount: Decimal;
+      if (requestedAmount === null) {
+        if (credited.isPositive()) {
+          throw new CreditNoteServiceError("CREDIT_NOTE_ALREADY_EXISTS", "A full credit is not possible after a previous partial credit.");
+        }
+        amount = remaining;
+      } else {
+        if (!/^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,8})?$/.test(requestedAmount)) {
+          throw new CreditNoteServiceError("INVALID_CREDIT_AMOUNT", "Enter a valid positive credit amount.");
+        }
+        amount = new Decimal(requestedAmount).toDecimalPlaces(precision, Decimal.ROUND_HALF_UP);
+        if (!amount.isPositive()) throw new CreditNoteServiceError("INVALID_CREDIT_AMOUNT", "The credit amount must be greater than zero.");
+        if (amount.greaterThan(remaining)) {
+          throw new CreditNoteServiceError("CREDIT_AMOUNT_EXCEEDS_REMAINING", `Only ${remaining.toFixed(precision)} ${source.currencyCode} remains available to credit.`);
+        }
+      }
+      const ratio = amount.dividedBy(sourceTotal);
+      const money = (value: string) => new Decimal(value).times(ratio).toDecimalPlaces(precision, Decimal.ROUND_HALF_UP).toFixed(precision);
+      const quantity = (value: string) => new Decimal(value).times(ratio).toDecimalPlaces(8, Decimal.ROUND_HALF_UP).toFixed(8);
+      const lines = source.lines.map((line) => ({
+        ...line,
+        quantity: quantity(line.quantity),
+        subtotal: money(line.subtotal),
+        discountAmount: money(line.discountAmount),
+        taxableAmount: money(line.taxableAmount),
+        taxAmount: money(line.taxAmount),
+        total: money(line.total),
+      }));
+      const subtotal = money(source.subtotal);
+      const discountTotal = money(source.discountTotal);
+      const taxableTotal = money(source.taxableTotal);
+      const taxTotal = money(source.taxTotal);
+      const amountDue = money(source.amountDue);
+      const isFull = amount.equals(remaining) && credited.isZero();
+      // The final partial credit absorbs rounding residue so the cumulative amount
+      // exactly matches the requested value without changing the source invoice.
+      if (lines.length > 0) {
+        const lineSum = lines.reduce((sum, line) => sum.plus(line.total), new Decimal(0));
+        const residue = amount.minus(lineSum);
+        if (!residue.isZero()) lines[lines.length - 1]!.total = new Decimal(lines[lines.length - 1]!.total).plus(residue).toFixed(precision);
+      }
+
       const tax = await client.query<{
         applied_rules_snapshot: Record<string, unknown>[];
         result_snapshot: Record<string, unknown>;
@@ -173,21 +232,25 @@ export const creditNoteService = {
       if (!sequence) throw new Error("CREDIT_NOTE_SEQUENCE_ALLOCATION_FAILED");
       const code = `CN-${sequence.fiscal_year}-${sequence.allocated_number.padStart(6, "0")}`;
       const creditNoteId = randomUUID();
+      const creditLabel = isFull ? "AVOIR intégral" : "AVOIR partiel";
       const documentInvoice = {
         ...source,
         id: creditNoteId,
         invoiceCode: code,
         status: "ISSUED" as const,
         issueDate: new Date().toISOString().slice(0, 10),
-        notes: `AVOIR intégral de ${source.invoiceCode}. Motif : ${reason}`,
+        subtotal, discountTotal, taxableTotal, taxTotal,
+        grandTotal: amount.toFixed(precision), amountDue,
+        lines: lines.map((line) => ({ ...line, unitPrice: line.unitPrice, discountPercent: line.discountPercent, taxRatePercent: line.taxRatePercent })),
+        notes: `${creditLabel} de ${source.invoiceCode}. Motif : ${reason}`,
       };
       const htmlContent = renderInvoiceHtmlDocument({
         invoice: documentInvoice,
         appliedRules: snapshot.applied_rules_snapshot,
         taxResult: snapshot.result_snapshot,
-        documentLabel: "AVOIR",
+        documentLabel: creditLabel,
       });
-      const pdfContent = await renderInvoicePdfDocument(documentInvoice, "AVOIR");
+      const pdfContent = await renderInvoicePdfDocument(documentInvoice, creditLabel);
       const htmlSha256 = createHash("sha256").update(htmlContent, "utf8").digest("hex");
       const pdfSha256 = createHash("sha256").update(pdfContent).digest("hex");
       const inserted = await client.query<{
@@ -200,10 +263,10 @@ export const creditNoteService = {
           currency_minor_unit, customer_snapshot, source_tax_snapshot_id, source_tax_snapshot_version,
           document_version, lines_snapshot, subtotal, discount_total, taxable_total, tax_total,
           grand_total, amount_due, html_content, html_sha256, pdf_content, pdf_sha256, issued_by_principal_id,
-          issued_by_actor_type, issued_by_actor_ref
+          issued_by_actor_type, issued_by_actor_ref, credit_kind
         ) VALUES (
           $1,$2,$3,$4,'ISSUED',$5,$6,$7,$8::jsonb,$9,$10,1,$11::jsonb,
-          $12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24
+          $12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25
         )
         RETURNING id, original_invoice_id, credit_note_code, status, reason, currency_code,
           grand_total::text, amount_due::text, html_sha256, pdf_sha256,
@@ -211,8 +274,9 @@ export const creditNoteService = {
         [
           creditNoteId, context.tenantId, source.id, code, reason, source.currencyCode, source.currencyMinorUnit,
           JSON.stringify(source.customerSnapshot), source.taxSnapshotId, source.taxSnapshotVersion,
-          JSON.stringify(source.lines), source.subtotal, source.discountTotal, source.taxableTotal, source.taxTotal,
-          source.grandTotal, source.amountDue, htmlContent, htmlSha256, pdfContent, pdfSha256, legacyPrincipalId, actor.type, actor.ref,
+          JSON.stringify(lines), subtotal, discountTotal, taxableTotal, taxTotal,
+          amount.toFixed(precision), amountDue, htmlContent, htmlSha256, pdfContent, pdfSha256,
+          legacyPrincipalId, actor.type, actor.ref, isFull ? "FULL" : "PARTIAL",
         ],
       );
       const row = inserted.rows[0];
@@ -220,7 +284,9 @@ export const creditNoteService = {
       await recordInvoiceAudit(client, context, "invoice.credit_note.issued", "CREDIT_NOTE", row.id, {
         creditNoteCode: row.credit_note_code,
         originalInvoiceId: row.original_invoice_id,
-        fullReversal: true,
+        fullReversal: isFull,
+        creditKind: isFull ? "FULL" : "PARTIAL",
+        creditedAmount: row.grand_total,
         currencyCode: row.currency_code.trim(),
       });
       return {
