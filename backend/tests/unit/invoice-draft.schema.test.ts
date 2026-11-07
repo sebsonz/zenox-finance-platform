@@ -22,11 +22,11 @@ describe("invoice draft request schema", () => {
     expect(parsed.documentType).toBe("STANDARD");
   });
 
-  it("requires a contract total greater than the deposit invoice amount", () => {
+  it("requires contract metadata for deposit invoices and leaves amount comparison to the domain layer", () => {
     const base = { customerId, currencyCode: "XOF", lines: [{ description: "Acompte", quantity: "1", unitPrice: "250", taxRatePercent: "0" }] };
     expect(createInvoiceDraftSchema.safeParse({ ...base, documentType: "DEPOSIT", contractTotal: "1000" }).success).toBe(true);
     expect(createInvoiceDraftSchema.safeParse({ ...base, documentType: "DEPOSIT" }).success).toBe(false);
-    expect(createInvoiceDraftSchema.safeParse({ ...base, documentType: "DEPOSIT", contractTotal: "100" }).success).toBe(false);
+    expect(createInvoiceDraftSchema.safeParse({ ...base, documentType: "DEPOSIT", contractTotal: "100" }).success).toBe(true);
   });
 
   it("requires a source deposit invoice for balance invoices", () => {
