@@ -12,6 +12,7 @@ import { RegistrationWorkspace } from "../auth/RegistrationWorkspace.js";
 import { PlatformEntryWorkspace } from "../auth/PlatformEntryWorkspace.js";
 import { InvoiceWorkspace } from "../invoices/InvoiceWorkspace.js";
 import { CommercialDocumentsWorkspace } from "../features/commercial/CommercialDocumentsWorkspace.js";
+import { PaymentsWorkspace } from "../features/payments/PaymentsWorkspace.js";
 import { CustomersWorkspace } from "../features/customers/CustomersWorkspace.js";
 import { PlatformReviewWorkspace } from "../platform/PlatformReviewWorkspace.js";
 import { PlatformAdminDashboard } from "../platform/PlatformAdminDashboard.js";
@@ -172,7 +173,7 @@ export function App() {
         {page === "commercial" && activeTenant && <CommercialDocumentsWorkspace tenantId={activeTenant.id} canManage={["OWNER","ADMIN","FINANCE_MANAGER","FINANCE_OPERATOR"].includes(activeTenant.role)}/>}
         {page === "invoices" && activeTenant && <InvoiceWorkspace key={activeTenant.id} sessionUser={sessionUser} activeTenant={activeTenant} tenants={tenants} onTenantChange={(tenantId) => setActiveTenant(tenants.find((tenant) => tenant.id === tenantId) ?? null)}/>}
         {page === "customers" && activeTenant && <CustomersWorkspace tenantId={activeTenant.id} canManage={["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(activeTenant.role)}/>}
-        {page === "payments" && <ComingSoon icon={WalletCards} title="Paiements & allocations" description="Les paiements, affectations et soldes seront servis par le backend Finance, avec idempotence et contrôle multi-tenant."/>}
+        {page === "payments" && activeTenant && <PaymentsWorkspace tenantId={activeTenant.id} canManage={["OWNER","ADMIN","FINANCE_MANAGER","FINANCE_OPERATOR"].includes(activeTenant.role)}/>}
         {page === "settings" && <ComingSoon icon={Settings2} title="Paramètres Finance" description="La configuration des organisations, devises et intégrations sera reliée aux services authentifiés."/>}
         {page === "platform" && isPlatformOperator && <PlatformReviewWorkspace/>}
         <footer><span>© 2026 ZENOX Finance</span><span><ShieldCheck size={13}/> Finance indépendante · API-first</span><span>Interface en construction</span></footer>
