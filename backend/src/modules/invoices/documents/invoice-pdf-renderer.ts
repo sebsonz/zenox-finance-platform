@@ -72,8 +72,7 @@ export function renderInvoicePdfDocument(invoice: FinanceInvoice, documentLabel 
     ...(invoice.serviceDate ? [`Prestation / livraison: ${invoice.serviceDate}`] : []),
     `Client: ${String(customer["legalName"] ?? customer["displayName"] ?? "-")}`,
     `Pays: ${String(customer["countryCode"] ?? "-")} | Identifiant fiscal: ${String(customer["taxIdentifier"] ?? "-")}`,
-    `Devise: ${invoice.currencyCode} | Revision: ${invoice.documentVersion}`,
-    `Snapshot fiscal: ${invoice.taxSnapshotId}`,
+    `Devise: ${invoice.currencyCode}`,
     "",
     "DETAIL DES PRESTATIONS",
     "Ligne | Description | Qte | Prix unitaire | Remise | Taxe | Total",
@@ -91,7 +90,6 @@ export function renderInvoicePdfDocument(invoice: FinanceInvoice, documentLabel 
     "",
     ...(invoice.paymentTerms ? [`Conditions de paiement: ${invoice.paymentTerms}`] : []),
     ...(invoice.paymentInstructions ? [`Modalites de paiement: ${invoice.paymentInstructions}`] : []),
-    `Notes: ${invoice.notes ?? "-"}`,
     ...(invoice.footerNote ? [invoice.footerNote] : []),
     "Document genere par ZENOX Finance. Validation legale et fiscale par juridiction requise.",
   ];
