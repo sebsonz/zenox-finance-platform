@@ -173,7 +173,7 @@ export const creditNoteService = {
         }
         amount = remaining;
       } else {
-        if (!/^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,8})?$/.test(requestedAmount)) {
+        if (!/^(?:0|[1-9][0-9]{0,15})(?:[.][0-9]{1,8})?$/.test(requestedAmount)) {
           throw new CreditNoteServiceError("INVALID_CREDIT_AMOUNT", "Enter a valid positive credit amount.");
         }
         amount = new Decimal(requestedAmount).toDecimalPlaces(precision, Decimal.ROUND_HALF_UP);
