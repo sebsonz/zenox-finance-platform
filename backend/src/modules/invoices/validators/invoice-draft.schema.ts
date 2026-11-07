@@ -16,7 +16,7 @@ const percentageInput = decimalString(3, 6);
 
 export const invoiceDocumentTypeSchema = z.enum(["STANDARD", "DEPOSIT", "BALANCE"]);
 
-export const createInvoiceDraftSchema = z.object({
+const invoiceDraftObjectSchema = z.object({
   documentType: invoiceDocumentTypeSchema.default("STANDARD"),
   contractTotal: moneyInput.optional(),
   relatedInvoiceId: z.string().uuid().optional(),
@@ -37,7 +37,12 @@ export const createInvoiceDraftSchema = z.object({
     discountPercent: percentageInput.optional().default("0"),
     taxRatePercent: percentageInput,
   }).strict()).min(1).max(500),
-}).strict().superRefine((value, ctx) => {
+}).strict();
+
+function validateInvoiceDocumentType(
+  value: z.infer<typeof invoiceDraftObjectSchema>,
+  ctx: z.RefinementCtx,
+): void {
   if (value.documentType === "STANDARD" && (value.contractTotal !== undefined || value.relatedInvoiceId !== undefined)) {
     ctx.addIssue({ code: "custom", path: ["documentType"], message: "Standard invoices cannot reference a deposit or contract total." });
   }
@@ -47,11 +52,12 @@ export const createInvoiceDraftSchema = z.object({
   if (value.documentType === "BALANCE" && (!value.relatedInvoiceId || value.contractTotal !== undefined)) {
     ctx.addIssue({ code: "custom", path: ["relatedInvoiceId"], message: "A balance invoice must reference its source deposit invoice." });
   }
-});
+}
 
-export const updateInvoiceDraftSchema = createInvoiceDraftSchema.extend({
+export const createInvoiceDraftSchema = invoiceDraftObjectSchema.superRefine(validateInvoiceDocumentType);
+export const updateInvoiceDraftSchema = invoiceDraftObjectSchema.extend({
   expectedUpdatedAt: z.iso.datetime({ offset: true }),
-});
+}).superRefine(validateInvoiceDocumentType);
 
 export const listInvoiceDraftsQuerySchema = z.object({
   status: z.enum(["DRAFT", "ISSUED", "CANCELLED"]).optional(),
