@@ -32,7 +32,7 @@ type Invoice = {
   documentVersion: number; taxSnapshotId: string | null; taxStatus: "PROVISIONAL" | "CALCULATED" | "REVIEW_REQUIRED";
   customerSnapshot?: { legalName?: string; displayName?: string };
   document?: Partial<InvoiceDocumentForm>;
-  lines: Array<{ id: string; description: string; itemCode?: string | null; unit?: string | null; lineNote?: string | null; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string; total: string }>;
+  lines: Array<{ id: string; description: string; lineType?: "ITEM"|"SERVICE"|"FEE"|"EXPENSE"; itemCode?: string | null; unit?: string | null; lineNote?: string | null; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string; total: string }>;
 };
 type CreditNote = { id: string; originalInvoiceId: string; creditNoteCode: string; status: "ISSUED"; reason: string; currencyCode: string; grandTotal: string; amountDue: string; issuedAt: string };
 type InvoiceAdjustment = { id:string; adjustment_code:string; adjustment_type:"CREDIT_NOTE"|"DEBIT_NOTE"; reason:string; currency_code:string; grand_total:string; amount_due:string; issued_at:string };
@@ -153,7 +153,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     setForm({
       customerId: invoice.customerId, currencyCode: invoice.currencyCode, dueDate: invoice.dueDate ?? "", notes: invoice.notes ?? "",
       document: { ...emptyDocument(), ...(invoice.document ?? {}) },
-      lines: invoice.lines.map((line) => ({ description: line.description, itemCode: line.itemCode ?? "", unit: line.unit ?? "unité", lineNote: line.lineNote ?? "", quantity: line.quantity, unitPrice: line.unitPrice, discountPercent: line.discountPercent, taxRatePercent: line.taxRatePercent })),
+      lines: invoice.lines.map((line) => ({ lineType: line.lineType ?? "ITEM", description: line.description, itemCode: line.itemCode ?? "", unit: line.unit ?? "unité", lineNote: line.lineNote ?? "", quantity: line.quantity, unitPrice: line.unitPrice, discountPercent: line.discountPercent, taxRatePercent: line.taxRatePercent })),
     });
     setSelectedInvoiceId(invoice.id);
     window.scrollTo({ top: 0, behavior: "smooth" });
