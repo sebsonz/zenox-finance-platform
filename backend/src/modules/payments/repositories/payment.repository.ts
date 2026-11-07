@@ -353,6 +353,7 @@ export const paymentRepository = {
         i.grand_total::text,
         (COALESCE((SELECT SUM(a.amount) FROM public.finance_payment_allocations a
           WHERE a.tenant_id=i.tenant_id AND a.invoice_id=i.id),0)
+         + COALESCE((SELECT SUM(ir.applied_amount) FROM public.finance_invoice_relationships ir WHERE ir.tenant_id=i.tenant_id AND ir.related_invoice_id=i.id),0)
          - COALESCE((SELECT SUM(r.amount) FROM public.finance_payment_allocation_reversals r
           JOIN public.finance_payment_allocations a ON a.tenant_id=r.tenant_id AND a.id=r.allocation_id
           WHERE r.tenant_id=i.tenant_id AND a.invoice_id=i.id),0))::text AS allocated_amount,
