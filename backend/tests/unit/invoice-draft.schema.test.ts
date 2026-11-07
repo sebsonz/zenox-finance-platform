@@ -14,6 +14,34 @@ describe("invoice draft request schema", () => {
     expect(parsed.lines[0]?.discountPercent).toBe("0");
   });
 
+  it("defaults existing drafts to standard invoices", () => {
+    const parsed = createInvoiceDraftSchema.parse({
+      customerId, currencyCode: "XOF",
+      lines: [{ description: "Service", quantity: "1", unitPrice: "100", taxRatePercent: "0" }],
+    });
+    expect(parsed.documentType).toBe("STANDARD");
+  });
+
+  it("requires a contract total greater than the deposit invoice amount", () => {
+    const base = { customerId, currencyCode: "XOF", lines: [{ description: "Acompte", quantity: "1", unitPrice: "250", taxRatePercent: "0" }] };
+    expect(createInvoiceDraftSchema.safeParse({ ...base, documentType: "DEPOSIT", contractTotal: "1000" }).success).toBe(true);
+    expect(createInvoiceDraftSchema.safeParse({ ...base, documentType: "DEPOSIT" }).success).toBe(false);
+    expect(createInvoiceDraftSchema.safeParse({ ...base, documentType: "DEPOSIT", contractTotal: "100" }).success).toBe(false);
+  });
+
+  it("requires a source deposit invoice for balance invoices", () => {
+    const base = { customerId, currencyCode: "XOF", lines: [{ description: "Solde", quantity: "1", unitPrice: "750", taxRatePercent: "0" }] };
+    expect(createInvoiceDraftSchema.safeParse({ ...base, documentType: "BALANCE", relatedInvoiceId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }).success).toBe(true);
+    expect(createInvoiceDraftSchema.safeParse({ ...base, documentType: "BALANCE" }).success).toBe(false);
+  });
+
+  it("rejects incompatible document-type metadata", () => {
+    const base = { customerId, currencyCode: "XOF", lines: [{ description: "Service", quantity: "1", unitPrice: "100", taxRatePercent: "0" }] };
+    expect(createInvoiceDraftSchema.safeParse({ ...base, documentType: "STANDARD", contractTotal: "1000" }).success).toBe(false);
+    expect(createInvoiceDraftSchema.safeParse({ ...base, documentType: "DEPOSIT", contractTotal: "1000", relatedInvoiceId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }).success).toBe(false);
+    expect(createInvoiceDraftSchema.safeParse({ ...base, documentType: "BALANCE", relatedInvoiceId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", contractTotal: "1000" }).success).toBe(false);
+  });
+
   it("accepts a multi-line invoice up to the documented 500-line limit", () => {
     const parsed = createInvoiceDraftSchema.parse({
       customerId,
