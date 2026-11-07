@@ -159,7 +159,7 @@ export const invoiceRepository = {
     currencyMinorUnit: number,
     totals: CalculatedInvoiceTotals,
     calculatedLines: readonly { subtotal: string; discountAmount: string; taxableAmount: string; taxAmount: string; total: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string }[],
-    customer: { id: string; legalName: string; displayName: string | null; email: string | null; phone: string | null; countryCode: string; taxIdentifier: string | null; registrationIdentifier: string | null; addressLine1: string | null; addressLine2: string | null; addressRegion: string | null; addressCity: string | null; addressPostalCode: string | null },
+    customer: { id: string; customerType: "BUSINESS" | "INDIVIDUAL"; legalName: string; displayName: string | null; email: string | null; phone: string | null; countryCode: string; taxIdentifier: string | null; registrationIdentifier: string | null; addressLine1: string | null; addressLine2: string | null; addressRegion: string | null; addressCity: string | null; addressPostalCode: string | null },
     issuerSnapshot: Record<string, unknown>,
   ): Promise<FinanceInvoice | null> {
     const actor = invoiceActor(context);
