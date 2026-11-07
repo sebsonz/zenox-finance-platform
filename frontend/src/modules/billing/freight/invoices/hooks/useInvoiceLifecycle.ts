@@ -45,10 +45,10 @@ async function readData<T>(response: Response, fallback: string): Promise<T> {
 export function useInvoiceLifecycle({
   tenantId, jurisdictionId, taxDate, appliesTo, taxFacts, setBusy, setNotice, loadInvoices, setEditing,
 }: Options) {
-  const calculateTax = useCallback(async (invoice: InvoiceDraftRecord) => {
+  const calculateTax = useCallback(async (invoice: InvoiceDraftRecord): Promise<InvoiceDraftRecord | null> => {
     if (!jurisdictionId) {
       setNotice("Aucune juridiction fiscale active n’est disponible.");
-      return;
+      return null;
     }
     setBusy(true);
     setNotice("");
@@ -81,10 +81,12 @@ export function useInvoiceLifecycle({
       if (!refreshedInvoice) throw new Error("Le calcul fiscal a réussi, mais le brouillon actualisé est introuvable. Rechargez la liste avant l’émission.");
       setEditing(refreshedInvoice);
       setNotice(refreshedInvoice.taxStatus === "CALCULATED"
-        ? "Snapshot fiscal calculé et attaché. Vous pouvez maintenant émettre la facture."
+        ? "Snapshot fiscal calculé et attaché. La facture est prête pour confirmation d’émission."
         : "Le moteur fiscal a demandé une revue. Consultez le statut fiscal avant toute émission.");
+      return refreshedInvoice;
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Le calcul fiscal a échoué.");
+      return null;
     } finally {
       setBusy(false);
     }
