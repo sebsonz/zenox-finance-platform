@@ -62,7 +62,7 @@ interface LineRow {
   discount_percent: string; tax_rate_percent: string; subtotal: string; discount_amount: string;
   taxable_amount: string; tax_amount: string; total: string;
 }
-const invoiceColumns = `id, customer_id, invoice_code, status, document_type, contract_total::text, related_invoice_id, currency_code,
+const invoiceColumns = `id, customer_id, invoice_code, status, document_type, contract_total::text, related_invoice_id, currency_code, currency_minor_unit,
   issue_date, due_date, purchase_order_reference, service_date, payment_terms, payment_instructions,
   external_reference, footer_note, issuer_snapshot, customer_snapshot, subtotal::text, discount_total::text, taxable_total::text,
   tax_total::text, grand_total::text, amount_due::text, calculation_policy, notes,
