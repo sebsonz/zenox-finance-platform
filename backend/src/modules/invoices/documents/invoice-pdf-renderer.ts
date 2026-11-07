@@ -94,7 +94,7 @@ function partyLines(snapshot: Record<string, unknown>): string[] {
 function renderPdf(definition: Record<string, unknown>): Promise<Buffer> {
   const PdfPrinter = require("pdfmake") as new (fonts: FontSet) => PdfPrinterInstance;
   const printer = new PdfPrinter(resolveRobotoFonts());
-  const document = printer.createPdfKitDocument(definition, { compress: false });
+  const document = printer.createPdfKitDocument(definition, { compress: false, pdfVersion: "1.4" });
 
   return new Promise((resolveBuffer, reject) => {
     const chunks: Buffer[] = [];
