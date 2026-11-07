@@ -1,6 +1,6 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { z } from "zod";
-import Decimal from "decimal.js";
+import { Decimal } from "decimal.js";
 import { requireUserAuth } from "../../../middleware/require-user-auth.js";
 import { withTenantTransaction } from "../../../db/transaction.js";
 import { userTenantMembershipRepository } from "../../tenants/repositories/user-tenant-membership.repository.js";
