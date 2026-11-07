@@ -23,20 +23,23 @@ const emptyTaxFacts = (): TaxFactsForm => ({
   transactionType: "", supplierIfuStatus: "", customerIfuStatus: "", customerTaxStatus: "",
   customerCountryCode: "", supplierCountryCode: "", isImport: "", isExport: "", goodsCategory: "",
 });
-type InvoiceLine = { id?: string; description: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string };
+type InvoiceLine = { id?: string; description: string; itemCode: string; unit: string; lineNote: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string };
+type InvoiceDocumentForm = { title: string; reference: string; purchaseOrderNumber: string; contractReference: string; paymentTerms: string; paymentMethod: string; deliveryDate: string; servicePeriodStart: string; servicePeriodEnd: string; footer: string; language: string };
 type Invoice = {
   id: string; customerId: string; invoiceCode: string | null; status: "DRAFT" | "ISSUED" | "CANCELLED";
   currencyCode: string; currencyMinorUnit: number; grandTotal: string; amountDue: string; subtotal: string;
   taxTotal: string; createdAt: string; updatedAt: string; dueDate: string | null; notes: string | null;
   documentVersion: number; taxSnapshotId: string | null; taxStatus: "PROVISIONAL" | "CALCULATED" | "REVIEW_REQUIRED";
   customerSnapshot?: { legalName?: string; displayName?: string };
-  lines: Array<{ id: string; description: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string; total: string }>;
+  document?: Partial<InvoiceDocumentForm>;
+  lines: Array<{ id: string; description: string; itemCode?: string | null; unit?: string | null; lineNote?: string | null; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string; total: string }>;
 };
 type CreditNote = { id: string; originalInvoiceId: string; creditNoteCode: string; status: "ISSUED"; reason: string; currencyCode: string; grandTotal: string; amountDue: string; issuedAt: string };
-type DraftForm = { customerId: string; currencyCode: string; dueDate: string; notes: string; lines: InvoiceLine[] };
+type DraftForm = { customerId: string; currencyCode: string; dueDate: string; notes: string; document: InvoiceDocumentForm; lines: InvoiceLine[] };
 type ApiPayload<T> = { data?: T } & ApiError;
-const emptyLine = (): InvoiceLine => ({ description: "", quantity: "1", unitPrice: "0", discountPercent: "0", taxRatePercent: "0" });
-const emptyForm = (): DraftForm => ({ customerId: "", currencyCode: "XOF", dueDate: "", notes: "", lines: [emptyLine()] });
+const emptyLine = (): InvoiceLine => ({ description: "", itemCode: "", unit: "unité", lineNote: "", quantity: "1", unitPrice: "0", discountPercent: "0", taxRatePercent: "0" });
+const emptyDocument = (): InvoiceDocumentForm => ({ title: "FACTURE", reference: "", purchaseOrderNumber: "", contractReference: "", paymentTerms: "", paymentMethod: "", deliveryDate: "", servicePeriodStart: "", servicePeriodEnd: "", footer: "", language: "fr" });
+const emptyForm = (): DraftForm => ({ customerId: "", currencyCode: "XOF", dueDate: "", notes: "", document: emptyDocument(), lines: [emptyLine()] });
 
 async function responseError(response: Response, fallback: string): Promise<string> {
   try { const payload = await response.json() as ApiError; return payload.error?.message ?? fallback; }
@@ -137,7 +140,8 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     setEditing(invoice);
     setForm({
       customerId: invoice.customerId, currencyCode: invoice.currencyCode, dueDate: invoice.dueDate ?? "", notes: invoice.notes ?? "",
-      lines: invoice.lines.map((line) => ({ description: line.description, quantity: line.quantity, unitPrice: line.unitPrice, discountPercent: line.discountPercent, taxRatePercent: line.taxRatePercent })),
+      document: { ...emptyDocument(), ...(invoice.document ?? {}) },
+      lines: invoice.lines.map((line) => ({ description: line.description, itemCode: line.itemCode ?? "", unit: line.unit ?? "unité", lineNote: line.lineNote ?? "", quantity: line.quantity, unitPrice: line.unitPrice, discountPercent: line.discountPercent, taxRatePercent: line.taxRatePercent })),
     });
     setSelectedInvoiceId(invoice.id);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -156,6 +160,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
       customerId: form.customerId, currencyCode: form.currencyCode,
       ...(form.dueDate ? { dueDate: form.dueDate } : {}),
       ...(form.notes.trim() ? { notes: form.notes.trim() } : {}),
+      document: Object.fromEntries(Object.entries(form.document).filter(([, value]) => value.trim() !== "")),
       lines: form.lines.map((line) => ({ ...line, description: line.description.trim() })),
       ...(editing ? { expectedUpdatedAt: editing.updatedAt } : {}),
     };
@@ -300,15 +305,34 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
                 {currencies.map((currency) => <option key={currency.code} value={currency.code}>{currency.code} · {currency.name}</option>)}
               </select></label>
               <label>Date d’échéance<input type="date" value={form.dueDate} onChange={(event) => setForm({ ...form, dueDate: event.target.value })}/></label>
-              <label>Notes<input value={form.notes} maxLength={5000} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Conditions ou référence interne"/></label>
+              <label>Notes<input value={form.notes} maxLength={5000} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Notes visibles sur la facture"/></label>
             </div>
+            <details className="tax-facts-details" open>
+              <summary>Informations commerciales et conditions de facturation</summary>
+              <div className="invoice-form-grid">
+                <label>Titre du document<input value={form.document.title} maxLength={120} onChange={(event) => setForm({ ...form, document: { ...form.document, title: event.target.value } })}/></label>
+                <label>Référence interne<input value={form.document.reference} maxLength={120} onChange={(event) => setForm({ ...form, document: { ...form.document, reference: event.target.value } })} placeholder="REF-2026-001"/></label>
+                <label>Bon de commande<input value={form.document.purchaseOrderNumber} maxLength={120} onChange={(event) => setForm({ ...form, document: { ...form.document, purchaseOrderNumber: event.target.value } })}/></label>
+                <label>Référence contrat<input value={form.document.contractReference} maxLength={120} onChange={(event) => setForm({ ...form, document: { ...form.document, contractReference: event.target.value } })}/></label>
+                <label>Date de livraison<input type="date" value={form.document.deliveryDate} onChange={(event) => setForm({ ...form, document: { ...form.document, deliveryDate: event.target.value } })}/></label>
+                <label>Début de prestation<input type="date" value={form.document.servicePeriodStart} onChange={(event) => setForm({ ...form, document: { ...form.document, servicePeriodStart: event.target.value } })}/></label>
+                <label>Fin de prestation<input type="date" value={form.document.servicePeriodEnd} onChange={(event) => setForm({ ...form, document: { ...form.document, servicePeriodEnd: event.target.value } })}/></label>
+                <label>Moyen de paiement<input value={form.document.paymentMethod} maxLength={120} onChange={(event) => setForm({ ...form, document: { ...form.document, paymentMethod: event.target.value } })} placeholder="Virement, Mobile Money…"/></label>
+                <label className="line-description">Conditions de règlement<textarea value={form.document.paymentTerms} maxLength={2000} onChange={(event) => setForm({ ...form, document: { ...form.document, paymentTerms: event.target.value } })} rows={2}/></label>
+                <label className="line-description">Pied de page<input value={form.document.footer} maxLength={2000} onChange={(event) => setForm({ ...form, document: { ...form.document, footer: event.target.value } })} placeholder="Coordonnées bancaires et mentions commerciales"/></label>
+                <label>Langue du document<input value={form.document.language} maxLength={12} onChange={(event) => setForm({ ...form, document: { ...form.document, language: event.target.value } })}/></label>
+              </div>
+            </details>
             <div className="invoice-lines-heading"><h3>Lignes de facture</h3><button className="outline-button" type="button" onClick={() => setForm({ ...form, lines: [...form.lines, emptyLine()] })} disabled={form.lines.length >= 500}><Plus size={14}/> Ajouter une ligne</button></div>
             {form.lines.map((line, index) => <div className="invoice-line-editor" key={index}>
               <label className="line-description">Description<input value={line.description} maxLength={500} onChange={(event) => updateLine(index, "description", event.target.value)} required/></label>
+              <label>Réf. article<input value={line.itemCode} maxLength={100} onChange={(event) => updateLine(index, "itemCode", event.target.value)}/></label>
+              <label>Unité<input value={line.unit} maxLength={40} onChange={(event) => updateLine(index, "unit", event.target.value)}/></label>
               <label>Qté<input inputMode="decimal" value={line.quantity} onChange={(event) => updateLine(index, "quantity", event.target.value)} required/></label>
               <label>Prix unitaire<input inputMode="decimal" value={line.unitPrice} onChange={(event) => updateLine(index, "unitPrice", event.target.value)} required/></label>
               <label>Remise %<input inputMode="decimal" value={line.discountPercent} onChange={(event) => updateLine(index, "discountPercent", event.target.value)} required/></label>
               <label>Taxe provisoire %<input inputMode="decimal" value={line.taxRatePercent} onChange={(event) => updateLine(index, "taxRatePercent", event.target.value)} required/></label>
+              <label className="line-description">Détail complémentaire<input value={line.lineNote} maxLength={1000} onChange={(event) => updateLine(index, "lineNote", event.target.value)}/></label>
               <button className="icon-danger" type="button" title="Supprimer la ligne" disabled={form.lines.length === 1} onClick={() => setForm({ ...form, lines: form.lines.filter((_, i) => i !== index) })}><Trash2 size={15}/></button>
             </div>)}
             <div className="invoice-editor-submit-row"><button className="primary-button" type="submit" disabled={busy || checkingResources || customers.length === 0 || currencies.length === 0}>{busy ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Enregistrer la facture"} <FileText size={15}/></button></div>
