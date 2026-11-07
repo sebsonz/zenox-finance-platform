@@ -98,35 +98,76 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     let cancelled = false;
     async function loadResources() {
       setCheckingResources(true);
-      try {
-        const role = activeTenant.role;
-        const canCreateInvoices = ["OWNER", "ADMIN", "FINANCE_MANAGER", "FINANCE_OPERATOR"].includes(role);
-        const [customerData, currencyData, jurisdictionData] = await Promise.all([
-          canCreateInvoices
-            ? readData<{ customers?: Customer[] }>(await fetch(`/api/v1/user/tenants/${tenantId}/customers?status=ACTIVE&limit=100`, { credentials: "same-origin", cache: "no-store" }), "Impossible de charger les clients.")
-            : Promise.resolve({ customers: [] as Customer[] }),
-          canCreateInvoices
-            ? readData<{ currencies?: Currency[] }>(await fetch(`/api/v1/user/tenants/${tenantId}/currencies`, { credentials: "same-origin", cache: "no-store" }), "Impossible de charger les devises.")
-            : Promise.resolve({ currencies: [] as Currency[] }),
-          readData<{ jurisdictions?: Jurisdiction[] }>(await fetch(`/api/v1/user/tenants/${tenantId}/tax-jurisdictions`, { credentials: "same-origin", cache: "no-store" }), "Impossible de charger les juridictions fiscales."),
-        ]);
-        if (cancelled) return;
-        setCustomers(customerData.customers ?? []);
-        setCurrencies(currencyData.currencies ?? []);
-        setJurisdictions(jurisdictionData.jurisdictions ?? []);
+      setNotice("");
+      const role = activeTenant.role;
+      const canCreateInvoices = ["OWNER", "ADMIN", "FINANCE_MANAGER", "FINANCE_OPERATOR"].includes(role);
+
+      // Reference data is deliberately loaded independently. A tax API outage
+      // must never prevent the currency selector (or customer list) from loading.
+      const [customerResult, currencyResult, jurisdictionResult] = await Promise.allSettled([
+        canCreateInvoices
+          ? readData<{ customers?: Customer[] }>(
+              await fetch(`/api/v1/user/tenants/${tenantId}/customers?status=ACTIVE&limit=100`, { credentials: "same-origin", cache: "no-store" }),
+              "Impossible de charger les clients.",
+            )
+          : Promise.resolve({ customers: [] as Customer[] }),
+        canCreateInvoices
+          ? readData<{ currencies?: Currency[] }>(
+              await fetch(`/api/v1/user/tenants/${tenantId}/currencies`, { credentials: "same-origin", cache: "no-store" }),
+              "Impossible de charger les devises.",
+            )
+          : Promise.resolve({ currencies: [] as Currency[] }),
+        readData<{ jurisdictions?: Jurisdiction[] }>(
+          await fetch(`/api/v1/user/tenants/${tenantId}/tax-jurisdictions`, { credentials: "same-origin", cache: "no-store" }),
+          "Impossible de charger les juridictions fiscales.",
+        ),
+      ]);
+
+      if (cancelled) return;
+
+      const errors: string[] = [];
+      if (customerResult.status === "fulfilled") {
+        const loadedCustomers = customerResult.value.customers ?? [];
+        setCustomers(loadedCustomers);
         setForm((current) => ({
           ...current,
-          customerId: current.customerId || customerData.customers?.[0]?.id || "",
-          currencyCode: currencyData.currencies?.some((currency) => currency.code === current.currencyCode)
-            ? current.currencyCode : (currencyData.currencies?.[0]?.code ?? "XOF"),
+          customerId: current.customerId || loadedCustomers[0]?.id || "",
         }));
-        setJurisdictionId((current) => jurisdictionData.jurisdictions?.some((item) => item.id === current)
-          ? current : (jurisdictionData.jurisdictions?.[0]?.id ?? ""));
+      } else {
+        errors.push(customerResult.reason instanceof Error ? customerResult.reason.message : "Impossible de charger les clients.");
+      }
 
-      } catch (error) { if (!cancelled) setNotice(error instanceof Error ? error.message : "Impossible de charger les données de facturation."); }
-      finally { if (!cancelled) setCheckingResources(false); }
+      if (currencyResult.status === "fulfilled") {
+        const loadedCurrencies = currencyResult.value.currencies ?? [];
+        setCurrencies(loadedCurrencies);
+        setForm((current) => ({
+          ...current,
+          currencyCode: loadedCurrencies.some((currency) => currency.code === current.currencyCode)
+            ? current.currencyCode
+            : (loadedCurrencies[0]?.code ?? "XOF"),
+        }));
+      } else {
+        errors.push(currencyResult.reason instanceof Error ? currencyResult.reason.message : "Impossible de charger les devises.");
+      }
+
+      if (jurisdictionResult.status === "fulfilled") {
+        const loadedJurisdictions = jurisdictionResult.value.jurisdictions ?? [];
+        setJurisdictions(loadedJurisdictions);
+        setJurisdictionId((current) => loadedJurisdictions.some((item) => item.id === current)
+          ? current
+          : (loadedJurisdictions[0]?.id ?? ""));
+      } else {
+        errors.push(jurisdictionResult.reason instanceof Error ? jurisdictionResult.reason.message : "Impossible de charger les juridictions fiscales.");
+      }
+
+      if (errors.length > 0) setNotice(errors.join(" "));
+      setCheckingResources(false);
     }
-    void loadResources();
+    void loadResources().catch((error: unknown) => {
+      if (cancelled) return;
+      setNotice(error instanceof Error ? error.message : "Impossible de charger les référentiels de facturation.");
+      setCheckingResources(false);
+    });
     // Load invoices independently of customer/currency/tax reference APIs.
     void (async () => {
       try {
