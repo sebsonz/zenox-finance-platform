@@ -112,6 +112,17 @@ describe("invoice draft request schema", () => {
     }
   });
 
+  it("accepts bounded server-side invoice search and status filters", () => {
+    expect(listInvoiceDraftsQuerySchema.parse({ search: "  CLIENT-REF-88  ", status: "ISSUED" })).toMatchObject({
+      search: "CLIENT-REF-88",
+      status: "ISSUED",
+      limit: 25,
+    });
+    expect(listInvoiceDraftsQuerySchema.safeParse({ search: " " }).success).toBe(false);
+    expect(listInvoiceDraftsQuerySchema.safeParse({ search: "x".repeat(121) }).success).toBe(false);
+    expect(listInvoiceDraftsQuerySchema.safeParse({ status: "PAID" }).success).toBe(false);
+  });
+
   it("limits line count and rejects unknown list query fields", () => {
     const tooMany = createInvoiceDraftSchema.safeParse({
       customerId, currencyCode: "XOF",
