@@ -147,8 +147,8 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
 <tr><td>Remises</td><td class="number">${escapeHtml(invoice.discountTotal)} ${escapeHtml(invoice.currencyCode)}</td></tr>
 <tr><td>Base taxable</td><td class="number">${escapeHtml(invoice.taxableTotal)} ${escapeHtml(invoice.currencyCode)}</td></tr>
 <tr><td>Taxes</td><td class="number">${escapeHtml(invoice.taxTotal)} ${escapeHtml(invoice.currencyCode)}</td></tr>
-<tr class="grand"><td>${escapeHtml(documentLabel === "AVOIR" ? "Total de l’avoir" : "Total brut")}</td><td class="number">${escapeHtml(invoice.grandTotal)} ${escapeHtml(invoice.currencyCode)}</td></tr>
-<tr><td><strong>${escapeHtml(documentLabel === "AVOIR" ? "Montant à créditer" : "Net à payer")}</strong></td><td class="number"><strong>${escapeHtml(invoice.amountDue)} ${escapeHtml(invoice.currencyCode)}</strong></td></tr>
+<tr class="grand"><td>${escapeHtml(documentLabel.startsWith("AVOIR") ? "Total de l’avoir" : "Total brut")}</td><td class="number">${escapeHtml(invoice.grandTotal)} ${escapeHtml(invoice.currencyCode)}</td></tr>
+<tr><td><strong>${escapeHtml(documentLabel.startsWith("AVOIR") ? "Montant à créditer" : "Net à payer")}</strong></td><td class="number"><strong>${escapeHtml(invoice.amountDue)} ${escapeHtml(invoice.currencyCode)}</strong></td></tr>
 </table>
 ${invoice.paymentInstructions ? `<section class="payment"><h2>Modalités de paiement</h2><p>${escapeHtml(invoice.paymentInstructions)}</p></section>` : ""}
 ${invoice.footerNote ? `<footer>${escapeHtml(invoice.footerNote)}</footer>` : ""}
