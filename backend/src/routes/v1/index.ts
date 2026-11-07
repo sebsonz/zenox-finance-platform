@@ -5,6 +5,7 @@ import { customerRouter } from "../../modules/customers/routes/customer.routes.j
 import { currencyRouter } from "../../modules/currencies/routes/currency.routes.js";
 import { invoicesRouter } from "../../modules/invoices/routes/index.js";
 import { userAuthRouter } from "../../modules/user-auth/routes/index.js";
+import { invoiceBalanceRouter, paymentRouter, refundRouter, reconciliationRouter, paymentEventsRouter } from "../../modules/payments/index.js";
 
 export const apiV1Router = Router();
 
@@ -14,3 +15,9 @@ apiV1Router.use("/user", userAuthRouter);
 apiV1Router.use("/invoices", invoicesRouter);
 apiV1Router.use("/customers", customerRouter);
 apiV1Router.use("/currencies", currencyRouter);
+
+apiV1Router.use("/payments", paymentEventsRouter);
+apiV1Router.use("/payments", reconciliationRouter);
+apiV1Router.use("/payments", refundRouter);
+apiV1Router.use("/payments", paymentRouter);
+apiV1Router.use("/invoices", invoiceBalanceRouter);
