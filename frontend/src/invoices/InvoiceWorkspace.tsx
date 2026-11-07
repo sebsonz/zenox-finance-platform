@@ -1,14 +1,17 @@
-import { useCallback, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { InvoiceTypeFields } from "../modules/billing/freight/invoices/types/InvoiceTypeFields.js";
 import { InvoiceLinesEditor } from "../modules/billing/freight/invoices/components/InvoiceLinesEditor.js";
 import { IssuedInvoiceDocumentsPanel } from "../modules/billing/freight/invoices/credit-notes/IssuedInvoiceDocumentsPanel.js";
 import { InvoiceTaxContextPanel } from "../modules/billing/freight/invoices/tax/InvoiceTaxContextPanel.js";
 import { InvoiceListPanel } from "../modules/billing/freight/invoices/list/InvoiceListPanel.js";
 import { useInvoiceResources } from "../modules/billing/freight/invoices/hooks/useInvoiceResources.js";
+import { useInvoiceDraft } from "../modules/billing/freight/invoices/hooks/useInvoiceDraft.js";
+import { createEmptyInvoiceDraft, createEmptyInvoiceLine, type DraftForm, type InvoiceDraftRecord, type InvoiceLine } from "../modules/billing/freight/invoices/types/invoice-draft.js";
 import type { Customer, Currency, Jurisdiction } from "../modules/billing/freight/invoices/types/workspace-resources.js";
 import { FileText, RefreshCw, ShieldCheck } from "lucide-react";
 
 type ApiError = { error?: { code?: string; message?: string } };
+type Invoice = InvoiceDraftRecord;
 type SessionUser = { id: string; email?: string };
 type ActiveTenant = { id: string; tenantCode: string; legalName: string; role: string };
 type InvoiceWorkspaceProps = { sessionUser: SessionUser; activeTenant: ActiveTenant; tenants: ActiveTenant[]; onTenantChange: (tenantId: string) => void };
@@ -27,35 +30,8 @@ const emptyTaxFacts = (): TaxFactsForm => ({
   transactionType: "", supplierIfuStatus: "", customerIfuStatus: "", customerTaxStatus: "",
   customerCountryCode: "", supplierCountryCode: "", isImport: "", isExport: "", goodsCategory: "",
 });
-type InvoiceLine = { id?: string; description: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string };
-type Invoice = {
-  id: string; customerId: string; invoiceCode: string | null; status: "DRAFT" | "ISSUED" | "CANCELLED";
-  documentType: "STANDARD" | "DEPOSIT" | "BALANCE"; contractTotal: string | null; relatedInvoiceId: string | null;
-  currencyCode: string; currencyMinorUnit: number; grandTotal: string; amountDue: string; subtotal: string;
-  taxTotal: string; createdAt: string; updatedAt: string; dueDate: string | null; notes: string | null;
-  purchaseOrderReference: string | null; serviceDate: string | null; paymentTerms: string | null;
-  paymentInstructions: string | null; externalReference: string | null; footerNote: string | null;
-  documentVersion: number; taxSnapshotId: string | null; taxStatus: "PROVISIONAL" | "CALCULATED" | "REVIEW_REQUIRED";
-  customerSnapshot?: { legalName?: string; displayName?: string };
-  lines: Array<{ id: string; description: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string; total: string }>;
-};
 type CreditNote = { id: string; originalInvoiceId: string; creditNoteCode: string; creditKind: "FULL" | "PARTIAL"; status: "ISSUED"; reason: string; currencyCode: string; grandTotal: string; amountDue: string; issuedAt: string };
-type DraftForm = {
-  documentType: "STANDARD" | "DEPOSIT" | "BALANCE" | "CREDIT_NOTE"; contractTotal: string; relatedInvoiceId: string;
-  customerId: string; currencyCode: string; dueDate: string; notes: string;
-  purchaseOrderReference: string; serviceDate: string; paymentTerms: string;
-  paymentInstructions: string; externalReference: string; footerNote: string;
-  lines: InvoiceLine[];
-};
 type ApiPayload<T> = { data?: T } & ApiError;
-const emptyLine = (): InvoiceLine => ({ description: "", quantity: "1", unitPrice: "0", discountPercent: "0", taxRatePercent: "0" });
-const emptyForm = (): DraftForm => ({
-  documentType: "STANDARD", contractTotal: "", relatedInvoiceId: "",
-  customerId: "", currencyCode: "XOF", dueDate: "", notes: "",
-  purchaseOrderReference: "", serviceDate: "", paymentTerms: "",
-  paymentInstructions: "", externalReference: "", footerNote: "", lines: [emptyLine()],
-});
-
 async function responseError(response: Response, fallback: string): Promise<string> {
   try { const payload = await response.json() as ApiError; return payload.error?.message ?? fallback; }
   catch { return fallback; }
@@ -88,15 +64,13 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const [creditAmount, setCreditAmount] = useState("");
   const [creditNoteReason, setCreditNoteReason] = useState("Correction commerciale / retour / annulation");
   const [creditNoteAmount, setCreditNoteAmount] = useState("");
-  const [form, setForm] = useState<DraftForm>(emptyForm());
-  const [editing, setEditing] = useState<Invoice | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const onTenantReset = useCallback(() => {
     setSelectedInvoiceId("");
     setCreditNotes([]);
-    setEditing(null);
     setTaxFacts(emptyTaxFacts());
   }, []);
   const onCustomersLoaded = useCallback((loadedCustomers: Customer[]) => {
@@ -120,6 +94,10 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     onCustomersLoaded,
     onCurrenciesLoaded,
   });
+  const {
+    form, setForm, editing, setEditing, resetDraft, startEdit, updateLine, addLine, removeLine,
+  } = useInvoiceDraft({ customers, currencies, setSelectedInvoiceId, setNotice });
+  useEffect(() => { setEditing(null); }, [tenantId, setEditing]);
 
   async function loadInvoices(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault(); if (!tenantId) { setNotice("Aucune organisation active n’est disponible."); return; }
@@ -134,28 +112,6 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
       setNotice(`${data.invoices?.length ?? 0} facture(s) chargée(s).`);
     } catch (error) { setInvoices([]); setNotice(error instanceof Error ? error.message : "Impossible de charger les factures."); }
     finally { setLoading(false); }
-  }
-
-  function resetDraft() {
-    setEditing(null);
-    setForm({ ...emptyForm(), customerId: customers[0]?.id ?? "", currencyCode: currencies[0]?.code ?? "XOF" });
-  }
-  function startEdit(invoice: Invoice) {
-    if (invoice.status !== "DRAFT") { setNotice("Seuls les brouillons peuvent être modifiés."); return; }
-    setEditing(invoice);
-    setForm({
-      documentType: invoice.documentType ?? "STANDARD", contractTotal: invoice.contractTotal ?? "", relatedInvoiceId: invoice.relatedInvoiceId ?? "",
-      customerId: invoice.customerId, currencyCode: invoice.currencyCode, dueDate: invoice.dueDate ?? "", notes: invoice.notes ?? "",
-      purchaseOrderReference: invoice.purchaseOrderReference ?? "", serviceDate: invoice.serviceDate ?? "",
-      paymentTerms: invoice.paymentTerms ?? "", paymentInstructions: invoice.paymentInstructions ?? "",
-      externalReference: invoice.externalReference ?? "", footerNote: invoice.footerNote ?? "",
-      lines: invoice.lines.map((line) => ({ description: line.description, quantity: line.quantity, unitPrice: line.unitPrice, discountPercent: line.discountPercent, taxRatePercent: line.taxRatePercent })),
-    });
-    setSelectedInvoiceId(invoice.id);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-  function updateLine(index: number, field: keyof InvoiceLine, value: string) {
-    setForm((current) => ({ ...current, lines: current.lines.map((line, i) => i === index ? { ...line, [field]: value } : line) }));
   }
 
   async function saveDraft(event: FormEvent<HTMLFormElement>) {
@@ -410,7 +366,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
             <InvoiceLinesEditor
               documentType={form.documentType}
               lines={form.lines}
-              onAdd={() => setForm({ ...form, lines: [...form.lines, emptyLine()] })}
+              onAdd={addLine}
               onUpdate={updateLine}
               onRemove={(index) => setForm({ ...form, lines: form.lines.filter((_, i) => i !== index) })}
             />
