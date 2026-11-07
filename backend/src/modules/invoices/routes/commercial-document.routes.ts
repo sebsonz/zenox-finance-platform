@@ -192,17 +192,17 @@ function registerRoutes(kind: Kind) {
   );
 
   commercialDocumentRouter.get(
-    \`/:tenantId/\${route}/:documentId/events\`, requireUserAuth(),
+    `/:tenantId/\${route}/:documentId/events`, requireUserAuth(),
     async (req: Request, res: Response, next: NextFunction) => {
       const tenant=idSchema.safeParse(req.params["tenantId"]); const id=idSchema.safeParse(req.params["documentId"]);
       if(!tenant.success||!id.success){res.status(400).json({error:{code:"INVALID_RESOURCE_ID"}});return;}
       try{
         const context=await contextFor(req,res,tenant.data,listPermission);if(!context)return;
         const events=await withTenantTransaction(tenant.data,async(client)=>{
-          const exists=await client.query(\`SELECT 1 FROM public.\${names.docs} WHERE tenant_id=$1 AND id=$2\`,[tenant.data,id.data]);
+          const exists=await client.query(`SELECT 1 FROM public.\${names.docs} WHERE tenant_id=$1 AND id=$2`,[tenant.data,id.data]);
           if(!exists.rowCount)return null;
           const result=await client.query(
-            "SELECT event_type AS \\"eventType\\", actor_type AS \\"actorType\\", occurred_at AS \\"occurredAt\\", metadata FROM public.finance_commercial_document_events WHERE tenant_id=$1 AND document_kind=$2 AND document_id=$3 ORDER BY occurred_at DESC LIMIT 100",
+            "SELECT event_type AS \"eventType\", actor_type AS \"actorType\", occurred_at AS \"occurredAt\", metadata FROM public.finance_commercial_document_events WHERE tenant_id=$1 AND document_kind=$2 AND document_id=$3 ORDER BY occurred_at DESC LIMIT 100",
             [tenant.data, kind === "quotes" ? "QUOTE" : "PROFORMA", id.data],
           );
           return result.rows;
