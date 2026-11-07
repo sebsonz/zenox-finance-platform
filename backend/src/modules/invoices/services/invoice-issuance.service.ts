@@ -67,11 +67,12 @@ export const invoiceIssuanceService = {
       const locked = await client.query<{
         id: string;
         status: string;
+        document_type: "STANDARD" | "DEPOSIT" | "BALANCE";
         tax_status: string;
         tax_snapshot_id: string | null;
         updated_at: string;
       }>(
-        `SELECT id, status, tax_status, tax_snapshot_id,
+        `SELECT id, status, document_type, tax_status,
                 to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at
            FROM public.finance_invoices
           WHERE tenant_id = $1 AND id = $2 AND status = 'DRAFT'
@@ -120,7 +121,8 @@ export const invoiceIssuanceService = {
       );
       const sequence = allocation.rows[0];
       if (!sequence) throw new Error("INVOICE_SEQUENCE_ALLOCATION_FAILED");
-      const invoiceCode = `INV-${sequence.fiscal_year}-${sequence.allocated_number.padStart(6, "0")}`;
+      const prefix = invoice.document_type === "DEPOSIT" ? "DEP" : invoice.document_type === "BALANCE" ? "BAL" : "INV";
+      const invoiceCode = `${prefix}-${sequence.fiscal_year}-${sequence.allocated_number.padStart(6, "0")}`;
       const updated = await client.query(
         `UPDATE public.finance_invoices
             SET status = 'ISSUED',
