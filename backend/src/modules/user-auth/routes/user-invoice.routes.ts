@@ -408,7 +408,7 @@ userInvoiceRouter.get(
 
 const creditNoteRequestSchema = z.object({
   reason: z.string().trim().min(3).max(2000),
-  amount: z.string().trim().regex(/^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,8})?$/).optional(),
+  amount: z.string().trim().regex(/^(?:0|[1-9][0-9]{0,15})(?:[.][0-9]{1,8})?$/).optional(),
 }).strict();
 
 userInvoiceRouter.get(
