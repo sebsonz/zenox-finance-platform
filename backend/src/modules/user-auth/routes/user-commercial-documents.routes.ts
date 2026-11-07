@@ -58,7 +58,7 @@ userCommercialDocumentsRouter.use((_req,res,next)=>{res.setHeader("Cache-Control
 userCommercialDocumentsRouter.get("/:tenantId/quotes",requireUserAuth(),async(req,res,next)=>{
  try{const id=uuid.safeParse(req.params["tenantId"]);if(!id.success)return fail(res,"INVALID_TENANT_ID","Tenant ID is invalid.",400);
  const ctx=await contextFor(id.data,req,res,"invoices:read");if(!ctx)return;
- const rows=await withTenantTransaction(id.data,c=>c.query("SELECT id,quote_code,status,currency_code,issue_date,valid_until,grand_total,accepted_at,rejected_at,sent_at,created_at,updated_at FROM public.finance_quotes WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 200",[id.data]));
+ const rows=await withTenantTransaction(id.data,c=>c.query("SELECT q.id,q.quote_code,q.status,q.currency_code,q.issue_date,q.valid_until,q.grand_total,q.accepted_at,q.rejected_at,q.sent_at,q.created_at,q.updated_at,c.legal_name AS customer_name,c.customer_code FROM public.finance_quotes q JOIN public.finance_customers c ON c.tenant_id=q.tenant_id AND c.id=q.customer_id WHERE q.tenant_id=$1 ORDER BY q.created_at DESC LIMIT 200",[id.data]));
  res.json({data:{quotes:rows.rows,correlationId:ctx.correlationId}});
  }catch(e){next(e);}
 });
@@ -144,7 +144,7 @@ userCommercialDocumentsRouter.post("/:tenantId/quotes/:quoteId/convert",requireU
 
 // Pro forma documents are independent non-fiscal records and cannot be issued as tax invoices.
 userCommercialDocumentsRouter.get("/:tenantId/proformas",requireUserAuth(),async(req,res,next)=>{
- try{const id=uuid.safeParse(req.params["tenantId"]);if(!id.success)return fail(res,"INVALID_TENANT_ID","Invalid tenant ID.",400);const ctx=await contextFor(id.data,req,res,"invoices:read");if(!ctx)return;const rows=await withTenantTransaction(id.data,c=>c.query("SELECT id,proforma_code,status,currency_code,issue_date,valid_until,grand_total,created_at FROM public.finance_proformas WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 200",[id.data]));res.json({data:{proformas:rows.rows,correlationId:ctx.correlationId}});
+ try{const id=uuid.safeParse(req.params["tenantId"]);if(!id.success)return fail(res,"INVALID_TENANT_ID","Invalid tenant ID.",400);const ctx=await contextFor(id.data,req,res,"invoices:read");if(!ctx)return;const rows=await withTenantTransaction(id.data,c=>c.query("SELECT p.id,p.proforma_code,p.status,p.currency_code,p.issue_date,p.valid_until,p.grand_total,p.created_at,c.legal_name AS customer_name,c.customer_code FROM public.finance_proformas p JOIN public.finance_customers c ON c.tenant_id=p.tenant_id AND c.id=p.customer_id WHERE p.tenant_id=$1 ORDER BY p.created_at DESC LIMIT 200",[id.data]));res.json({data:{proformas:rows.rows,correlationId:ctx.correlationId}});
  }catch(e){next(e);}
 });
 userCommercialDocumentsRouter.post("/:tenantId/proformas",requireUserAuth(),async(req,res,next)=>{
