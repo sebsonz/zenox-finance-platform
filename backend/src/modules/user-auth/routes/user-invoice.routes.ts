@@ -207,8 +207,10 @@ async function resolveInvoiceWriteContext(
 
 function sendDraftServiceError(error: unknown, res: Response): boolean {
   if (!(error instanceof InvoiceDraftServiceError)) return false;
-  const status = error.code === "DRAFT_NOT_FOUND_OR_CHANGED" ? 409
-    : error.code === "CUSTOMER_NOT_FOUND" ? 404
+  const status = error.code === "DRAFT_NOT_FOUND_OR_CHANGED" || error.code === "BALANCE_ALREADY_EXISTS" ? 409
+    : error.code === "CUSTOMER_NOT_FOUND" || error.code === "DEPOSIT_SOURCE_NOT_AVAILABLE" ? 404
+    : error.code === "CUSTOMER_NOT_ACTIVE" ? 422
+    : error.code === "INVALID_DOCUMENT_TYPE_AMOUNT" || error.code === "DEPOSIT_SOURCE_MISMATCH" || error.code === "BALANCE_AMOUNT_MISMATCH" ? 422
     : 400;
   res.status(status).json({ error: { code: error.code, message: error.message } });
   return true;
