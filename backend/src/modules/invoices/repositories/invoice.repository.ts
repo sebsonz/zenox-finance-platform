@@ -12,6 +12,7 @@ export interface FinanceInvoice {
   documentType: "STANDARD" | "DEPOSIT" | "BALANCE";
   contractTotal: string | null;
   relatedInvoiceId: string | null;
+  relatedInvoiceCode: string | null;
   currencyCode: string;
   currencyMinorUnit: number;
   issueDate: string | null;
@@ -78,9 +79,16 @@ async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow
      FROM public.finance_invoice_lines WHERE tenant_id = $1 AND invoice_id = $2 ORDER BY line_number`,
     [tenantId, row.id],
   );
+  const relatedInvoice = row.related_invoice_id
+    ? await client.query<{ invoice_code: string | null }>(
+        `SELECT invoice_code FROM public.finance_invoices WHERE tenant_id = $1 AND id = $2 LIMIT 1`,
+        [tenantId, row.related_invoice_id],
+      )
+    : null;
   return {
     id: row.id, customerId: row.customer_id, invoiceCode: row.invoice_code, status: row.status,
     documentType: row.document_type, contractTotal: row.contract_total, relatedInvoiceId: row.related_invoice_id,
+    relatedInvoiceCode: relatedInvoice?.rows[0]?.invoice_code ?? null,
     currencyCode: row.currency_code.trim(), currencyMinorUnit: row.currency_minor_unit,
     issueDate: row.issue_date,
     dueDate: row.due_date,
