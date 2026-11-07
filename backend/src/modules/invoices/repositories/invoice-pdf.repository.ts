@@ -41,7 +41,7 @@ export const invoicePdfRepository = {
     }
     const actor = invoiceActor(context);
     const legacyPrincipalId = isUserInvoiceContext(context) ? null : context.principal.id;
-    const pdfContent = renderInvoicePdfDocument(invoice);
+    const pdfContent = await renderInvoicePdfDocument(invoice);
     const contentSha256 = createHash("sha256").update(pdfContent).digest("hex");
     const result = await client.query<PdfRow>(
       `INSERT INTO public.finance_invoice_pdf_artifacts
