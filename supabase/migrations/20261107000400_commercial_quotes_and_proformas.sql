@@ -135,3 +135,8 @@ CREATE POLICY finance_proformas_tenant_isolation ON public.finance_proformas
 CREATE POLICY finance_proforma_lines_tenant_isolation ON public.finance_proforma_lines
   USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
   WITH CHECK (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+
+REVOKE ALL ON TABLE public.finance_quotes, public.finance_quote_lines, public.finance_proformas, public.finance_proforma_lines FROM PUBLIC;
+
+COMMENT ON TABLE public.finance_quotes IS 'Commercial quote aggregate; distinct from issued tax invoices.';
+COMMENT ON TABLE public.finance_proformas IS 'Commercial pro forma aggregate; explicitly non-fiscal and distinct from issued tax invoices.';
