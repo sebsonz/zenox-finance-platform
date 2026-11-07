@@ -145,6 +145,10 @@ function registerRoutes(kind: Kind) {
                 line.discountPercent, line.taxRatePercent, line.subtotal, line.discountAmount, line.taxableAmount, line.taxAmount, line.total],
             );
           }
+          await client.query(
+            "INSERT INTO public.finance_commercial_document_events (tenant_id, document_kind, document_id, event_type, actor_type, actor_ref, metadata) VALUES ($1,$2,$3,'CREATED','USER',$4,$5::jsonb)",
+            [tenant.data, kind === "quotes" ? "QUOTE" : "PROFORMA", created.id, context.actorRef, JSON.stringify({ currencyCode: body.data.currencyCode, grandTotal: totals.grandTotal })],
+          );
           return { ...created, customerId: body.data.customerId, customerSnapshot, issuerSnapshot: issuer.rows[0] ?? {}, lines: totals.lines };
         });
         res.status(201).json({ data: { [label]: document, calculationNature: "PROVISIONAL_COMMERCIAL_ESTIMATE", correlationId: context.correlationId } });
@@ -207,6 +211,10 @@ function registerRoutes(kind: Kind) {
           await client.query(`DELETE FROM public.${names.lines} WHERE tenant_id=$1 AND ${names.id}=$2`,[tenant.data,id.data]);
           for(const line of totals.lines) await client.query(`INSERT INTO public.${names.lines}(tenant_id,${names.id},line_number,description,unit,quantity,unit_price,discount_percent,tax_rate_percent,subtotal,discount_amount,taxable_amount,tax_amount,total) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
             [tenant.data,id.data,line.lineNumber,line.description,line.unit??null,line.quantity,line.unitPrice,line.discountPercent,line.taxRatePercent,line.subtotal,line.discountAmount,line.taxableAmount,line.taxAmount,line.total]);
+          await client.query(
+            "INSERT INTO public.finance_commercial_document_events (tenant_id, document_kind, document_id, event_type, actor_type, actor_ref, metadata) VALUES ($1,$2,$3,'UPDATED','USER',$4,'{}'::jsonb)",
+            [tenant.data, kind === "quotes" ? "QUOTE" : "PROFORMA", id.data, context.actorRef],
+          );
           return {...result.rows[0],lines:totals.lines};
         });
         if (!updated) { res.status(409).json({ error: { code: "DOCUMENT_NOT_DRAFT_OR_CHANGED", message: "Only an unchanged draft can be modified." } }); return; }
@@ -245,6 +253,11 @@ function registerRoutes(kind: Kind) {
             updated_by_actor_type='USER',updated_by_actor_ref=$5,updated_at=now()
             WHERE tenant_id=$1 AND id=$2 RETURNING id,status,${names.number} AS document_number,updated_at,grand_total::text`,
             [tenant.data,id.data,nextStatus,number,context.actorRef]);
+          const eventType = nextStatus === "SENT" ? "SENT" : nextStatus === "ACCEPTED" ? "ACCEPTED" : nextStatus === "REJECTED" ? "REJECTED" : nextStatus === "PUBLISHED" ? "PUBLISHED" : nextStatus === "EXPIRED" ? "EXPIRED" : "CANCELLED";
+          await client.query(
+            "INSERT INTO public.finance_commercial_document_events (tenant_id, document_kind, document_id, event_type, actor_type, actor_ref, metadata) VALUES ($1,$2,$3,$4,'USER',$5,$6::jsonb)",
+            [tenant.data, kind === "quotes" ? "QUOTE" : "PROFORMA", id.data, eventType, context.actorRef, JSON.stringify({ from: currentStatus, to: nextStatus, documentNumber: number })],
+          );
           return result.rows[0];
         });
         if(!result){res.status(409).json({error:{code:"DOCUMENT_CHANGED"}});return;}
