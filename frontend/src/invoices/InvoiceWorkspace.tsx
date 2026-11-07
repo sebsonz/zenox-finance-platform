@@ -166,9 +166,6 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
           <div className="invoice-editor-main">
           <form id="invoice-draft-form" className="invoice-editor" onSubmit={(event) => void saveDraft(event)}>
             <div className="invoice-form-grid">
-              <label>Type de facture<select value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value as DraftForm["documentType"], contractTotal: "", relatedInvoiceId: "" })}>
-                <option value="STANDARD">Facture standard</option><option value="DEPOSIT">Facture d’acompte</option><option value="BALANCE">Facture de solde</option><option value="CREDIT_NOTE">Facture d’avoir</option>
-              </select></label>
               <InvoiceTypeFields
                 documentType={form.documentType}
                 contractTotal={form.contractTotal}
@@ -207,7 +204,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
               onReorder={reorderLines}
             />
 
-            <div className="invoice-editor-submit-row"><button className="primary-button" type="submit" disabled={busy || (form.documentType === "CREDIT_NOTE" ? !form.relatedInvoiceId || !canCredit : checkingResources || customers.length === 0 || currencies.length === 0)}>{busy ? "Traitement…" : form.documentType === "CREDIT_NOTE" ? "Émettre la facture d’avoir" : editing ? "Enregistrer les modifications" : "Enregistrer la facture"} <FileText size={15}/></button></div>
+            {form.documentType === "CREDIT_NOTE" && <div className="invoice-editor-submit-row"><button className="primary-button" type="submit" disabled={busy || (form.documentType === "CREDIT_NOTE" ? !form.relatedInvoiceId || !canCredit : checkingResources || customers.length === 0 || currencies.length === 0)}>{busy ? "Traitement…" : form.documentType === "CREDIT_NOTE" ? "Émettre la facture d’avoir" : editing ? "Enregistrer les modifications" : "Enregistrer la facture"} <FileText size={15}/></button></div>}
             {form.documentType !== "CREDIT_NOTE" && customers.length === 0 && <p className="muted-note">Aucun client actif : ajoutez d’abord un client via le module Clients.</p>}
           </form>
           </div>
