@@ -79,7 +79,11 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
 <main>
 <header>
   <div><h1>${escapeHtml(documentLabel)}</h1><div class="muted">Document fiscal émis par ZENOX Finance</div></div>
-  <div><strong>${escapeHtml(invoice.invoiceCode)}</strong><br><span class="muted">Date d'émission : ${escapeHtml(invoice.issueDate)}</span><br><span class="muted">Échéance : ${escapeHtml(invoice.dueDate ?? "—")}</span></div>
+  <div><strong>${escapeHtml(invoice.invoiceCode)}</strong><br><span class="muted">Date d'émission : ${escapeHtml(invoice.issueDate)}</span><br><span class="muted">Échéance : ${escapeHtml(invoice.dueDate ?? "—")}</span>
+    ${invoice.purchaseOrderReference ? `<br><span class="muted">Commande : ${escapeHtml(invoice.purchaseOrderReference)}</span>` : ""}
+    ${invoice.externalReference ? `<br><span class="muted">Référence : ${escapeHtml(invoice.externalReference)}</span>` : ""}
+    ${invoice.serviceDate ? `<br><span class="muted">Prestation / livraison : ${escapeHtml(invoice.serviceDate)}</span>` : ""}
+  </div>
 </header>
 <section class="columns">
   <div class="panel"><h2>Client</h2><strong>${escapeHtml(customerValue(customer, "legalName") || customerValue(customer, "displayName"))}</strong><br>
@@ -106,7 +110,9 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
 <section class="evidence"><h2>Règles fiscales appliquées</h2><ul>${rules}</ul>
 <div class="muted">Le document conserve la référence d'un snapshot fiscal immuable. Hash du snapshot : ${escapeHtml(invoice.taxSnapshotId)}.</div>
 <details><summary>Données de calcul (JSON)</summary><pre>${escapeHtml(taxResultText)}</pre></details></section>
+${invoice.paymentTerms || invoice.paymentInstructions ? `<section><h2>Conditions et modalités de paiement</h2>${invoice.paymentTerms ? `<p><strong>Conditions :</strong> ${escapeHtml(invoice.paymentTerms)}</p>` : ""}${invoice.paymentInstructions ? `<p><strong>Modalités :</strong> ${escapeHtml(invoice.paymentInstructions)}</p>` : ""}</section>` : ""}
 ${invoice.notes ? `<section><h2>Notes</h2><p>${escapeHtml(invoice.notes)}</p></section>` : ""}
+${invoice.footerNote ? `<footer><strong>${escapeHtml(invoice.footerNote)}</strong></footer>` : ""}
 <footer>Copie rendue par ZENOX Finance. Le contenu et son empreinte SHA-256 sont conservés comme artefact immuable. La conformité fiscale/légale et les obligations d'archivage doivent être validées pour chaque juridiction.</footer>
 </main>
 </body>
