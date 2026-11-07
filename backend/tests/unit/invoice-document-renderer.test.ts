@@ -81,6 +81,21 @@ describe("invoice document rendering", () => {
     expect(html).not.toContain(invoice.taxSnapshotId!);
   });
 
+  it("labels deposit and balance documents distinctly in customer-facing HTML", () => {
+    const depositHtml = renderInvoiceHtmlDocument({
+      invoice: { ...invoice, documentType: "DEPOSIT", contractTotal: "10000", relatedInvoiceId: null },
+      appliedRules: [], taxResult: {},
+    });
+    const balanceHtml = renderInvoiceHtmlDocument({
+      invoice: { ...invoice, documentType: "BALANCE", contractTotal: null, relatedInvoiceId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" },
+      appliedRules: [], taxResult: {},
+    });
+    expect(depositHtml).toContain("FACTURE D’ACOMPTE");
+    expect(depositHtml).toContain("Montant total du contrat : 10000 XOF");
+    expect(balanceHtml).toContain("FACTURE DE SOLDE");
+    expect(balanceHtml).toContain("Facture d’acompte source");
+  });
+
   it("creates a valid Unicode PDF with embedded fonts", async () => {
     const pdf = await renderInvoicePdfDocument(invoice);
     expect(pdf.subarray(0, 8).toString("ascii")).toBe("%PDF-1.4");
