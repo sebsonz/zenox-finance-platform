@@ -15,8 +15,8 @@ const lineSchema = z.object({
   unit: z.string().trim().max(32).optional(),
   quantity: decimalSchema,
   unitPrice: decimalSchema,
-  discountPercent: z.string().regex(/^(?:0|[1-9]\d?)(?:\.\d{1,6})?$/).default("0"),
-  taxRatePercent: z.string().regex(/^(?:0|[1-9]\d?)(?:\.\d{1,6})?$/).default("0"),
+  discountPercent: z.string().regex(/^(?:100(?:\.0{1,6})?|(?:0|[1-9]\d?)(?:\.\d{1,6})?)$/).default("0"),
+  taxRatePercent: z.string().regex(/^(?:100(?:\.0{1,6})?|(?:0|[1-9]\d?)(?:\.\d{1,6})?)$/).default("0"),
 }).strict().refine((line) => new Decimal(line.quantity).gt(0) && new Decimal(line.discountPercent).lte(100) && new Decimal(line.taxRatePercent).lte(100), "Invalid line quantity or percentage.");
 const documentSchema = z.object({
   customerId: idSchema,
