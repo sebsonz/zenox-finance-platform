@@ -45,7 +45,7 @@ describe("invoice document rendering", () => {
     expect(html).not.toContain("<script>alert(1)</script>");
     const tbody = html.match(/<tbody>([\s\S]*?)<\/tbody>/)?.[1] ?? "";
     expect((tbody.match(/<tr>/g) ?? []).length).toBe(3);
-    expect(html).toContain("3422.00000000");
+    expect(html).toContain("3422.00000000");\n    expect(html).not.toContain(invoice.id);\n    expect(html).not.toContain(invoice.taxSnapshotId!);\n    expect(html).not.toContain("Données de calcul");\n    expect(html).not.toContain("Règles fiscales appliquées");
   });
 
   it("renders professional payment terms and references as escaped customer-facing content", () => {
@@ -67,7 +67,7 @@ describe("invoice document rendering", () => {
     expect(html).toContain("Virement ou Mobile Money");
     expect(html).toContain("&lt;REF-CLIENT&gt;");
     expect(html).not.toContain("<REF-CLIENT>");
-    expect(html).toContain("Merci de votre confiance.");
+    expect(html).toContain("Merci de votre confiance.");\n    expect(html).not.toContain("BC-2026-0042");\n    expect(html).not.toContain("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee");
   });
 
   it("creates a valid PDF header and includes every line and total across its pages", () => {
@@ -77,7 +77,7 @@ describe("invoice document rendering", () => {
     expect(output).toContain("Transport maritime");
     expect(output).toContain("Manutention");
     expect(output).toContain("TOTAL BRUT");
-    expect(output).toContain("NET A PAYER");
+    expect(output).toContain("NET A PAYER");\n    expect(output).not.toContain(invoice.id);\n    expect(output).not.toContain(invoice.taxSnapshotId!);\n    expect(output).not.toContain("Test multi-ligne");
     expect(output).toContain("startxref");
     expect(output).toContain("%%EOF");
   });
