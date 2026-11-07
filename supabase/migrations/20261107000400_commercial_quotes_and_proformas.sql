@@ -64,6 +64,7 @@ CREATE TABLE public.finance_proformas (
   customer_id uuid NOT NULL,
   proforma_number text,
   status text NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','PUBLISHED','EXPIRED','REPLACED','CANCELLED')),
+  revision integer NOT NULL DEFAULT 1 CHECK (revision > 0),
   currency_code character(3) NOT NULL REFERENCES public.finance_currencies(code),
   issue_date date NOT NULL DEFAULT CURRENT_DATE,
   valid_until date,
