@@ -189,6 +189,9 @@ export const invoiceIssuanceService = {
       await invoicePdfRepository.createForIssuedInvoice(client, context, issued);
       await recordInvoiceAudit(client, context, "invoice.issued", "INVOICE", issued.id, {
         invoiceCode: issued.invoiceCode,
+        documentType: issued.documentType,
+        relatedInvoiceId: issued.relatedInvoiceId,
+        contractTotal: issued.contractTotal,
         documentVersion: issued.documentVersion,
         taxSnapshotId: issued.taxSnapshotId,
         htmlArtifactCreated: true,
