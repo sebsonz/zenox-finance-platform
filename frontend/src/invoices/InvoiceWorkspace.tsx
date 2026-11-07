@@ -83,7 +83,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     onCurrenciesLoaded,
   });
   const {
-    form, setForm, editing, setEditing, resetDraft, startEdit, updateLine, addLine, removeLine,
+    form, setForm, editing, setEditing, resetDraft, startEdit, updateLine, addLine, removeLine, duplicateLine,
   } = useInvoiceDraft({ customers, currencies, setSelectedInvoiceId, setNotice });
   useEffect(() => { setEditing(null); }, [tenantId, setEditing]);
   const { saveStandardDraft } = useInvoiceDraftPersistence({
@@ -140,6 +140,8 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
 
         <section className="panel invoice-list-panel">
           <div className="panel-heading"><div><h2>{editing ? "Modifier le brouillon" : form.documentType === "CREDIT_NOTE" ? "Créer une facture d’avoir" : "Créer une facture"}</h2><p>{form.documentType === "CREDIT_NOTE" ? "Émission d’un avoir rattaché à une facture déjà émise. Le montant restant est contrôlé côté serveur." : "Le serveur calcule tous les montants. Une modification invalide le snapshot fiscal précédent."}</p></div><div className="invoice-editor-heading-actions">{editing && <button className="outline-button" type="button" onClick={resetDraft}>Annuler la modification</button>}<button className="primary-button" type="submit" form="invoice-draft-form" disabled={busy || (form.documentType === "CREDIT_NOTE" ? !form.relatedInvoiceId || !canCredit : checkingResources || customers.length === 0 || currencies.length === 0)}>{busy ? "Traitement…" : form.documentType === "CREDIT_NOTE" ? "Émettre l’avoir" : "Enregistrer la facture"} <FileText size={15}/></button></div></div>
+          <div className="invoice-editor-shell">
+          <div className="invoice-editor-main">
           <form id="invoice-draft-form" className="invoice-editor" onSubmit={(event) => void saveDraft(event)}>
             <div className="invoice-form-grid">
               <label>Type de facture<select value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value as DraftForm["documentType"], contractTotal: "", relatedInvoiceId: "" })}>
@@ -179,11 +181,35 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
               onAdd={addLine}
               onUpdate={updateLine}
               onRemove={removeLine}
+              onDuplicate={duplicateLine}
             />
 
             <div className="invoice-editor-submit-row"><button className="primary-button" type="submit" disabled={busy || (form.documentType === "CREDIT_NOTE" ? !form.relatedInvoiceId || !canCredit : checkingResources || customers.length === 0 || currencies.length === 0)}>{busy ? "Traitement…" : form.documentType === "CREDIT_NOTE" ? "Émettre la facture d’avoir" : editing ? "Enregistrer les modifications" : "Enregistrer la facture"} <FileText size={15}/></button></div>
             {form.documentType !== "CREDIT_NOTE" && customers.length === 0 && <p className="muted-note">Aucun client actif : ajoutez d’abord un client via le module Clients.</p>}
           </form>
+          </div>
+          <aside className="invoice-summary-sidebar" aria-label="Synthèse de la facture">
+            <section className="invoice-summary-card">
+              <h3><span className="invoice-summary-icon">▤</span> Synthèse financière</h3>
+              <div className="invoice-summary-row"><span>Sous-total HT</span><strong>{editing ? `${editing.subtotal} ${editing.currencyCode}` : "Calcul après enregistrement"}</strong></div>
+              <div className="invoice-summary-row"><span>Taxes</span><strong>{editing ? `${editing.taxTotal} ${editing.currencyCode}` : "—"}</strong></div>
+              <div className="invoice-summary-row total"><span>Total TTC</span><strong>{editing ? `${editing.grandTotal} ${editing.currencyCode}` : "—"}</strong></div>
+              <p className="invoice-summary-hint">Les montants définitifs sont calculés et contrôlés par le moteur financier côté serveur.</p>
+            </section>
+            <section className="invoice-summary-card">
+              <h3><span className="invoice-summary-icon">◷</span> Situation financière</h3>
+              <div className="invoice-summary-row"><span>Montant dû</span><strong>{editing ? `${editing.amountDue} ${editing.currencyCode}` : "À déterminer"}</strong></div>
+              <div className="invoice-summary-row"><span>État du document</span><strong>{editing?.status === "ISSUED" ? "Émise" : editing ? "Brouillon" : "Nouveau"}</strong></div>
+              <p className="invoice-summary-hint">Les paiements et acomptes affichés proviennent des enregistrements financiers, jamais d'une saisie libre dans cette synthèse.</p>
+            </section>
+            <section className="invoice-summary-card">
+              <h3><span className="invoice-summary-icon">▦</span> Conditions de règlement</h3>
+              <div className="invoice-summary-row"><span>Échéance</span><strong>{form.dueDate || "Non définie"}</strong></div>
+              <div className="invoice-summary-row"><span>Conditions</span><strong>{form.paymentTerms || "À définir"}</strong></div>
+              <div className="invoice-summary-row"><span>Moyen / instructions</span><strong>{form.paymentInstructions || "Non défini"}</strong></div>
+            </section>
+          </aside>
+        </div>
         </section>
 
         <InvoiceListPanel
