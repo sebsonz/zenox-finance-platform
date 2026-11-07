@@ -41,8 +41,8 @@ export const platformTaxJurisdictionRepository = {
       jurisdictionLevel: row.jurisdiction_level,
       parentId: row.parent_id,
       isActive: row.is_active,
-      createdAt: new Date(row.created_at).toISOString(),
-      updatedAt: new Date(row.updated_at).toISOString(),
+      createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : new Date(row.created_at).toISOString(),
+      updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : new Date(row.updated_at).toISOString(),
     }));
   },
 };
