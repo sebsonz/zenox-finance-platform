@@ -265,3 +265,51 @@
 .invoice-composer-tabs button.active span{background:#dce8ff;color:#145ee6}
 #invoice-composer-information,#invoice-composer-parties,#invoice-composer-lines,#invoice-composer-terms{scroll-margin-top:72px}
 @media(max-width:600px){.invoice-composer-tabs{overflow-x:auto}.invoice-composer-tabs button{white-space:nowrap;padding:9px 10px}}
+
+
+/* Fiscal administration workspace */
+.tax-admin-workspace{display:grid;gap:16px}
+.tax-admin-workspace .welcome-row{align-items:center}
+.tax-admin-banner{margin:0}
+.tax-admin-error,.tax-admin-success{display:flex;align-items:center;gap:9px}
+.tax-admin-error{border-color:#f3c6c6;background:#fff7f7;color:#a52d35}
+.tax-admin-success{border-color:#b9e4ce;background:#f3fbf6;color:#176b43}
+.tax-admin-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.tax-admin-stats article{display:grid;gap:7px;padding:17px 18px}
+.tax-admin-stats article span{color:#68778d;font-size:11px;font-weight:650}
+.tax-admin-stats article strong{color:#142b4c;font:800 25px Manrope}
+.tax-admin-stats article small{color:#8b97a9;font-size:10px}
+.tax-admin-jurisdictions,.tax-admin-rules{padding:20px}
+.tax-admin-workspace .panel-heading h2{display:flex;align-items:center;gap:8px}
+.tax-admin-filter{max-width:420px;margin-top:16px}
+.tax-admin-filter label{display:grid;gap:7px;color:#526177;font-size:11px;font-weight:700}
+.tax-admin-filter select{height:40px;padding:0 11px;border:1px solid #dce3ee;border-radius:8px;background:#fff;color:#25364f}
+.tax-admin-selected{display:flex;align-items:center;gap:12px;margin-top:13px;padding:12px 14px;border-radius:9px;background:#f5f8fd}
+.tax-admin-selected strong{color:#19345a;font-size:13px}
+.tax-admin-selected span{color:#77869b;font-size:10px}
+.tax-admin-empty{display:grid;justify-items:center;gap:9px;padding:26px 15px;color:#7d8ba0;text-align:center;font-size:11px}
+.tax-admin-empty strong{color:#34445e;font-size:12px}
+.tax-admin-empty p{max-width:680px;margin:0;line-height:1.6}
+.tax-admin-warning{display:flex;align-items:center;gap:8px;margin:14px 0 0;padding:10px 12px;border:1px solid #f1dfb6;border-radius:8px;background:#fffaf0;color:#8c6418;font-size:10px}
+.tax-admin-rule-form{margin:16px 0;padding:17px;border:1px solid #dce5f2;border-radius:11px;background:#f9fbff}
+.tax-admin-form-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.tax-admin-form-heading strong{color:#1c3150;font-size:13px}
+.tax-admin-form-heading span{color:#8491a4;font-size:10px}
+.tax-admin-rule-form .form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.tax-admin-rule-form label{display:grid;gap:6px;color:#526177;font-size:10px;font-weight:700}
+.tax-admin-rule-form input,.tax-admin-rule-form select{width:100%;min-width:0;height:38px;padding:0 10px;border:1px solid #dce3ed;border-radius:7px;background:#fff;color:#344157;font:500 11px "DM Sans",sans-serif}
+.tax-admin-rule-form .tax-admin-checkbox{display:flex;align-items:center;gap:8px;margin-top:14px}
+.tax-admin-rule-form .tax-admin-checkbox input{width:16px;height:16px}
+.tax-admin-form-footer{display:flex;align-items:center;justify-content:flex-end;gap:9px;margin-top:16px;padding-top:14px;border-top:1px solid #e5ebf3}
+.tax-admin-form-footer>span{display:flex;align-items:center;gap:6px;margin-right:auto;color:#718097;font-size:10px}
+.tax-admin-form-footer button{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px}
+.tax-admin-table-wrap{overflow-x:auto;margin-top:14px}
+.tax-admin-table-wrap table{width:100%;border-collapse:collapse;font-size:10px}
+.tax-admin-table-wrap th,.tax-admin-table-wrap td{padding:11px 10px;border-bottom:1px solid #edf0f5;text-align:left;white-space:nowrap}
+.tax-admin-table-wrap th{background:#f7f9fc;color:#69788f;font-size:9px;text-transform:uppercase;letter-spacing:.04em}
+.tax-admin-table-wrap td{color:#34445c}
+.tax-admin-table-wrap td strong,.tax-admin-table-wrap td small{display:block}
+.tax-admin-table-wrap td small{margin-top:3px;color:#8995a7;font-size:9px}
+.status-chip.status-success{background:#eaf8ef;color:#237344}
+@media(max-width:900px){.tax-admin-rule-form .form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.tax-admin-stats{grid-template-columns:1fr}.tax-admin-rule-form .form-grid{grid-template-columns:1fr}.tax-admin-form-footer{align-items:stretch;flex-wrap:wrap}.tax-admin-form-footer>span{flex-basis:100%}.tax-admin-selected{align-items:flex-start;flex-direction:column}}
