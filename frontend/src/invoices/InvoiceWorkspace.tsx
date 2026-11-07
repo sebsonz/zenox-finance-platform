@@ -60,16 +60,16 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const [invoiceSearch, setInvoiceSearch] = useState("");
   const [invoiceStatus, setInvoiceStatus] = useState("");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
   const {
     creditNotes, creditReason, setCreditReason, creditAmount, setCreditAmount,
     creditNoteReason, setCreditNoteReason, creditNoteAmount, setCreditNoteAmount,
     resetCreditNotes, loadCreditNotes, createCreditNote, issueCreditNote,
     downloadCreditNote, openCreditNoteDocument,
   } = useCreditNotes({ tenantId, setSelectedInvoiceId, setBusy, setNotice });
-
-  const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
   const onTenantReset = useCallback(() => {
     setSelectedInvoiceId("");
     resetCreditNotes();
