@@ -9,6 +9,7 @@ import { useInvoiceDraft } from "../modules/billing/freight/invoices/hooks/useIn
 import { useInvoiceDraftPersistence } from "../modules/billing/freight/invoices/hooks/useInvoiceDraftPersistence.js";
 import { useInvoiceLifecycle } from "../modules/billing/freight/invoices/hooks/useInvoiceLifecycle.js";
 import { useCreditNotes } from "../modules/billing/freight/invoices/hooks/useCreditNotes.js";
+import { useInvoiceDocuments } from "../modules/billing/freight/invoices/hooks/useInvoiceDocuments.js";
 import type { DraftForm, InvoiceDraftRecord } from "../modules/billing/freight/invoices/types/invoice-draft.js";
 import type { Customer, Currency, Jurisdiction } from "../modules/billing/freight/invoices/types/workspace-resources.js";
 import { FileText, RefreshCw, ShieldCheck } from "lucide-react";
@@ -43,12 +44,6 @@ async function readData<T>(response: Response, fallback: string): Promise<T> {
   const payload = await response.json() as ApiPayload<T>;
   if (!payload.data) throw new Error(fallback);
   return payload.data;
-}
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url; link.download = filename; link.click();
-  URL.revokeObjectURL(url);
 }
 
 export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantChange }: InvoiceWorkspaceProps) {
@@ -104,6 +99,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const { saveStandardDraft } = useInvoiceDraftPersistence({
     tenantId, form, editing, setInvoices, setEditing, setSelectedInvoiceId, setBusy, setNotice,
   });
+  const { openIssuedDocument, downloadDocument } = useInvoiceDocuments({ tenantId, setBusy, setNotice });
   const { calculateTax, issueInvoice } = useInvoiceLifecycle({
     tenantId, jurisdictionId, taxDate, appliesTo, taxFacts, setBusy, setNotice, loadInvoices,
   });
@@ -138,30 +134,6 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
       return;
     }
     await saveStandardDraft();
-  }
-
-  function openIssuedDocument(invoice: Invoice) {
-    if (invoice.status !== "ISSUED") {
-      setNotice("Seules les factures émises disposent d’un document définitif consultable.");
-      return;
-    }
-    // Open synchronously from the user's click so the browser does not block
-    // the authenticated same-origin document response as an async popup.
-    window.open(
-      `/api/v1/user/tenants/${tenantId}/invoices/${invoice.id}/document`,
-      "_blank",
-      "noopener,noreferrer",
-    );
-  }
-
-  async function downloadDocument(invoice: Invoice, format: "document" | "document.pdf") {
-    setBusy(true);
-    try {
-      const response = await fetch(`/api/v1/user/tenants/${tenantId}/invoices/${invoice.id}/${format}`, { credentials: "same-origin", cache: "no-store" });
-      if (!response.ok) throw new Error(await responseError(response, "Téléchargement impossible."));
-      downloadBlob(await response.blob(), `${invoice.invoiceCode ?? "facture"}.${format.endsWith(".pdf") ? "pdf" : "html"}`);
-    } catch (error) { setNotice(error instanceof Error ? error.message : "Téléchargement impossible."); }
-    finally { setBusy(false); }
   }
 
   const selectedInvoice = invoices.find((invoice) => invoice.id === selectedInvoiceId) ?? editing;
