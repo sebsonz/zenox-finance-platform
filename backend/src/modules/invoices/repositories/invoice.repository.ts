@@ -22,6 +22,7 @@ export interface FinanceInvoice {
   amountDue: string;
   calculationPolicy: string;
   notes: string | null;
+  document: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
   documentVersion: number;
@@ -43,6 +44,7 @@ interface InvoiceRow {
   created_at: string; updated_at: string; document_version: number;
   tax_snapshot_id: string | null; tax_snapshot_version: number | null;
   tax_status: "PROVISIONAL" | "CALCULATED" | "REVIEW_REQUIRED";
+  document_metadata: Record<string, unknown>;
 }
 interface LineRow {
   id: string; line_number: number; description: string; quantity: string; unit_price: string;
@@ -54,7 +56,7 @@ const invoiceColumns = `id, customer_id, invoice_code, status, currency_code, cu
   tax_total::text, grand_total::text, amount_due::text, calculation_policy, notes,
   to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at,
   to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at,
-  document_version, tax_snapshot_id, tax_snapshot_version, tax_status`;
+  document_version, tax_snapshot_id, tax_snapshot_version, tax_status, document_metadata`;
 
 async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow): Promise<FinanceInvoice> {
   const result = await client.query<LineRow>(
@@ -71,7 +73,7 @@ async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow
     dueDate: row.due_date,
     customerSnapshot: row.customer_snapshot, subtotal: row.subtotal, discountTotal: row.discount_total,
     taxableTotal: row.taxable_total, taxTotal: row.tax_total, grandTotal: row.grand_total, amountDue: row.amount_due,
-    calculationPolicy: row.calculation_policy, notes: row.notes,
+    calculationPolicy: row.calculation_policy, notes: row.notes, document: row.document_metadata ?? {},
     createdAt: row.created_at, updatedAt: row.updated_at,
     documentVersion: row.document_version, taxSnapshotId: row.tax_snapshot_id,
     taxSnapshotVersion: row.tax_snapshot_version, taxStatus: row.tax_status,
@@ -96,17 +98,17 @@ export const invoiceRepository = {
     const created = await client.query<InvoiceRow>(
       `INSERT INTO public.finance_invoices (
         tenant_id, customer_id, currency_code, currency_minor_unit, due_date, customer_snapshot,
-        subtotal, discount_total, taxable_total, tax_total, grand_total, amount_due, calculation_policy, notes,
+        subtotal, discount_total, taxable_total, tax_total, grand_total, amount_due, calculation_policy, notes, document_metadata,
         created_by_principal_id, created_by_actor_type, created_by_actor_ref,
         updated_by_actor_type, updated_by_actor_ref
-      ) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+      ) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16,$17,$18,$19,$20)
       RETURNING ${invoiceColumns}`,
       [context.tenantId, customer.id, totals.currency, currencyMinorUnit, input.dueDate ?? null,
         JSON.stringify({ id: customer.id, legalName: customer.legalName, displayName: customer.displayName,
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
           taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
         totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
-        totals.grandTotal, totals.calculationPolicy, input.notes ?? null, legacyPrincipalId, actor.type, actor.ref, actor.type, actor.ref],
+        totals.grandTotal, totals.calculationPolicy, input.notes ?? null, JSON.stringify(input.document ?? {}), legacyPrincipalId, actor.type, actor.ref, actor.type, actor.ref],
     );
     const invoice = created.rows[0];
     if (!invoice) throw new Error("INVOICE_INSERT_RETURNED_NO_ROW");
@@ -154,17 +156,18 @@ export const invoiceRepository = {
               amount_due = $12,
               calculation_policy = $13,
               notes = $14,
+              document_metadata = $15::jsonb,
               document_version = document_version + 1,
               tax_snapshot_id = NULL,
               tax_snapshot_version = NULL,
               tax_status = 'PROVISIONAL',
-              updated_by_actor_type = $15,
-              updated_by_actor_ref = $16,
+              updated_by_actor_type = $16,
+              updated_by_actor_ref = $17,
               updated_at = clock_timestamp()
         WHERE tenant_id = $1
           AND id = $2
           AND status = 'DRAFT'
-          AND updated_at = $17::timestamptz
+          AND updated_at = $18::timestamptz
       RETURNING ${invoiceColumns}`,
       [context.tenantId, invoiceId, customer.id, totals.currency, currencyMinorUnit,
         input.dueDate ?? null,
@@ -172,7 +175,7 @@ export const invoiceRepository = {
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
           taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
         totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
-        totals.calculationPolicy, input.notes ?? null, actor.type, actor.ref, expectedUpdatedAt],
+        totals.calculationPolicy, input.notes ?? null, JSON.stringify(input.document ?? {}), actor.type, actor.ref, expectedUpdatedAt],
     );
     const invoice = updated.rows[0];
     if (!invoice) return null;
