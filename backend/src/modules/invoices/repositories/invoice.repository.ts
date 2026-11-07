@@ -197,7 +197,7 @@ export const invoiceRepository = {
         JSON.stringify({ id: customer.id, legalName: customer.legalName, displayName: customer.displayName,
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
           taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
-        totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxAmount ?? totals.taxTotal, totals.grandTotal,
+        totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
         totals.calculationPolicy, input.notes ?? null, actor.type, actor.ref, expectedUpdatedAt],
     );
     const invoice = updated.rows[0];
