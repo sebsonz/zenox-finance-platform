@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { Decimal } from "decimal.js";
 import type { PoolClient } from "pg";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinancePaymentContext } from "../types/payment-operation-context.js";
+import { paymentActor } from "../types/payment-operation-context.js";
 import type { CreateRefundInput, RecordManualRefundSuccessInput } from "../validators/refund.schema.js";
 import type { RefundRecord, RefundStatus } from "../types/refund.types.js";
 
@@ -24,7 +25,7 @@ function mapRefund(row: RefundRow): RefundRecord {
 }
 function hash(value: unknown): string { return createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex"); }
 
-async function beginCommand(client: PoolClient, context: FinanceRequestContext, operation: string, key: string, requestHash: string) {
+async function beginCommand(client: PoolClient, context: FinancePaymentContext, operation: string, key: string, requestHash: string) {
   await client.query(
     `INSERT INTO public.finance_payment_commands (tenant_id,operation,idempotency_key,request_hash)
      VALUES ($1,$2,$3,$4) ON CONFLICT (tenant_id,operation,idempotency_key) DO NOTHING`,
@@ -40,7 +41,7 @@ async function beginCommand(client: PoolClient, context: FinanceRequestContext, 
   if (command.request_hash.trim() !== requestHash) throw new Error("IDEMPOTENCY_KEY_REUSED");
   return command.state === "SUCCEEDED" && command.resource_id ? command.resource_id : null;
 }
-async function completeCommand(client: PoolClient, context: FinanceRequestContext, operation: string, key: string, resourceId: string) {
+async function completeCommand(client: PoolClient, context: FinancePaymentContext, operation: string, key: string, resourceId: string) {
   await client.query(
     `UPDATE public.finance_payment_commands SET state='SUCCEEDED',resource_type='PAYMENT_REFUND',
        resource_id=$4::uuid,response_body=jsonb_build_object('resourceType','PAYMENT_REFUND','resourceId',$4::text),completed_at=clock_timestamp()
@@ -48,20 +49,22 @@ async function completeCommand(client: PoolClient, context: FinanceRequestContex
     [context.tenantId,operation,key,resourceId],
   );
 }
-async function audit(client: PoolClient, context: FinanceRequestContext, action: string, refundId: string, paymentId: string, metadata: Record<string,unknown> = {}) {
+async function audit(client: PoolClient, context: FinancePaymentContext, action: string, refundId: string, paymentId: string, metadata: Record<string,unknown> = {}) {
+  const actor = paymentActor(context);
   await client.query(
     `INSERT INTO public.finance_audit_events
       (tenant_id,actor_type,actor_ref,action,resource_type,resource_id,correlation_id,safe_metadata)
-     VALUES ($1,'SERVICE',$2,$3,'PAYMENT_REFUND',$4,$5,$6::jsonb)`,
-    [context.tenantId,context.principal.id,action,refundId,context.correlationId,JSON.stringify({paymentId,...metadata})],
+     VALUES ($1,$2,$3,$4,'PAYMENT_REFUND',$5,$6,$7::jsonb)`,
+    [context.tenantId,actor.type,actor.ref,action,refundId,context.correlationId,JSON.stringify({paymentId,...metadata})],
   );
 }
-async function event(client: PoolClient, context: FinanceRequestContext, paymentId: string, type: string, key: string, metadata: Record<string,unknown> = {}) {
+async function event(client: PoolClient, context: FinancePaymentContext, paymentId: string, type: string, key: string, metadata: Record<string,unknown> = {}) {
+  const actor = paymentActor(context);
   await client.query(
     `INSERT INTO public.finance_payment_events
       (tenant_id,payment_id,event_type,actor_type,actor_ref,correlation_id,idempotency_key,safe_metadata)
-     VALUES ($1,$2,$3,'SERVICE',$4,$5,$6,$7::jsonb)`,
-    [context.tenantId,paymentId,type,context.principal.id,context.correlationId,key,JSON.stringify(metadata)],
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)`,
+    [context.tenantId,paymentId,type,actor.type,actor.ref,context.correlationId,key,JSON.stringify(metadata)],
   );
 }
 async function findRefund(client: PoolClient, tenantId: string, refundId: string): Promise<RefundRecord | null> {
@@ -98,7 +101,8 @@ async function availableForRefund(client: PoolClient, tenantId: string, paymentI
 }
 
 export const refundRepository = {
-  async request(client: PoolClient, context: FinanceRequestContext, paymentId: string, input: CreateRefundInput, key: string): Promise<RefundRecord> {
+  async request(client: PoolClient, context: FinancePaymentContext, paymentId: string, input: CreateRefundInput, key: string): Promise<RefundRecord> {
+    const actor = paymentActor(context);
     const requestHash = hash({paymentId,...input});
     const replayId = await beginCommand(client,context,"REFUND_REQUEST",key,requestHash);
     if (replayId) {
@@ -120,8 +124,8 @@ export const refundRepository = {
     const inserted = await client.query<RefundRow>(
       `INSERT INTO public.finance_payment_refunds
         (tenant_id,payment_id,amount,currency_code,status,reason,requested_by_actor_type,requested_by_actor_ref)
-       VALUES ($1,$2,$3,$4,'REQUESTED',$5,'SERVICE',$6) RETURNING ${refundColumns}`,
-      [context.tenantId,paymentId,input.amount,payment.currency_code,input.reason,context.principal.id],
+       VALUES ($1,$2,$3,$4,'REQUESTED',$5,$6,$7) RETURNING ${refundColumns}`,
+      [context.tenantId,paymentId,input.amount,payment.currency_code,input.reason,actor.type,actor.ref],
     );
     const row = inserted.rows[0];
     if (!row) throw new Error("REFUND_INSERT_RETURNED_NO_ROW");
@@ -132,7 +136,7 @@ export const refundRepository = {
     return refund;
   },
 
-  async approve(client: PoolClient, context: FinanceRequestContext, paymentId: string, refundId: string, key: string): Promise<RefundRecord> {
+  async approve(client: PoolClient, context: FinancePaymentContext, paymentId: string, refundId: string, key: string): Promise<RefundRecord> {
     const requestHash = hash({paymentId,refundId});
     const replayId = await beginCommand(client,context,"REFUND_APPROVE",key,requestHash);
     if (replayId) {
@@ -149,12 +153,13 @@ export const refundRepository = {
     const current = found.rows[0];
     if (!current) throw new Error("REFUND_NOT_FOUND");
     if (current.status !== "REQUESTED") throw new Error("REFUND_NOT_REQUESTED");
-    if (current.requested_by_actor_ref === context.principal.id) throw new Error("REFUND_SELF_APPROVAL_FORBIDDEN");
+    const actor = paymentActor(context);
+    if (current.requested_by_actor_ref === actor.ref) throw new Error("REFUND_SELF_APPROVAL_FORBIDDEN");
     const updated = await client.query<RefundRow>(
-      `UPDATE public.finance_payment_refunds SET status='APPROVED',approved_by_actor_type='SERVICE',
-        approved_by_actor_ref=$4,approved_at=clock_timestamp(),updated_at=clock_timestamp()
+      `UPDATE public.finance_payment_refunds SET status='APPROVED',approved_by_actor_type=$4,
+        approved_by_actor_ref=$5,approved_at=clock_timestamp(),updated_at=clock_timestamp()
         WHERE tenant_id=$1 AND payment_id=$2 AND id=$3 RETURNING ${refundColumns}`,
-      [context.tenantId,paymentId,refundId,context.principal.id],
+      [context.tenantId,paymentId,refundId,actor.type,actor.ref],
     );
     const row = updated.rows[0];
     if (!row) throw new Error("REFUND_UPDATE_FAILED");
@@ -166,9 +171,10 @@ export const refundRepository = {
   },
 
   async recordManualSuccess(
-    client: PoolClient, context: FinanceRequestContext, paymentId: string, refundId: string,
+    client: PoolClient, context: FinancePaymentContext, paymentId: string, refundId: string,
     input: RecordManualRefundSuccessInput, key: string,
   ): Promise<RefundRecord> {
+    const actor = paymentActor(context);
     const requestHash = hash({paymentId,refundId,...input});
     const replayId = await beginCommand(client,context,"REFUND_RECORD_MANUAL_SUCCESS",key,requestHash);
     if (replayId) {
@@ -188,9 +194,9 @@ export const refundRepository = {
     if (current.status !== "APPROVED") throw new Error("REFUND_NOT_APPROVED");
     const updated = await client.query<RefundRow>(
       `UPDATE public.finance_payment_refunds SET status='SUCCEEDED',external_reference=COALESCE($4,external_reference),
-        completed_by_actor_type='SERVICE',completed_by_actor_ref=$5,completed_at=clock_timestamp(),updated_at=clock_timestamp()
+        completed_by_actor_type=$5,completed_by_actor_ref=$6,completed_at=clock_timestamp(),updated_at=clock_timestamp()
         WHERE tenant_id=$1 AND payment_id=$2 AND id=$3 RETURNING ${refundColumns}`,
-      [context.tenantId,paymentId,refundId,input.externalReference ?? null,context.principal.id],
+      [context.tenantId,paymentId,refundId,input.externalReference ?? null,actor.type,actor.ref],
     );
     const row = updated.rows[0];
     if (!row) throw new Error("REFUND_UPDATE_FAILED");
@@ -201,7 +207,7 @@ export const refundRepository = {
     return refund;
   },
 
-  async cancel(client: PoolClient, context: FinanceRequestContext, paymentId: string, refundId: string, key: string): Promise<RefundRecord> {
+  async cancel(client: PoolClient, context: FinancePaymentContext, paymentId: string, refundId: string, key: string): Promise<RefundRecord> {
     const requestHash = hash({paymentId,refundId});
     const replayId = await beginCommand(client,context,"REFUND_CANCEL",key,requestHash);
     if (replayId) {
