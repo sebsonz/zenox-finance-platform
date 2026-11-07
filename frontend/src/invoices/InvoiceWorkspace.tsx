@@ -228,7 +228,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     if (!jurisdictionId) { setNotice("Aucune juridiction fiscale active n’est disponible."); return; }
     setBusy(true); setNotice("");
     try {
-      const response = await fetch(`/api/v1/user/tenants/${tenantId}/invoices/${invoice.id}/tax-snapshot`, {
+      const response = await fetch(`/api/v1/user/tenants/${tenantId}/invoices/drafts/${invoice.id}/tax-snapshot`, {
         method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
         body: JSON.stringify({
           expectedUpdatedAt: invoice.updatedAt, taxDate, jurisdictionId, appliesTo,
