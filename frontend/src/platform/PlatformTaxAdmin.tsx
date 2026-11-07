@@ -78,7 +78,7 @@ export function PlatformTaxAdmin() {
     </div>
     <div className="pad-feature-grid pta-summary">
       <article className="pad-feature-card"><span className="pad-feature-number">01</span><strong>{jurisdictionLoading ? "…" : jurisdictions?.total ?? 0}</strong><span>Juridictions référencées</span></article>
-      <article className="pad-feature-card"><span className="pad-feature-number">02</span><strong>{loading ? "…" : activeCount}</strong><span>Règles actives sur la page affichée</span></article>
+      <article className="pad-feature-card"><span className="pad-feature-number">02</span><strong>{loading ? "…" : activeCount}</strong><span>Règles actives sur la page affichée · {loading ? "…" : draftCount} brouillon(s)</span></article>
       <article className="pad-feature-card"><span className="pad-feature-number">03</span><strong>MULTI</strong><span>Moteur conçu pour plusieurs juridictions</span></article>
     </div>
     <div className="pad-panel">
