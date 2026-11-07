@@ -42,7 +42,7 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
   const lines = invoice.lines.map((line) => `
     <tr>
       <td class="index">${escapeHtml(line.lineNumber)}</td>
-      <td><strong>${escapeHtml(line.description)}</strong>
+      <td><small>${escapeHtml(line.lineType === "FEE" ? "FRAIS" : line.lineType === "EXPENSE" ? "DÉBOURS" : line.lineType === "SERVICE" ? "PRESTATION" : "ARTICLE")}</small><strong>${escapeHtml(line.description)}</strong>
         ${line.itemCode ? `<small>Réf. ${escapeHtml(line.itemCode)}</small>` : ""}
         ${line.lineNote ? `<small>${escapeHtml(line.lineNote)}</small>` : ""}
       </td>

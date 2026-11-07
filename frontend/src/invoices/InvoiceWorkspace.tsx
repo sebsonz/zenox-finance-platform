@@ -23,7 +23,7 @@ const emptyTaxFacts = (): TaxFactsForm => ({
   transactionType: "", supplierIfuStatus: "", customerIfuStatus: "", customerTaxStatus: "",
   customerCountryCode: "", supplierCountryCode: "", isImport: "", isExport: "", goodsCategory: "",
 });
-type InvoiceLine = { id?: string; description: string; itemCode: string; unit: string; lineNote: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string };
+type InvoiceLine = { id?: string; lineType: "ITEM"|"SERVICE"|"FEE"|"EXPENSE"; description: string; itemCode: string; unit: string; lineNote: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string };
 type InvoiceDocumentForm = { title: string; invoiceKind: "STANDARD"|"ADVANCE"|"BALANCE"; sourceReference: string; reference: string; purchaseOrderNumber: string; contractReference: string; paymentTerms: string; paymentMethod: string; deliveryDate: string; servicePeriodStart: string; servicePeriodEnd: string; footer: string; language: string; globalDiscountPercent: string; globalDiscountAmount: string };
 type Invoice = {
   id: string; customerId: string; invoiceCode: string | null; status: "DRAFT" | "ISSUED" | "CANCELLED";
@@ -39,7 +39,7 @@ type InvoiceAdjustment = { id:string; adjustment_code:string; adjustment_type:"C
 type InvoiceRelationship = {id:string;relationship_type:string;source_reference:string|null;applied_amount:string;source_invoice_id:string;related_invoice_id:string;advance_invoice_code:string|null;related_invoice_code:string|null};
 type DraftForm = { customerId: string; currencyCode: string; dueDate: string; notes: string; document: InvoiceDocumentForm; lines: InvoiceLine[] };
 type ApiPayload<T> = { data?: T } & ApiError;
-const emptyLine = (): InvoiceLine => ({ description: "", itemCode: "", unit: "unité", lineNote: "", quantity: "1", unitPrice: "0", discountPercent: "0", taxRatePercent: "0" });
+const emptyLine = (): InvoiceLine => ({ lineType: "ITEM", description: "", itemCode: "", unit: "unité", lineNote: "", quantity: "1", unitPrice: "0", discountPercent: "0", taxRatePercent: "0" });
 const emptyDocument = (): InvoiceDocumentForm => ({ title: "FACTURE", invoiceKind: "STANDARD", sourceReference: "", reference: "", purchaseOrderNumber: "", contractReference: "", paymentTerms: "", paymentMethod: "", deliveryDate: "", servicePeriodStart: "", servicePeriodEnd: "", footer: "", language: "fr", globalDiscountPercent: "0", globalDiscountAmount: "0" });
 const emptyForm = (): DraftForm => ({ customerId: "", currencyCode: "XOF", dueDate: "", notes: "", document: emptyDocument(), lines: [emptyLine()] });
 

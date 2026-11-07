@@ -31,7 +31,7 @@ export interface FinanceInvoice {
   taxSnapshotVersion: number | null;
   taxStatus: "PROVISIONAL" | "CALCULATED" | "REVIEW_REQUIRED";
   lines: Array<{
-    id: string; lineNumber: number; description: string; itemCode: string | null; unit: string | null; lineNote: string | null; quantity: string;
+    id: string; lineNumber: number; description: string; lineType: "ITEM"|"SERVICE"|"FEE"|"EXPENSE"; itemCode: string | null; unit: string | null; lineNote: string | null; quantity: string;
     unitPrice: string; discountPercent: string; taxRatePercent: string;
     subtotal: string; discountAmount: string; taxableAmount: string; taxAmount: string; total: string;
   }>;
@@ -48,7 +48,7 @@ interface InvoiceRow {
   document_metadata: Record<string, unknown>;
 }
 interface LineRow {
-  id: string; line_number: number; description: string; item_code: string | null; unit_label: string | null; line_note: string | null; quantity: string; unit_price: string;
+  id: string; line_number: number; description: string; line_type: "ITEM"|"SERVICE"|"FEE"|"EXPENSE"; item_code: string | null; unit_label: string | null; line_note: string | null; quantity: string; unit_price: string;
   discount_percent: string; tax_rate_percent: string; subtotal: string; discount_amount: string;
   taxable_amount: string; tax_amount: string; total: string;
 }
@@ -114,7 +114,7 @@ async function buildCustomerSnapshot(client: PoolClient, tenantId: string, custo
 
 async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow): Promise<FinanceInvoice> {
   const result = await client.query<LineRow>(
-    `SELECT id, line_number, description, item_code, unit_label, line_note, quantity::text, unit_price::text,
+    `SELECT id, line_number, description, line_type, item_code, unit_label, line_note, quantity::text, unit_price::text,
       discount_percent::text, tax_rate_percent::text, subtotal::text, discount_amount::text, taxable_amount::text,
       tax_amount::text, total::text
      FROM public.finance_invoice_lines WHERE tenant_id = $1 AND invoice_id = $2 ORDER BY line_number`,
@@ -132,7 +132,7 @@ async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow
     documentVersion: row.document_version, taxSnapshotId: row.tax_snapshot_id,
     taxSnapshotVersion: row.tax_snapshot_version, taxStatus: row.tax_status,
     lines: result.rows.map((line) => ({
-      id: line.id, lineNumber: line.line_number, description: line.description, itemCode: line.item_code, unit: line.unit_label, lineNote: line.line_note, quantity: line.quantity,
+      id: line.id, lineNumber: line.line_number, description: line.description, lineType: line.line_type, itemCode: line.item_code, unit: line.unit_label, lineNote: line.line_note, quantity: line.quantity,
       unitPrice: line.unit_price, discountPercent: line.discount_percent, taxRatePercent: line.tax_rate_percent,
       subtotal: line.subtotal, discountAmount: line.discount_amount, taxableAmount: line.taxable_amount,
       taxAmount: line.tax_amount, total: line.total,
@@ -171,10 +171,10 @@ export const invoiceRepository = {
       const calculated = calculatedLines[i]!;
       await client.query(
         `INSERT INTO public.finance_invoice_lines (
-          tenant_id, invoice_id, line_number, description, item_code, unit_label, line_note, quantity, unit_price, discount_percent,
+          tenant_id, invoice_id, line_number, description, line_type, item_code, unit_label, line_note, quantity, unit_price, discount_percent,
           tax_rate_percent, subtotal, discount_amount, taxable_amount, tax_amount, total
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
-        [context.tenantId, invoice.id, i + 1, source.description, source.itemCode ?? null, source.unit ?? null, source.lineNote ?? null, calculated.quantity, calculated.unitPrice,
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+        [context.tenantId, invoice.id, i + 1, source.description, source.lineType ?? "ITEM", source.itemCode ?? null, source.unit ?? null, source.lineNote ?? null, calculated.quantity, calculated.unitPrice,
           calculated.discountPercent, calculated.taxRatePercent, calculated.subtotal,
           calculated.discountAmount, calculated.taxableAmount, calculated.taxAmount, calculated.total],
       );

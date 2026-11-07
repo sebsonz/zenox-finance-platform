@@ -38,6 +38,7 @@ export const createInvoiceDraftSchema = z.object({
   }).strict().refine((document) => !(Number(document.globalDiscountPercent ?? "0") > 0 && Number(document.globalDiscountAmount ?? "0") > 0), { message: "Choose either a global discount percentage or amount, not both.", path: ["globalDiscountAmount"] }).refine((document) => !document.servicePeriodStart || !document.servicePeriodEnd || document.servicePeriodEnd >= document.servicePeriodStart, { message: "Service period end must be on or after its start.", path: ["servicePeriodEnd"] }).optional(),
   lines: z.array(z.object({
     description: z.string().trim().min(1).max(500),
+    lineType: z.enum(["ITEM","SERVICE","FEE","EXPENSE"]).optional().default("ITEM"),
     itemCode: z.string().trim().max(100).optional(),
     unit: z.string().trim().max(40).optional(),
     lineNote: z.string().trim().max(1000).optional(),
