@@ -51,6 +51,33 @@ describe("invoice draft request schema", () => {
     }
   });
 
+  it("aligns money and percentage precision with PostgreSQL numeric columns", () => {
+    const base = {
+      customerId,
+      currencyCode: "XOF",
+      lines: [{ description: "Service", quantity: "1", unitPrice: "10", taxRatePercent: "0" }],
+    };
+
+    expect(createInvoiceDraftSchema.safeParse({
+      ...base,
+      lines: [{ ...base.lines[0], quantity: "1.12345678", unitPrice: "10", taxRatePercent: "0" }],
+    }).success).toBe(true);
+
+    for (const invalidQuantity of ["1.123456789", "10000000000000000"]) {
+      expect(createInvoiceDraftSchema.safeParse({
+        ...base,
+        lines: [{ ...base.lines[0], quantity: invalidQuantity, unitPrice: "10", taxRatePercent: "0" }],
+      }).success).toBe(false);
+    }
+
+    for (const invalidRate of ["18.1234567", "1000"]) {
+      expect(createInvoiceDraftSchema.safeParse({
+        ...base,
+        lines: [{ ...base.lines[0], quantity: "1", unitPrice: "10", taxRatePercent: invalidRate }],
+      }).success).toBe(false);
+    }
+  });
+
   it("limits line count and rejects unknown list query fields", () => {
     const tooMany = createInvoiceDraftSchema.safeParse({
       customerId, currencyCode: "XOF",
