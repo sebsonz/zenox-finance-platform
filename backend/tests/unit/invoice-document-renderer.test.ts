@@ -99,7 +99,7 @@ describe("invoice document rendering", () => {
     }));
     const pdf = await renderInvoicePdfDocument({ ...invoice, lines: manyLines });
     const output = pdf.toString("latin1");
-    const pageCount = (output.match(/\\/Type \\/Page\\b/g) ?? []).length;
+    const pageCount = (output.match(/\/Type \/Page\b/g) ?? []).length;
 
     expect(pageCount).toBeGreaterThan(1);
     expect(output).toContain("/FontFile2");
