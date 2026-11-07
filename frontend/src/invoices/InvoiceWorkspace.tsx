@@ -26,6 +26,7 @@ const emptyTaxFacts = (): TaxFactsForm => ({
 type InvoiceLine = { id?: string; description: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string };
 type Invoice = {
   id: string; customerId: string; invoiceCode: string | null; status: "DRAFT" | "ISSUED" | "CANCELLED";
+  documentType: "STANDARD" | "DEPOSIT" | "BALANCE"; contractTotal: string | null; relatedInvoiceId: string | null;
   currencyCode: string; currencyMinorUnit: number; grandTotal: string; amountDue: string; subtotal: string;
   taxTotal: string; createdAt: string; updatedAt: string; dueDate: string | null; notes: string | null;
   purchaseOrderReference: string | null; serviceDate: string | null; paymentTerms: string | null;
@@ -36,6 +37,7 @@ type Invoice = {
 };
 type CreditNote = { id: string; originalInvoiceId: string; creditNoteCode: string; status: "ISSUED"; reason: string; currencyCode: string; grandTotal: string; amountDue: string; issuedAt: string };
 type DraftForm = {
+  documentType: "STANDARD" | "DEPOSIT" | "BALANCE"; contractTotal: string; relatedInvoiceId: string;
   customerId: string; currencyCode: string; dueDate: string; notes: string;
   purchaseOrderReference: string; serviceDate: string; paymentTerms: string;
   paymentInstructions: string; externalReference: string; footerNote: string;
@@ -44,6 +46,7 @@ type DraftForm = {
 type ApiPayload<T> = { data?: T } & ApiError;
 const emptyLine = (): InvoiceLine => ({ description: "", quantity: "1", unitPrice: "0", discountPercent: "0", taxRatePercent: "0" });
 const emptyForm = (): DraftForm => ({
+  documentType: "STANDARD", contractTotal: "", relatedInvoiceId: "",
   customerId: "", currencyCode: "XOF", dueDate: "", notes: "",
   purchaseOrderReference: "", serviceDate: "", paymentTerms: "",
   paymentInstructions: "", externalReference: "", footerNote: "", lines: [emptyLine()],
@@ -211,6 +214,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     if (invoice.status !== "DRAFT") { setNotice("Seuls les brouillons peuvent être modifiés."); return; }
     setEditing(invoice);
     setForm({
+      documentType: invoice.documentType ?? "STANDARD", contractTotal: invoice.contractTotal ?? "", relatedInvoiceId: invoice.relatedInvoiceId ?? "",
       customerId: invoice.customerId, currencyCode: invoice.currencyCode, dueDate: invoice.dueDate ?? "", notes: invoice.notes ?? "",
       purchaseOrderReference: invoice.purchaseOrderReference ?? "", serviceDate: invoice.serviceDate ?? "",
       paymentTerms: invoice.paymentTerms ?? "", paymentInstructions: invoice.paymentInstructions ?? "",
@@ -231,6 +235,9 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     }
     setBusy(true); setNotice("");
     const payload = {
+      documentType: form.documentType,
+      ...(form.documentType === "DEPOSIT" ? { contractTotal: form.contractTotal } : {}),
+      ...(form.documentType === "BALANCE" ? { relatedInvoiceId: form.relatedInvoiceId } : {}),
       customerId: form.customerId, currencyCode: form.currencyCode,
       ...(form.dueDate ? { dueDate: form.dueDate } : {}),
       ...(form.purchaseOrderReference.trim() ? { purchaseOrderReference: form.purchaseOrderReference.trim() } : {}),
@@ -403,6 +410,13 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
           <div className="panel-heading"><div><h2>{editing ? "Modifier le brouillon" : "Créer une facture"}</h2><p>Le serveur calcule tous les montants. Une modification invalide le snapshot fiscal précédent.</p></div><div className="invoice-editor-heading-actions">{editing && <button className="outline-button" type="button" onClick={resetDraft}>Annuler la modification</button>}<button className="primary-button" type="submit" form="invoice-draft-form" disabled={busy || checkingResources || customers.length === 0 || currencies.length === 0}>{busy ? "Enregistrement…" : "Enregistrer la facture"} <FileText size={15}/></button></div></div>
           <form id="invoice-draft-form" className="invoice-editor" onSubmit={(event) => void saveDraft(event)}>
             <div className="invoice-form-grid">
+              <label>Type de facture<select value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value as DraftForm["documentType"], contractTotal: "", relatedInvoiceId: "" })}>
+                <option value="STANDARD">Facture standard</option><option value="DEPOSIT">Facture d’acompte</option><option value="BALANCE">Facture de solde</option>
+              </select></label>
+              {form.documentType === "DEPOSIT" && <label>Montant total du contrat<input inputMode="decimal" value={form.contractTotal} onChange={(event) => setForm({ ...form, contractTotal: event.target.value })} placeholder="Montant total avant acompte" required/></label>}
+              {form.documentType === "BALANCE" && <label>Facture d’acompte source<select value={form.relatedInvoiceId} onChange={(event) => { const source = invoices.find((item) => item.id === event.target.value); setForm({ ...form, relatedInvoiceId: event.target.value, customerId: source?.customerId ?? form.customerId, currencyCode: source?.currencyCode ?? form.currencyCode }); }} required>
+                <option value="">Sélectionner une facture d’acompte émise</option>{invoices.filter((item) => item.documentType === "DEPOSIT" && item.status === "ISSUED").map((item) => <option key={item.id} value={item.id}>{item.invoiceCode} · {item.grandTotal} {item.currencyCode} · {item.customerSnapshot?.legalName ?? "Client"}</option>)}
+              </select></label>}
               <label>Client<select value={form.customerId} onChange={(event) => setForm({ ...form, customerId: event.target.value })} required>
                 <option value="">Choisir un client actif</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.displayName || customer.legalName} · {customer.customerCode}</option>)}
               </select></label>
@@ -439,9 +453,9 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
             <label>Statut<select value={invoiceStatus} onChange={(event) => setInvoiceStatus(event.target.value)}><option value="">Tous les statuts</option><option value="DRAFT">Brouillons</option><option value="ISSUED">Émises</option><option value="CANCELLED">Annulées</option></select></label>
             <button className="primary-button" type="submit" disabled={loading}>{loading ? "Recherche…" : "Rechercher"} <RefreshCw size={15}/></button>
           </form>
-          <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Référence</th><th>Client</th><th>Statut</th><th>Taxe</th><th>Devise</th><th>Total</th><th>Actions</th></tr></thead>
+          <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Référence</th><th>Type</th><th>Client</th><th>Statut</th><th>Taxe</th><th>Devise</th><th>Total</th><th>Actions</th></tr></thead>
             <tbody>{invoices.length ? invoices.map((invoice) => <tr key={invoice.id} className={selectedInvoiceId === invoice.id ? "selected-invoice-row" : ""}>
-              <td><strong>{invoice.invoiceCode ?? "Brouillon"}</strong><small>{invoice.id.slice(0, 8)}…</small></td><td>{invoice.customerSnapshot?.displayName ?? invoice.customerSnapshot?.legalName ?? "—"}</td>
+              <td><strong>{invoice.invoiceCode ?? "Brouillon"}</strong><small>{invoice.id.slice(0, 8)}…</small></td><td>{invoice.documentType === "DEPOSIT" ? "Acompte" : invoice.documentType === "BALANCE" ? "Solde" : "Standard"}</td><td>{invoice.customerSnapshot?.displayName ?? invoice.customerSnapshot?.legalName ?? "—"}</td>
               <td><span className={`invoice-status ${invoice.status.toLowerCase()}`}>{invoice.status}</span></td><td>{invoice.taxStatus === "CALCULATED" ? "Calculée" : invoice.taxStatus === "REVIEW_REQUIRED" ? "À revoir" : "Provisoire"}</td>
               <td>{invoice.currencyCode}</td><td>{invoice.grandTotal}</td><td><div className="invoice-actions">
                 {invoice.status === "DRAFT" && <button title="Modifier" className="small-action" onClick={() => startEdit(invoice)}><Pencil size={14}/></button>}
@@ -449,7 +463,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
                 {invoice.status === "DRAFT" && invoice.taxStatus === "CALCULATED" && <button title="Émettre" className="small-action" disabled={busy || !canIssue} onClick={() => void issueInvoice(invoice)}><Send size={14}/></button>}
                 {invoice.status === "ISSUED" && <button title="Télécharger PDF" className="small-action" disabled={busy} onClick={() => void downloadDocument(invoice, "document.pdf")}><Download size={14}/></button>}
                 {invoice.status === "ISSUED" && <button title="Historique des avoirs" className="small-action" onClick={() => void loadCreditNotes(invoice)}><ReceiptText size={14}/></button>}
-              </div></td></tr>) : <tr><td colSpan={7} className="invoice-empty">{loading ? "Chargement…" : "Aucune facture enregistrée pour cette organisation."}</td></tr>}</tbody>
+              </div></td></tr>) : <tr><td colSpan={8} className="invoice-empty">{loading ? "Chargement…" : "Aucune facture enregistrée pour cette organisation."}</td></tr>}</tbody>
           </table></div>
         </section>
 
