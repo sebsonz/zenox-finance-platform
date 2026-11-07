@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { InvoiceTypeFields } from "../modules/billing/freight/invoices/types/InvoiceTypeFields.js";
-import { FileText, RefreshCw, ShieldCheck, Plus, Trash2, Download, Pencil, Send, ReceiptText, Printer } from "lucide-react";
+import { InvoiceLinesEditor } from "../modules/billing/freight/invoices/components/InvoiceLinesEditor.js";
+import { FileText, RefreshCw, ShieldCheck, Download, Pencil, Send, ReceiptText, Printer } from "lucide-react";
 
 type ApiError = { error?: { code?: string; message?: string } };
 type SessionUser = { id: string; email?: string };
@@ -481,16 +482,14 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
                 onCreditAmountChange={setCreditNoteAmount}
               />
             </div>
-            {form.documentType !== "CREDIT_NOTE" && <><div className="invoice-lines-heading"><h3>Lignes de facture</h3><button className="outline-button" type="button" onClick={() => setForm({ ...form, lines: [...form.lines, emptyLine()] })} disabled={form.lines.length >= 500}><Plus size={14}/> Ajouter une ligne</button></div>
-            {form.lines.map((line, index) => <div className="invoice-line-editor" key={index}>
-              <label className="line-description">Description<input value={line.description} maxLength={500} onChange={(event) => updateLine(index, "description", event.target.value)} required/></label>
-              <label>Qté<input inputMode="decimal" value={line.quantity} onChange={(event) => updateLine(index, "quantity", event.target.value)} required/></label>
-              <label>Prix unitaire<input inputMode="decimal" value={line.unitPrice} onChange={(event) => updateLine(index, "unitPrice", event.target.value)} required/></label>
-              <label>Remise %<input inputMode="decimal" value={line.discountPercent} onChange={(event) => updateLine(index, "discountPercent", event.target.value)} required/></label>
-              <label>Taxe provisoire %<input inputMode="decimal" value={line.taxRatePercent} onChange={(event) => updateLine(index, "taxRatePercent", event.target.value)} required/></label>
-              <button className="icon-danger" type="button" title="Supprimer la ligne" disabled={form.lines.length === 1} onClick={() => setForm({ ...form, lines: form.lines.filter((_, i) => i !== index) })}><Trash2 size={15}/></button>
-            </div>)}
-            </>}
+            <InvoiceLinesEditor
+              documentType={form.documentType}
+              lines={form.lines}
+              onAdd={() => setForm({ ...form, lines: [...form.lines, emptyLine()] })}
+              onUpdate={updateLine}
+              onRemove={(index) => setForm({ ...form, lines: form.lines.filter((_, i) => i !== index) })}
+            />
+
             <div className="invoice-editor-submit-row"><button className="primary-button" type="submit" disabled={busy || (form.documentType === "CREDIT_NOTE" ? !form.relatedInvoiceId || !canCredit : checkingResources || customers.length === 0 || currencies.length === 0)}>{busy ? "Traitement…" : form.documentType === "CREDIT_NOTE" ? "Émettre la facture d’avoir" : editing ? "Enregistrer les modifications" : "Enregistrer la facture"} <FileText size={15}/></button></div>
             {form.documentType !== "CREDIT_NOTE" && customers.length === 0 && <p className="muted-note">Aucun client actif : ajoutez d’abord un client via le module Clients.</p>}
           </form>
