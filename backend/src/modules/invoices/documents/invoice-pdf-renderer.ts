@@ -114,7 +114,7 @@ export async function renderInvoicePdfDocument(invoice: FinanceInvoice, document
     throw new Error("INVOICE_PDF_REQUIRES_ISSUED_TAX_SNAPSHOTTED_INVOICE");
   }
 
-  const issuer = invoice.issuerSnapshot;
+  const issuer = invoice.issuerSnapshot ?? {};
   const customer = invoice.customerSnapshot;
   const issuerName = text(issuer["tradeName"] ?? issuer["legalName"], "ZENOX Finance");
   const issuerDetails = partyLines(issuer);
