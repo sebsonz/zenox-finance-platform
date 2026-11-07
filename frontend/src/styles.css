@@ -82,3 +82,34 @@
 .zf-brand-lockup--light{color:#fff}
 .zf-brand-lockup--default{color:#14243e}
 .zf-brand-lockup--compact .zf-brand-symbol{width:34px;height:34px;flex-basis:34px}
+
+
+/* Commercial document workspace: professional preview and print controls */
+.commercial-document-preview { grid-column: 1 / -1; margin-bottom: 24px; }
+.commercial-document-preview .panel-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.commercial-document-preview .panel-heading > div:last-child { display:flex; gap:8px; flex-wrap:wrap; }
+.commercial-document-preview .panel-heading button,
+.invoice-list-total button { border:1px solid #d0d5dd; background:#fff; color:#344054; border-radius:7px; padding:8px 12px; font-weight:600; cursor:pointer; }
+.invoice-list-total button:hover,.commercial-document-preview .panel-heading button:hover { background:#f2f4f7; border-color:#98a2b3; }
+.commercial-preview-sheet { max-width:1050px; margin:20px auto 0; padding:36px; background:#fff; border:1px solid #e4e7ec; border-radius:10px; color:#172033; box-shadow:0 8px 30px rgba(16,24,40,.06); }
+.commercial-preview-header { display:flex; justify-content:space-between; gap:28px; padding-bottom:24px; border-bottom:3px solid #172033; }
+.commercial-preview-header h1 { margin:8px 0 12px; font-size:30px; letter-spacing:.04em; }
+.commercial-preview-header > div:last-child { min-width:210px; text-align:right; }
+.commercial-preview-header p,.commercial-preview-parties p { margin:5px 0; color:#667085; }
+.commercial-preview-parties { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:24px 0; }
+.commercial-preview-parties > div { padding:18px; border:1px solid #e4e7ec; border-radius:8px; background:#f8f9fb; overflow-wrap:anywhere; }
+.commercial-preview-parties h3,.commercial-preview-sheet h3 { margin:0 0 10px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#667085; }
+.commercial-preview-sheet .invoice-table { margin-top:20px; }
+.commercial-preview-totals { width:min(100%,430px); margin:18px 0 20px auto; }
+.commercial-preview-totals p { display:flex; justify-content:space-between; gap:20px; margin:0; padding:9px 4px; border-bottom:1px solid #eaecf0; }
+.commercial-preview-totals .grand { margin-top:4px; border-top:2px solid #172033; border-bottom:0; font-size:18px; }
+@media(max-width:700px) {
+ .commercial-preview-sheet { padding:18px; }
+ .commercial-preview-header { display:block; }
+ .commercial-preview-header > div:last-child { margin-top:18px; text-align:left; }
+ .commercial-preview-parties { grid-template-columns:1fr; }
+}
+@media print {
+ .commercial-document-preview { break-inside:avoid; }
+ .commercial-preview-sheet { box-shadow:none; border:0; padding:0; }
+}
