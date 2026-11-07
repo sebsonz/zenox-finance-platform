@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, useRef, type FormEvent } from "react";
 import { InvoiceTypeFields } from "../modules/billing/freight/invoices/types/InvoiceTypeFields.js";
 import { InvoiceLinesEditor } from "../modules/billing/freight/invoices/components/InvoiceLinesEditor.js";
 import { IssuedInvoiceDocumentsPanel } from "../modules/billing/freight/invoices/credit-notes/IssuedInvoiceDocumentsPanel.js";
@@ -93,6 +93,25 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const { calculateTax, issueInvoice } = useInvoiceLifecycle({
     tenantId, jurisdictionId, taxDate, appliesTo, taxFacts, setBusy, setNotice, loadInvoices,
   });
+
+  const autosaveSnapshotRef = useRef(JSON.stringify(form));
+  const autosaveEditingIdRef = useRef<string | null>(editing?.id ?? null);
+  useEffect(() => {
+    const editingId = editing?.id ?? null;
+    const snapshot = JSON.stringify(form);
+    if (autosaveEditingIdRef.current !== editingId) {
+      autosaveEditingIdRef.current = editingId;
+      autosaveSnapshotRef.current = snapshot;
+      return;
+    }
+    if (autosaveSnapshotRef.current === snapshot || form.documentType === "CREDIT_NOTE") return;
+    autosaveSnapshotRef.current = snapshot;
+    if (!form.customerId || !form.currencyCode || form.lines.some((line) => !line.description.trim())) return;
+    const timeout = window.setTimeout(() => {
+      void saveStandardDraft();
+    }, 900);
+    return () => window.clearTimeout(timeout);
+  }, [form, editing?.id, saveStandardDraft]);
 
   async function saveDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
