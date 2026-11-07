@@ -224,7 +224,7 @@ userCommercialDocumentsRouter.post("/:tenantId/invoices/:invoiceId/relationships
  const inserted=await c.query("INSERT INTO public.finance_invoice_relationships(tenant_id,source_invoice_id,related_invoice_id,relationship_type,source_reference,applied_amount,created_by_actor_type,created_by_actor_ref) VALUES($1,$2,$3,$4,$5,$6,'USER',$7) RETURNING *",[id.data,body.data.advanceInvoiceId,balanceId.data,body.data.relationshipType,body.data.sourceReference??null,body.data.appliedAmount,ctx.actor.ref]);
  await recordInvoiceAudit(c,ctx,"invoice.advance_applied","INVOICE_RELATIONSHIP",inserted.rows[0].id,{advanceInvoiceId:body.data.advanceInvoiceId,balanceInvoiceId:balanceId.data,appliedAmount:body.data.appliedAmount});return inserted.rows[0];
  });res.status(201).json({data:{relationship:result,correlationId:ctx.correlationId}});
- }catch(e){if(e instanceof Error&&["RELATIONSHIP_REQUIRES_ISSUED_INVOICES","RELATIONSHIP_PARTY_CURRENCY_MISMATCH","ADVANCE_APPLICATION_EXCEEDS_PAID_AMOUNT","INVOICE_TYPES_NOT_COMPATIBLE"].includes(e.message))return fail(res,e.message,"The advance cannot be applied to this invoice.",409);next(e);}
+ }catch(e){if(e instanceof Error&&["RELATIONSHIP_REQUIRES_ISSUED_INVOICES","RELATIONSHIP_PARTY_CURRENCY_MISMATCH","ADVANCE_APPLICATION_EXCEEDS_PAID_AMOUNT","ADVANCE_APPLICATION_BELOW_EXISTING_SETTLEMENT","INVOICE_TYPES_NOT_COMPATIBLE"].includes(e.message))return fail(res,e.message,"The advance cannot be applied to this invoice.",409);next(e);}
 });
 
 
