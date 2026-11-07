@@ -171,8 +171,6 @@ export async function renderInvoicePdfDocument(invoice: FinanceInvoice, document
             ...(invoice.externalReference ? [{ text: `Référence : ${invoice.externalReference}`, style: "muted" }] : []),
             ...(invoice.documentType === "DEPOSIT" && invoice.contractTotal ? [{ text: `Montant total du contrat : ${money(invoice.contractTotal, invoice.currencyCode)}`, style: "muted" }] : []),
             ...(invoice.documentType === "BALANCE" && invoice.relatedInvoiceId ? [{ text: `Facture d’acompte source : ${invoice.relatedInvoiceId}`, style: "muted" }] : []),
-            ...(invoice.documentType === "DEPOSIT" && invoice.contractTotal ? [{ text: `Montant total du contrat : ${money(invoice.contractTotal, invoice.currencyCode)}`, style: "muted" }] : []),
-            ...(invoice.documentType === "BALANCE" && invoice.relatedInvoiceId ? [{ text: `Facture d’acompte source : ${invoice.relatedInvoiceId}`, style: "muted" }] : []),
             ...(invoice.serviceDate ? [{ text: `Prestation / livraison : ${invoice.serviceDate}`, style: "muted" }] : []),
           ],
         },
