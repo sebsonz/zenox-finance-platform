@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import type { Currency, Customer, Jurisdiction, ApiPayload, ApiError } from "../types/workspace-resources.js";
 
 type InvoiceRecord = { id: string };
-type ResourceResponse<T> = { [key: string]: T[] | undefined };
 type HookOptions<TInvoice extends InvoiceRecord> = {
   sessionUserId: string;
   tenantId: string;
   role: string;
-  setInvoices: React.Dispatch<React.SetStateAction<TInvoice[]>>;
+  setInvoices: Dispatch<SetStateAction<TInvoice[]>>;
   onTenantReset: () => void;
   setNotice: (message: string) => void;
+  onCustomersLoaded: (customers: Customer[]) => void;
+  onCurrenciesLoaded: (currencies: Currency[]) => void;
 };
 
 async function responseError(response: Response, fallback: string): Promise<string> {
@@ -35,6 +36,8 @@ export function useInvoiceResources<TInvoice extends InvoiceRecord>({
   setInvoices,
   onTenantReset,
   setNotice,
+  onCustomersLoaded,
+  onCurrenciesLoaded,
 }: HookOptions<TInvoice>) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
@@ -84,12 +87,15 @@ export function useInvoiceResources<TInvoice extends InvoiceRecord>({
       if (customerResult.status === "fulfilled") {
         const loaded = customerResult.value.customers ?? [];
         setCustomers(loaded);
+        onCustomersLoaded(loaded);
       } else {
         errors.push(customerResult.reason instanceof Error ? customerResult.reason.message : "Impossible de charger les clients.");
       }
 
       if (currencyResult.status === "fulfilled") {
-        setCurrencies(currencyResult.value.currencies ?? []);
+        const loaded = currencyResult.value.currencies ?? [];
+        setCurrencies(loaded);
+        onCurrenciesLoaded(loaded);
       } else {
         errors.push(currencyResult.reason instanceof Error ? currencyResult.reason.message : "Impossible de charger les devises.");
       }
@@ -128,7 +134,7 @@ export function useInvoiceResources<TInvoice extends InvoiceRecord>({
     })();
 
     return () => { cancelled = true; };
-  }, [sessionUserId, tenantId, role, setInvoices, onTenantReset, setNotice]);
+  }, [sessionUserId, tenantId, role, setInvoices, onTenantReset, setNotice, onCustomersLoaded, onCurrenciesLoaded]);
 
   return { customers, currencies, jurisdictions, jurisdictionId, setJurisdictionId, checkingResources };
 }
