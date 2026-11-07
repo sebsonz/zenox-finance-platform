@@ -1,8 +1,11 @@
 -- Professional invoice metadata and line descriptors. Finance-only additive migration.
 -- Existing issued invoices and artifacts remain unchanged. Never apply to ZENOX FRET.
 ALTER TABLE public.finance_invoices ADD COLUMN IF NOT EXISTS document_metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE public.finance_invoices ADD COLUMN IF NOT EXISTS seller_snapshot jsonb NOT NULL DEFAULT '{}'::jsonb;
 ALTER TABLE public.finance_invoices ADD CONSTRAINT finance_invoices_document_metadata_object CHECK (jsonb_typeof(document_metadata) = 'object') NOT VALID;
 ALTER TABLE public.finance_invoices VALIDATE CONSTRAINT finance_invoices_document_metadata_object;
+ALTER TABLE public.finance_invoices ADD CONSTRAINT finance_invoices_seller_snapshot_object CHECK (jsonb_typeof(seller_snapshot) = 'object') NOT VALID;
+ALTER TABLE public.finance_invoices VALIDATE CONSTRAINT finance_invoices_seller_snapshot_object;
 ALTER TABLE public.finance_invoice_lines
   ADD COLUMN IF NOT EXISTS item_code text,
   ADD COLUMN IF NOT EXISTS unit_label text,
