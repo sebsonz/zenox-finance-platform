@@ -9,7 +9,7 @@ import { invoiceRepository, type FinanceInvoice } from "../repositories/invoice.
 import type { CreateInvoiceDraftInput, ListInvoiceDraftsQuery, UpdateInvoiceDraftInput } from "../validators/invoice-draft.schema.js";
 
 export class InvoiceDraftServiceError extends Error {
-  constructor(readonly code: "CUSTOMER_NOT_FOUND" | "CUSTOMER_NOT_ACTIVE" | "CURRENCY_NOT_SUPPORTED" | "DRAFT_NOT_FOUND_OR_CHANGED" | "INVALID_DOCUMENT_TYPE_AMOUNT" | "DEPOSIT_SOURCE_NOT_AVAILABLE" | "DEPOSIT_SOURCE_MISMATCH" | "BALANCE_AMOUNT_MISMATCH", message: string) {
+  constructor(readonly code: "CUSTOMER_NOT_FOUND" | "CUSTOMER_NOT_ACTIVE" | "CURRENCY_NOT_SUPPORTED" | "DRAFT_NOT_FOUND_OR_CHANGED" | "INVALID_DOCUMENT_TYPE_AMOUNT" | "DEPOSIT_SOURCE_NOT_AVAILABLE" | "DEPOSIT_SOURCE_MISMATCH" | "BALANCE_AMOUNT_MISMATCH" | "BALANCE_ALREADY_EXISTS", message: string) {
     super(message);
     this.name = "InvoiceDraftServiceError";
   }
@@ -22,6 +22,7 @@ async function validateDocumentType(
   customerId: string,
   currencyCode: string,
   grandTotal: string,
+  currentInvoiceId?: string,
 ): Promise<void> {
   if (input.documentType === "STANDARD") return;
   if (input.documentType === "DEPOSIT") {
@@ -38,6 +39,16 @@ async function validateDocumentType(
   }
   if (source.customerId !== customerId || source.currencyCode !== currencyCode) {
     throw new InvoiceDraftServiceError("DEPOSIT_SOURCE_MISMATCH", "The balance invoice must use the same customer and currency as its deposit invoice.");
+  }
+  const existingBalance = await client.query<{ id: string }>(
+    `SELECT id FROM public.finance_invoices
+      WHERE tenant_id = $1 AND related_invoice_id = $2 AND document_type = 'BALANCE'
+        AND status <> 'CANCELLED' AND ($3::uuid IS NULL OR id <> $3::uuid)
+      LIMIT 1`,
+    [context.tenantId, source.id, currentInvoiceId ?? null],
+  );
+  if (existingBalance.rowCount) {
+    throw new InvoiceDraftServiceError("BALANCE_ALREADY_EXISTS", "A non-cancelled balance invoice already exists for this deposit.");
   }
   const remaining = new Decimal(source.contractTotal).minus(source.grandTotal);
   if (!remaining.gt(0) || !remaining.equals(grandTotal)) {
@@ -137,7 +148,7 @@ export const invoiceDraftService = {
         })),
       });
 
-      await validateDocumentType(client, context, input, customer.id, currency.code, totals.grandTotal);
+      await validateDocumentType(client, context, input, customer.id, currency.code, totals.grandTotal, invoiceId);
       const invoice = await invoiceRepository.updateDraft(
         client, context, invoiceId, input.expectedUpdatedAt, input, currency.minorUnit,
         totals, totals.lines, customer, issuerSnapshot,
