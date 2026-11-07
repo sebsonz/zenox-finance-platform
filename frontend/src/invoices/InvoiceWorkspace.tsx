@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { InvoiceTypeFields } from "../modules/billing/freight/invoices/types/InvoiceTypeFields.js";
 import { InvoiceLinesEditor } from "../modules/billing/freight/invoices/components/InvoiceLinesEditor.js";
 import { IssuedInvoiceDocumentsPanel } from "../modules/billing/freight/invoices/credit-notes/IssuedInvoiceDocumentsPanel.js";
-import { FileText, RefreshCw, ShieldCheck, Download, Pencil, Send, ReceiptText, Printer } from "lucide-react";
+import { FileText, RefreshCw, ShieldCheck, Download, Pencil, Send, ReceiptText } from "lucide-react";
 
 type ApiError = { error?: { code?: string; message?: string } };
 type SessionUser = { id: string; email?: string };
