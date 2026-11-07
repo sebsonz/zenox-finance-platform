@@ -19,11 +19,13 @@ import { invoiceTaxSnapshotService, InvoiceTaxSnapshotServiceError } from "../..
 import { invoiceIssuanceService, InvoiceIssuanceServiceError } from "../../invoices/services/invoice-issuance.service.js";
 import { invoiceDocumentService } from "../../invoices/services/invoice-document.service.js";
 import { creditNoteService, CreditNoteServiceError } from "../../invoices/services/credit-note.service.js";
+import { commercialDocumentRouter } from "../../invoices/routes/commercial-document.routes.js";
 import { userTenantMembershipRepository } from "../../tenants/repositories/user-tenant-membership.repository.js";
 import { assertActiveMembershipCan } from "../../tenants/services/user-tenant-permissions.service.js";
 import { tenantRepository } from "../../tenants/repositories/tenant.repository.js";
 
 export const userInvoiceRouter = Router();
+userInvoiceRouter.use(commercialDocumentRouter);
 
 userInvoiceRouter.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
