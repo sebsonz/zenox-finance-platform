@@ -19,8 +19,9 @@ BEGIN
  END IF;
  SELECT COALESCE(sum(applied_amount),0) INTO advance_applied FROM public.finance_invoice_relationships
   WHERE tenant_id=NEW.tenant_id AND source_invoice_id=allocation_row.invoice_id;
- SELECT COALESCE(allocated_amount,0) INTO invoice_allocated FROM public.finance_payment_invoice_balances
+ SELECT allocated_amount INTO invoice_allocated FROM public.finance_payment_invoice_balances
   WHERE tenant_id=NEW.tenant_id AND invoice_id=allocation_row.invoice_id FOR UPDATE;
+ IF NOT FOUND THEN invoice_allocated:=0; END IF;
  IF invoice_allocated-NEW.amount<advance_applied THEN
   RAISE EXCEPTION 'ADVANCE_ALREADY_APPLIED_CANNOT_REVERSE' USING ERRCODE='23514';
  END IF;
