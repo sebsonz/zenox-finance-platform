@@ -29,10 +29,10 @@ async function readData<T>(response: Response, fallback: string): Promise<T> {
 
 export function useInvoiceList({ tenantId, search, status, setInvoices, setSelectedInvoiceId, setNotice }: Options) {
   const [loading, setLoading] = useState(false);
-  const loadInvoices = useCallback(async () => {
+  const loadInvoices = useCallback(async (): Promise<InvoiceDraftRecord[]> => {
     if (!tenantId) {
       setNotice("Aucune organisation active n’est disponible.");
-      return;
+      return [];
     }
     setLoading(true);
     setNotice("");
@@ -47,12 +47,15 @@ export function useInvoiceList({ tenantId, search, status, setInvoices, setSelec
         }),
         "Impossible de charger les factures.",
       );
-      setInvoices(data.invoices ?? []);
+      const loadedInvoices = data.invoices ?? [];
+      setInvoices(loadedInvoices);
       setSelectedInvoiceId((current) => (data.invoices ?? []).some((item) => item.id === current) ? current : "");
-      setNotice(`${data.invoices?.length ?? 0} facture(s) chargée(s).`);
+      setNotice(`${loadedInvoices.length} facture(s) chargée(s).`);
+      return loadedInvoices;
     } catch (error) {
       setInvoices([]);
       setNotice(error instanceof Error ? error.message : "Impossible de charger les factures.");
+      return [];
     } finally {
       setLoading(false);
     }
