@@ -41,7 +41,7 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
       <td class="number">${escapeHtml(line.total)}</td>
     </tr>`).join("");
 
-  const issuer = invoice.issuerSnapshot;
+  const issuer = invoice.issuerSnapshot ?? {};
   const customer = invoice.customerSnapshot;
   const issuerName = customerValue(issuer, "tradeName") || customerValue(issuer, "legalName") || "ZENOX Finance";
   const customerName = customerValue(customer, "legalName") || customerValue(customer, "displayName");
