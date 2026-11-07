@@ -247,16 +247,24 @@ export const invoiceRepository = {
        WHERE tenant_id = $1
          AND ($2::text IS NULL OR status = $2)
          AND (
-           $3::uuid IS NULL
+           $3::text IS NULL
+           OR invoice_code ILIKE '%' || $3 || '%'
+           OR external_reference ILIKE '%' || $3 || '%'
+           OR purchase_order_reference ILIKE '%' || $3 || '%'
+           OR customer_snapshot->>'legalName' ILIKE '%' || $3 || '%'
+           OR customer_snapshot->>'displayName' ILIKE '%' || $3 || '%'
+         )
+         AND (
+           $4::uuid IS NULL
            OR (created_at, id) < (
              SELECT cursor_invoice.created_at, cursor_invoice.id
                FROM public.finance_invoices AS cursor_invoice
               WHERE cursor_invoice.tenant_id = $1
-                AND cursor_invoice.id = $3::uuid
+                AND cursor_invoice.id = $4::uuid
            )
          )
-       ORDER BY created_at DESC, id DESC LIMIT $4`,
-      [tenantId, query.status ?? null, query.cursor ?? null, query.limit],
+       ORDER BY created_at DESC, id DESC LIMIT $5`,
+      [tenantId, query.status ?? null, query.search ?? null, query.cursor ?? null, query.limit],
     );
     const invoices: FinanceInvoice[] = [];
     for (const row of found.rows) invoices.push(await attachLines(client, tenantId, row));
