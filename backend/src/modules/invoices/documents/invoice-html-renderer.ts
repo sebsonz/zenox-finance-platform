@@ -41,8 +41,19 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
       <td class="number">${escapeHtml(line.total)}</td>
     </tr>`).join("");
 
+  const issuer = invoice.issuerSnapshot;
   const customer = invoice.customerSnapshot;
+  const issuerName = customerValue(issuer, "tradeName") || customerValue(issuer, "legalName") || "ZENOX Finance";
   const customerName = customerValue(customer, "legalName") || customerValue(customer, "displayName");
+  const partyDetails = (snapshot: Record<string, unknown>) => [
+    customerValue(snapshot, "address"), customerValue(snapshot, "addressLine2"),
+    [customerValue(snapshot, "postalCode"), customerValue(snapshot, "city")].filter(Boolean).join(" "),
+    customerValue(snapshot, "region"), customerValue(snapshot, "countryCode"),
+    customerValue(snapshot, "email"), customerValue(snapshot, "phone"),
+    customerValue(snapshot, "taxIdentifier") ? `Identifiant fiscal : ${customerValue(snapshot, "taxIdentifier")}` : "",
+    customerValue(snapshot, "registrationIdentifier") ? `Identifiant légal : ${customerValue(snapshot, "registrationIdentifier")}` : "",
+    customerValue(snapshot, "websiteUrl"),
+  ].filter(Boolean).map((value) => `<div>${escapeHtml(value)}</div>`).join("");
   return `<!doctype html>
 <html lang="fr">
 <head>
@@ -101,7 +112,7 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
 <body>
 <main>
 <header>
-  <div><h1>${escapeHtml(documentLabel)}</h1><div class="muted">ZENOX Finance</div></div>
+  <div><h1>${escapeHtml(documentLabel)}</h1><div class="party-name">${escapeHtml(issuerName)}</div><div class="party-details">${partyDetails(issuer)}</div></div>
   <div class="document-meta"><div class="document-number">${escapeHtml(invoice.invoiceCode)}</div>
     <div class="muted">Date d'émission : ${escapeHtml(invoice.issueDate ?? "—")}</div>
     <div class="muted">Échéance : ${escapeHtml(invoice.dueDate ?? "—")}</div>
@@ -112,14 +123,7 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
 </header>
 <section class="columns">
   <div class="panel"><h2>Facturé à</h2><div class="party-name">${escapeHtml(customerName)}</div>
-    <div class="party-details">
-      ${escapeHtml(customerValue(customer, "address"))}<br>
-      ${escapeHtml(customerValue(customer, "postalCode"))} ${escapeHtml(customerValue(customer, "city"))}<br>
-      ${escapeHtml(customerValue(customer, "countryCode"))}<br>
-      ${escapeHtml(customerValue(customer, "email"))}<br>
-      ${escapeHtml(customerValue(customer, "phone"))}<br>
-      ${escapeHtml(customerValue(customer, "taxIdentifier"))}
-    </div>
+    <div class="party-details">${partyDetails(customer)}</div>
   </div>
   <div class="panel"><h2>Informations de facturation</h2>
     <div>Devise : <strong>${escapeHtml(invoice.currencyCode)}</strong></div>
