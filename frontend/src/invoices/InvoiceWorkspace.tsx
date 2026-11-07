@@ -28,15 +28,26 @@ type Invoice = {
   id: string; customerId: string; invoiceCode: string | null; status: "DRAFT" | "ISSUED" | "CANCELLED";
   currencyCode: string; currencyMinorUnit: number; grandTotal: string; amountDue: string; subtotal: string;
   taxTotal: string; createdAt: string; updatedAt: string; dueDate: string | null; notes: string | null;
+  purchaseOrderReference: string | null; serviceDate: string | null; paymentTerms: string | null;
+  paymentInstructions: string | null; externalReference: string | null; footerNote: string | null;
   documentVersion: number; taxSnapshotId: string | null; taxStatus: "PROVISIONAL" | "CALCULATED" | "REVIEW_REQUIRED";
   customerSnapshot?: { legalName?: string; displayName?: string };
   lines: Array<{ id: string; description: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string; total: string }>;
 };
 type CreditNote = { id: string; originalInvoiceId: string; creditNoteCode: string; status: "ISSUED"; reason: string; currencyCode: string; grandTotal: string; amountDue: string; issuedAt: string };
-type DraftForm = { customerId: string; currencyCode: string; dueDate: string; notes: string; lines: InvoiceLine[] };
+type DraftForm = {
+  customerId: string; currencyCode: string; dueDate: string; notes: string;
+  purchaseOrderReference: string; serviceDate: string; paymentTerms: string;
+  paymentInstructions: string; externalReference: string; footerNote: string;
+  lines: InvoiceLine[];
+};
 type ApiPayload<T> = { data?: T } & ApiError;
 const emptyLine = (): InvoiceLine => ({ description: "", quantity: "1", unitPrice: "0", discountPercent: "0", taxRatePercent: "0" });
-const emptyForm = (): DraftForm => ({ customerId: "", currencyCode: "XOF", dueDate: "", notes: "", lines: [emptyLine()] });
+const emptyForm = (): DraftForm => ({
+  customerId: "", currencyCode: "XOF", dueDate: "", notes: "",
+  purchaseOrderReference: "", serviceDate: "", paymentTerms: "",
+  paymentInstructions: "", externalReference: "", footerNote: "", lines: [emptyLine()],
+});
 
 async function responseError(response: Response, fallback: string): Promise<string> {
   try { const payload = await response.json() as ApiError; return payload.error?.message ?? fallback; }
@@ -137,6 +148,9 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     setEditing(invoice);
     setForm({
       customerId: invoice.customerId, currencyCode: invoice.currencyCode, dueDate: invoice.dueDate ?? "", notes: invoice.notes ?? "",
+      purchaseOrderReference: invoice.purchaseOrderReference ?? "", serviceDate: invoice.serviceDate ?? "",
+      paymentTerms: invoice.paymentTerms ?? "", paymentInstructions: invoice.paymentInstructions ?? "",
+      externalReference: invoice.externalReference ?? "", footerNote: invoice.footerNote ?? "",
       lines: invoice.lines.map((line) => ({ description: line.description, quantity: line.quantity, unitPrice: line.unitPrice, discountPercent: line.discountPercent, taxRatePercent: line.taxRatePercent })),
     });
     setSelectedInvoiceId(invoice.id);
@@ -155,6 +169,12 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     const payload = {
       customerId: form.customerId, currencyCode: form.currencyCode,
       ...(form.dueDate ? { dueDate: form.dueDate } : {}),
+      ...(form.purchaseOrderReference.trim() ? { purchaseOrderReference: form.purchaseOrderReference.trim() } : {}),
+      ...(form.serviceDate ? { serviceDate: form.serviceDate } : {}),
+      ...(form.paymentTerms.trim() ? { paymentTerms: form.paymentTerms.trim() } : {}),
+      ...(form.paymentInstructions.trim() ? { paymentInstructions: form.paymentInstructions.trim() } : {}),
+      ...(form.externalReference.trim() ? { externalReference: form.externalReference.trim() } : {}),
+      ...(form.footerNote.trim() ? { footerNote: form.footerNote.trim() } : {}),
       ...(form.notes.trim() ? { notes: form.notes.trim() } : {}),
       lines: form.lines.map((line) => ({ ...line, description: line.description.trim() })),
       ...(editing ? { expectedUpdatedAt: editing.updatedAt } : {}),
@@ -300,7 +320,13 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
                 {currencies.map((currency) => <option key={currency.code} value={currency.code}>{currency.code} · {currency.name}</option>)}
               </select></label>
               <label>Date d’échéance<input type="date" value={form.dueDate} onChange={(event) => setForm({ ...form, dueDate: event.target.value })}/></label>
-              <label>Notes<input value={form.notes} maxLength={5000} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Conditions ou référence interne"/></label>
+              <label>Date de prestation / livraison<input type="date" value={form.serviceDate} onChange={(event) => setForm({ ...form, serviceDate: event.target.value })}/></label>
+              <label>Référence commande<input value={form.purchaseOrderReference} maxLength={120} onChange={(event) => setForm({ ...form, purchaseOrderReference: event.target.value })} placeholder="BC-2026-0001"/></label>
+              <label>Référence externe<input value={form.externalReference} maxLength={120} onChange={(event) => setForm({ ...form, externalReference: event.target.value })} placeholder="Référence client"/></label>
+              <label>Conditions de paiement<input value={form.paymentTerms} maxLength={500} onChange={(event) => setForm({ ...form, paymentTerms: event.target.value })} placeholder="Paiement à 14 jours"/></label>
+              <label>Modalités de paiement<input value={form.paymentInstructions} maxLength={2000} onChange={(event) => setForm({ ...form, paymentInstructions: event.target.value })} placeholder="Virement bancaire, Mobile Money…"/></label>
+              <label>Note de bas de facture<input value={form.footerNote} maxLength={1000} onChange={(event) => setForm({ ...form, footerNote: event.target.value })} placeholder="Mentions complémentaires"/></label>
+              <label>Notes / commentaires<input value={form.notes} maxLength={5000} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Informations complémentaires"/></label>
             </div>
             <div className="invoice-lines-heading"><h3>Lignes de facture</h3><button className="outline-button" type="button" onClick={() => setForm({ ...form, lines: [...form.lines, emptyLine()] })} disabled={form.lines.length >= 500}><Plus size={14}/> Ajouter une ligne</button></div>
             {form.lines.map((line, index) => <div className="invoice-line-editor" key={index}>
