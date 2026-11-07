@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { InvoiceTypeFields } from "../modules/billing/freight/invoices/types/InvoiceTypeFields.js";
 import { InvoiceLinesEditor } from "../modules/billing/freight/invoices/components/InvoiceLinesEditor.js";
 import { IssuedInvoiceDocumentsPanel } from "../modules/billing/freight/invoices/credit-notes/IssuedInvoiceDocumentsPanel.js";
+import { InvoiceTaxContextPanel } from "../modules/billing/freight/invoices/tax/InvoiceTaxContextPanel.js";
 import { FileText, RefreshCw, ShieldCheck, Download, Pencil, Send, ReceiptText } from "lucide-react";
 
 type ApiError = { error?: { code?: string; message?: string } };
@@ -517,30 +518,18 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
           </table></div>
         </section>
 
-        <section className="panel invoice-list-panel">
-          <div className="panel-heading"><div><h2>Fiscalité et émission</h2><p>Les règles actives doivent être vérifiées pour la juridiction et la date choisies.</p></div></div>
-          <div className="invoice-form-grid">
-            <label>Juridiction fiscale<select value={jurisdictionId} onChange={(event) => setJurisdictionId(event.target.value)}><option value="">Choisir une juridiction</option>{jurisdictions.map((item) => <option key={item.id} value={item.id}>{item.countryCode} · {item.name} ({item.code})</option>)}</select></label>
-            <label>Date fiscale<input type="date" value={taxDate} onChange={(event) => setTaxDate(event.target.value)} required/></label>
-            <label>Nature de l’opération<select value={appliesTo} onChange={(event) => setAppliesTo(event.target.value)}><option value="GOODS">Biens</option><option value="SERVICES">Services</option><option value="DIGITAL_SERVICES">Services numériques</option><option value="FREIGHT">Transport / fret</option><option value="INSURANCE">Assurance</option></select></label>
-            <label>Facture sélectionnée<input readOnly value={selectedInvoice?.invoiceCode ?? selectedInvoice?.id ?? "Sélectionnez une facture"} /></label>
-          </div>
-          <details className="tax-facts-details">
-            <summary>Contexte fiscal de l’opération <span className="muted-note">Informations utilisées pour sélectionner les règles applicables</span></summary>
-            <div className="invoice-form-grid">
-              <label>Type de transaction<input value={taxFacts.transactionType} onChange={(event) => setTaxFacts({ ...taxFacts, transactionType: event.target.value })} placeholder="VENTE, PRESTATION…"/></label>
-              <label>Statut IFU fournisseur<select value={taxFacts.supplierIfuStatus} onChange={(event) => setTaxFacts({ ...taxFacts, supplierIfuStatus: event.target.value })}><option value="">Non renseigné</option><option value="REGISTERED">Immatriculé</option><option value="NOT_REGISTERED">Non immatriculé</option><option value="UNKNOWN">Inconnu</option></select></label>
-              <label>Statut IFU client<select value={taxFacts.customerIfuStatus} onChange={(event) => setTaxFacts({ ...taxFacts, customerIfuStatus: event.target.value })}><option value="">Non renseigné</option><option value="REGISTERED">Immatriculé</option><option value="NOT_REGISTERED">Non immatriculé</option><option value="UNKNOWN">Inconnu</option></select></label>
-              <label>Statut fiscal client<input value={taxFacts.customerTaxStatus} onChange={(event) => setTaxFacts({ ...taxFacts, customerTaxStatus: event.target.value })} placeholder="Statut fiscal documenté"/></label>
-              <label>Pays du fournisseur (ISO)<input maxLength={2} value={taxFacts.supplierCountryCode} onChange={(event) => setTaxFacts({ ...taxFacts, supplierCountryCode: event.target.value.toUpperCase() })} placeholder="BJ"/></label>
-              <label>Pays du client (ISO)<input maxLength={2} value={taxFacts.customerCountryCode} onChange={(event) => setTaxFacts({ ...taxFacts, customerCountryCode: event.target.value.toUpperCase() })} placeholder="BJ"/></label>
-              <label>Importation<select value={taxFacts.isImport} onChange={(event) => setTaxFacts({ ...taxFacts, isImport: event.target.value })}><option value="">Non renseigné</option><option value="true">Oui</option><option value="false">Non</option></select></label>
-              <label>Exportation<select value={taxFacts.isExport} onChange={(event) => setTaxFacts({ ...taxFacts, isExport: event.target.value })}><option value="">Non renseigné</option><option value="true">Oui</option><option value="false">Non</option></select></label>
-              <label>Catégorie de biens<input value={taxFacts.goodsCategory} onChange={(event) => setTaxFacts({ ...taxFacts, goodsCategory: event.target.value })} placeholder="Catégorie documentée"/></label>
-            </div>
-          </details>
-          <p className="muted-note">L’émission exige un snapshot fiscal immuable. Après émission, la facture et ses documents ne peuvent plus être modifiés.</p>
-        </section>
+        <InvoiceTaxContextPanel
+          jurisdictionId={jurisdictionId}
+          jurisdictions={jurisdictions}
+          taxDate={taxDate}
+          appliesTo={appliesTo}
+          selectedInvoiceLabel={selectedInvoice?.invoiceCode ?? selectedInvoice?.id ?? "Sélectionnez une facture"}
+          taxFacts={taxFacts}
+          onJurisdictionChange={setJurisdictionId}
+          onTaxDateChange={setTaxDate}
+          onAppliesToChange={setAppliesTo}
+          onTaxFactsChange={setTaxFacts}
+        />
 
         <IssuedInvoiceDocumentsPanel
           invoice={selectedInvoice}
