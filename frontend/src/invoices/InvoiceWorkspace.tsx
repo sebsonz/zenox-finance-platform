@@ -52,6 +52,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const [customerSaving, setCustomerSaving] = useState(false);
   const [customerDraft, setCustomerDraft] = useState({ customerCode: "", customerType: "BUSINESS" as "BUSINESS" | "INDIVIDUAL", legalName: "", displayName: "", email: "", phone: "", addressLine1: "", addressCity: "", countryCode: "BJ", taxIdentifier: "" });
   const [invoiceTab, setInvoiceTab] = useState<"NOTES" | "TERMS" | "ATTACHMENTS">("NOTES");
+  const [composerTab, setComposerTab] = useState<"INFORMATIONS" | "LINES" | "TERMS" | "PREVIEW">("INFORMATIONS");
   const [customerSearch, setCustomerSearch] = useState("");
   const { loading, loadInvoices } = useInvoiceList({
     tenantId, search: invoiceSearch, status: invoiceStatus, setInvoices, setSelectedInvoiceId, setNotice,
@@ -208,16 +209,22 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
 
         <section className="panel invoice-list-panel">
           <div className="panel-heading invoice-composer-heading"><div className="invoice-composer-title"><span className="invoice-composer-document-icon"><FileText size={22}/></span><div><h2>{editing ? "Modifier la facture" : form.documentType === "CREDIT_NOTE" ? "Nouvelle facture d’avoir" : "Nouvelle facture"}</h2><p><span className="invoice-draft-pill">{editing?.status === "ISSUED" ? "Émise" : "Brouillon"}</span><span>{editing?.invoiceCode ?? "Numéro attribué à l’émission"}</span></p></div><label className="invoice-type-picker"><span className="sr-only">Type de facture</span><select value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value as DraftForm["documentType"], contractTotal: "", relatedInvoiceId: "" })}><option value="STANDARD">Facture standard</option><option value="DEPOSIT">Facture d’acompte</option><option value="BALANCE">Facture de solde</option><option value="CREDIT_NOTE">Facture d’avoir</option></select></label></div><div className="invoice-editor-heading-actions"><span className="invoice-editor-status"><RefreshCw size={13}/> Autosauvegarde · 900 ms</span>{editing && <button className="outline-button" type="button" onClick={() => { if (window.confirm("Quitter la modification de ce brouillon ? Les modifications non enregistrées seront perdues.")) resetDraft(); }}>Annuler</button>}<button className="outline-button" type="button" onClick={() => void saveStandardDraft()} disabled={busy || form.documentType === "CREDIT_NOTE"}><FileText size={14}/> Enregistrer</button><button className="outline-button" type="button" onClick={() => setPreviewOpen(true)}><Eye size={14}/> Prévisualiser</button><button className="primary-button" type="button" disabled={busy || !editing || editing.status !== "DRAFT" || form.documentType === "CREDIT_NOTE" || !canIssue || editing.taxStatus === "REVIEW_REQUIRED"} title={!canIssue ? "Votre rôle ne dispose pas de la permission d’émission." : editing?.taxStatus === "REVIEW_REQUIRED" ? "Une revue fiscale est requise avant émission." : undefined} onClick={() => { if (!editing) return; if (editing.taxStatus === "REVIEW_REQUIRED") { setNotice("Émission bloquée : le moteur fiscal exige une revue. Corrigez le contexte fiscal avant de réessayer."); return; } if (editing.taxStatus === "CALCULATED") { void issueInvoice(editing); return; } void (async () => { const calculatedInvoice = await calculateTax(editing); if (calculatedInvoice?.taxStatus === "CALCULATED") await issueInvoice(calculatedInvoice); })(); }}><Send size={14}/> {editing?.taxStatus === "CALCULATED" ? "Confirmer l’émission" : editing?.taxStatus === "REVIEW_REQUIRED" ? "Revue fiscale requise" : "Émettre la facture"}</button></div></div>
+          <nav className="invoice-composer-tabs" aria-label="Sections de création de facture">
+            <button type="button" className={composerTab === "INFORMATIONS" ? "active" : ""} onClick={() => { setComposerTab("INFORMATIONS"); document.getElementById("invoice-composer-information")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><span>1</span> Informations</button>
+            <button type="button" className={composerTab === "LINES" ? "active" : ""} onClick={() => { setComposerTab("LINES"); document.getElementById("invoice-composer-lines")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><span>2</span> Lignes</button>
+            <button type="button" className={composerTab === "TERMS" ? "active" : ""} onClick={() => { setComposerTab("TERMS"); setInvoiceTab("TERMS"); document.getElementById("invoice-composer-terms")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><span>3</span> Conditions</button>
+            <button type="button" className={composerTab === "PREVIEW" ? "active" : ""} onClick={() => { setComposerTab("PREVIEW"); setPreviewOpen(true); }}><span>4</span> Aperçu</button>
+          </nav>
           <div className="invoice-editor-shell">
           <div className="invoice-editor-main">
           <form id="invoice-draft-form" className="invoice-editor" onSubmit={(event) => void saveDraft(event)}>
-            <section className="invoice-editor-meta">
+            <section className="invoice-editor-meta" id="invoice-composer-information">
               <label>Numéro<input value={editing?.invoiceCode ?? "Attribué à l’émission"} readOnly aria-label="Numéro de facture"/></label>
               <label>Date d’émission<input type="date" value={taxDate} onChange={(event) => setTaxDate(event.target.value)} required/></label>
               <label>Date d’échéance<input type="date" value={form.dueDate} onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))}/></label>
               <label>Devise<select value={form.currencyCode} onChange={(event) => setForm((current) => ({ ...current, currencyCode: event.target.value }))} required>{currencies.map((currency) => <option key={currency.code} value={currency.code}>{currency.code} – {currency.name}</option>)}</select></label>
             </section>
-            {form.documentType === "STANDARD" && <section className="invoice-parties-grid">
+            {form.documentType === "STANDARD" && <section className="invoice-parties-grid" id="invoice-composer-parties">
               <article className="invoice-party-card">
                 <header><span className="invoice-party-icon"><Building2 size={19}/></span><div><h3>Émetteur</h3><small>Organisation facturante</small></div></header>
                 <strong>{activeTenant.legalName}</strong>
@@ -254,7 +261,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
               onDuplicate={duplicateLine}
               onReorder={reorderLines}
             />
-            {form.documentType === "STANDARD" && <section className="invoice-editor-tabs">
+            {form.documentType === "STANDARD" && <section className="invoice-editor-tabs" id="invoice-composer-terms">
               <nav className="invoice-editor-tabbar" aria-label="Informations complémentaires">
                 <button type="button" className={invoiceTab === "NOTES" ? "active" : ""} onClick={() => setInvoiceTab("NOTES")}><StickyNote size={15}/> Notes</button>
                 <button type="button" className={invoiceTab === "TERMS" ? "active" : ""} onClick={() => setInvoiceTab("TERMS")}><SlidersHorizontal size={15}/> Conditions</button>
