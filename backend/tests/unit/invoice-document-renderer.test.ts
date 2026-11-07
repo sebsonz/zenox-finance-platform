@@ -87,7 +87,7 @@ describe("invoice document rendering", () => {
     expect(output).not.toContain(invoice.id);
     expect(output).not.toContain(invoice.taxSnapshotId!);
     expect(output).not.toContain("Test multi-ligne");
-    expect(output).toContain("startxref");
+    expect(output).toContain("/FontFile2");\n    expect(output).toContain("/ToUnicode");\n    expect(output).toContain("startxref");
     expect(output).toContain("%%EOF");
   });
 
