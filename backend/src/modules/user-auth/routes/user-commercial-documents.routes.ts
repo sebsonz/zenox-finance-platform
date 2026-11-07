@@ -237,7 +237,7 @@ userCommercialDocumentsRouter.post("/:tenantId/invoices/:invoiceId/adjustments",
    const byId=new Map(sourceLines.rows.map((l)=>[l.id,l]));const snapshots:any[]=[];
    const sum=(key:string)=>snapshots.reduce((n,l)=>n.plus(l[key]),new FinanceDecimal(0));
    for(const requested of body.data.lines){const original=byId.get(requested.sourceInvoiceLineId);if(!original)throw new Error("SOURCE_INVOICE_LINE_NOT_FOUND");
-    const quantity=new FinanceDecimal(requested.quantity),baseQty=new FinanceDecimal(original.quantity);if(quantity.lte(0)||quantity.gt(baseQty))throw new Error("ADJUSTMENT_QUANTITY_INVALID");
+    const quantity=new FinanceDecimal(requested.quantity),baseQty=new FinanceDecimal(original.quantity);if(quantity.lte(0)||(body.data.type==="CREDIT_NOTE"&&quantity.gt(baseQty)))throw new Error("ADJUSTMENT_QUANTITY_INVALID");
     const ratio=quantity.div(baseQty);const money=(key:string)=>new FinanceDecimal(original[key]).times(ratio).toDecimalPlaces(Number(source.currency_minor_unit),Decimal.ROUND_HALF_UP).toFixed(Number(source.currency_minor_unit));
     snapshots.push({sourceInvoiceLineId:original.id,lineNumber:original.line_number,description:original.description,itemCode:original.item_code,unit:original.unit_label,quantity:quantity.toString(),unitPrice:original.unit_price,subtotal:money("subtotal"),discountAmount:money("discount_amount"),taxableAmount:money("taxable_amount"),taxAmount:money("tax_amount"),total:money("total")});
    }
