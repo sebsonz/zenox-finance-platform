@@ -98,7 +98,8 @@ export const taxRuleRepository = {
               treatment, rate_percent::text AS rate_percent, price_mode, priority, is_compound,
               applies_to, source_reference, source_url, version,
               valid_from::text AS valid_from, valid_to::text AS valid_to,
-              accounting_treatment, applicability_conditions
+              'STANDARD'::text AS accounting_treatment,
+              '{"schemaVersion":1,"all":[]}'::jsonb AS applicability_conditions
          FROM public.finance_tax_rules r
         WHERE jurisdiction_id = $1
           AND status = 'ACTIVE'
