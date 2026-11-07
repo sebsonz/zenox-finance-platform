@@ -37,3 +37,14 @@ Jurisdiction listing and all global writes remain blocked until their grants and
 - Integration test against disposable PostgreSQL using the actual Finance runtime role.
 - Browser test with an active platform operator and a non-operator identity.
 - Confirm the API is not exposed to tenant members lacking platform operator authorization.
+
+
+## Follow-up implementation (2026-11-07)
+
+- Added source-controlled migration `20261107000100_platform_tax_reference_read_grants.sql`: SELECT-only access for `finance_runtime`, with explicit revocation from `anon`, `authenticated`, and `service_role`.
+- Added source-controlled migration `20261107000200_platform_tax_jurisdiction_admin_read.sql`: operator-checked SECURITY DEFINER function to list active and inactive global jurisdictions.
+- Added `GET /api/v1/user/platform/tax/jurisdictions`, application use case, repository and repository unit test.
+- Extended the existing Fiscalité & juridictions workspace to show the global jurisdiction directory while preserving the approved dashboard visual system.
+- No migration has been applied; no database has been changed.
+- Backend/frontend typechecks, tests and browser validation remain pending.
+- Global write operations, versioned rule components and periodic tax obligations remain follow-up implementation; the current rule table still primarily models a flat percentage and must not be treated as a complete tax model.
