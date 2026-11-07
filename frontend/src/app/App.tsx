@@ -104,8 +104,6 @@ export function App() {
   }, [entryChecking, isPlatformOperator, page, routerNavigate]);
 
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [amount, setAmount] = useState("100000");
-  const [currency, setCurrency] = useState("XOF");
   const [notice, setNotice] = useState("");
 
   const navigate = (next: Page) => { routerNavigate(pagePaths[next]); setMobileOpen(false); setNotice(""); };
@@ -168,7 +166,7 @@ export function App() {
       <div className="page-content">
         {notice && <div className="notice"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Fermer"><X size={16}/></button></div>}
         {page === "dashboard" && activeTenant && <Dashboard onNavigate={navigate} tenantId={activeTenant.id}/>}
-        {page === "tax" && <TaxWorkspace amount={amount} setAmount={setAmount} currency={currency} setCurrency={setCurrency} onSubmit={() => setNotice("Calcul non exécuté : connectez le formulaire à l’API Finance sécurisée avant tout calcul réel.")}/>}
+        {page === "tax" && activeTenant && <TaxWorkspace tenantId={activeTenant.id} canManage={["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(activeTenant.role)}/>}
         {page === "commercial-documents" && activeTenant && <CommercialDocumentsWorkspace tenantId={activeTenant.id}/>}
         {page === "invoices" && activeTenant && <InvoiceWorkspace key={activeTenant.id} sessionUser={sessionUser} activeTenant={activeTenant} tenants={tenants} onTenantChange={(tenantId) => setActiveTenant(tenants.find((tenant) => tenant.id === tenantId) ?? null)}/>}
         {page === "customers" && activeTenant && <CustomersWorkspace tenantId={activeTenant.id} canManage={["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(activeTenant.role)}/>}
