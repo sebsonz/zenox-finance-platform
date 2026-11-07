@@ -44,6 +44,9 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
   const issuer = invoice.issuerSnapshot ?? {};
   const customer = invoice.customerSnapshot;
   const issuerName = customerValue(issuer, "tradeName") || customerValue(issuer, "legalName") || "ZENOX Finance";
+  const issuerLegalName = customerValue(issuer, "legalName");
+  const issuerLegalNameLine = issuerLegalName && issuerLegalName !== issuerName
+    ? `<div>${escapeHtml(issuerLegalName)}</div>` : "";
   const customerName = customerValue(customer, "legalName") || customerValue(customer, "displayName");
   const partyDetails = (snapshot: Record<string, unknown>) => [
     customerValue(snapshot, "address"), customerValue(snapshot, "addressLine2"),
@@ -112,7 +115,7 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
 <body>
 <main>
 <header>
-  <div><h1>${escapeHtml(documentLabel)}</h1><div class="party-name">${escapeHtml(issuerName)}</div><div class="party-details">${partyDetails(issuer)}</div></div>
+  <div><h1>${escapeHtml(documentLabel)}</h1><div class="party-name">${escapeHtml(issuerName)}</div>${issuerLegalNameLine}<div class="party-details">${partyDetails(issuer)}</div></div>
   <div class="document-meta"><div class="document-number">${escapeHtml(invoice.invoiceCode)}</div>
     <div class="muted">Date d'émission : ${escapeHtml(invoice.issueDate ?? "—")}</div>
     <div class="muted">Échéance : ${escapeHtml(invoice.dueDate ?? "—")}</div>
