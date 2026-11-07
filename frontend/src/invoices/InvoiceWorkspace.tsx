@@ -290,8 +290,8 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     </section>
 
         <section className="panel invoice-list-panel">
-          <div className="panel-heading"><div><h2>{editing ? "Modifier le brouillon" : "Créer une facture"}</h2><p>Le serveur calcule tous les montants. Une modification invalide le snapshot fiscal précédent.</p></div>{editing && <button className="outline-button" onClick={resetDraft}>Annuler la modification</button>}</div>
-          <form className="invoice-editor" onSubmit={(event) => void saveDraft(event)}>
+          <div className="panel-heading"><div><h2>{editing ? "Modifier le brouillon" : "Créer une facture"}</h2><p>Le serveur calcule tous les montants. Une modification invalide le snapshot fiscal précédent.</p></div><div className="invoice-editor-heading-actions">{editing && <button className="outline-button" type="button" onClick={resetDraft}>Annuler la modification</button>}<button className="primary-button" type="submit" form="invoice-draft-form" disabled={busy || checkingResources || customers.length === 0 || currencies.length === 0}>{busy ? "Enregistrement…" : "Enregistrer la facture"} <FileText size={15}/></button></div></div>
+          <form id="invoice-draft-form" className="invoice-editor" onSubmit={(event) => void saveDraft(event)}>
             <div className="invoice-form-grid">
               <label>Client<select value={form.customerId} onChange={(event) => setForm({ ...form, customerId: event.target.value })} required>
                 <option value="">Choisir un client actif</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.displayName || customer.legalName} · {customer.customerCode}</option>)}
@@ -311,7 +311,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
               <label>Taxe provisoire %<input inputMode="decimal" value={line.taxRatePercent} onChange={(event) => updateLine(index, "taxRatePercent", event.target.value)} required/></label>
               <button className="icon-danger" type="button" title="Supprimer la ligne" disabled={form.lines.length === 1} onClick={() => setForm({ ...form, lines: form.lines.filter((_, i) => i !== index) })}><Trash2 size={15}/></button>
             </div>)}
-            <button className="primary-button" type="submit" disabled={busy || checkingResources || customers.length === 0 || currencies.length === 0}>{busy ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Créer le brouillon"} <FileText size={15}/></button>
+            <div className="invoice-editor-submit-row"><button className="primary-button" type="submit" disabled={busy || checkingResources || customers.length === 0 || currencies.length === 0}>{busy ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Enregistrer la facture"} <FileText size={15}/></button></div>
             {customers.length === 0 && <p className="muted-note">Aucun client actif : ajoutez d’abord un client via le module Clients.</p>}
           </form>
         </section>
