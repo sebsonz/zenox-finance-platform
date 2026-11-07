@@ -97,7 +97,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   });
   const { openIssuedDocument, downloadDocument } = useInvoiceDocuments({ tenantId, setBusy, setNotice });
   const { calculateTax, issueInvoice } = useInvoiceLifecycle({
-    tenantId, jurisdictionId, taxDate, appliesTo, taxFacts, setBusy, setNotice, loadInvoices,
+    tenantId, jurisdictionId, taxDate, appliesTo, taxFacts, setBusy, setNotice, loadInvoices, setEditing,
   });
 
   const autosaveSnapshotRef = useRef(JSON.stringify(form));
