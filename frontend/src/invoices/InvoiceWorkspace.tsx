@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { InvoiceTypeFields } from "../modules/billing/freight/invoices/types/InvoiceTypeFields.js";
 import { InvoiceLinesEditor } from "../modules/billing/freight/invoices/components/InvoiceLinesEditor.js";
+import { IssuedInvoiceDocumentsPanel } from "../modules/billing/freight/invoices/credit-notes/IssuedInvoiceDocumentsPanel.js";
 import { FileText, RefreshCw, ShieldCheck, Download, Pencil, Send, ReceiptText, Printer } from "lucide-react";
 
 type ApiError = { error?: { code?: string; message?: string } };
@@ -541,21 +542,23 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
           <p className="muted-note">L’émission exige un snapshot fiscal immuable. Après émission, la facture et ses documents ne peuvent plus être modifiés.</p>
         </section>
 
-        {selectedInvoice?.status === "ISSUED" && <section className="panel invoice-list-panel">
-          <div className="panel-heading"><div><h2>Documents et avoirs</h2><p>{selectedInvoice.invoiceCode} · documents d’émission immuables · plusieurs avoirs partiels autorisés dans la limite du montant initial</p></div></div>
-          <div className="invoice-action-bar">
-            <button className="outline-button" onClick={() => openIssuedDocument(selectedInvoice)}><Printer size={15}/> Aperçu / imprimer</button>
-            <button className="outline-button" disabled={busy} onClick={() => void downloadDocument(selectedInvoice, "document")}><Download size={15}/> HTML</button>
-            <button className="outline-button" disabled={busy} onClick={() => void downloadDocument(selectedInvoice, "document.pdf")}><Download size={15}/> PDF</button>
-            <button className="outline-button" disabled={busy} onClick={() => void loadCreditNotes(selectedInvoice)}><ReceiptText size={15}/> Charger les avoirs</button>
-          </div>
-          <div className="invoice-form-grid credit-note-form">
-            <label>Motif de l’avoir<input value={creditReason} onChange={(event) => setCreditReason(event.target.value)} minLength={3} maxLength={2000}/></label>
-            <label>Montant à créditer ({selectedInvoice.currencyCode})<input inputMode="decimal" value={creditAmount} onChange={(event) => setCreditAmount(event.target.value)} placeholder={`Vide = avoir intégral · reste disponible : ${remainingCredit.toFixed(selectedInvoice.currencyMinorUnit)}`}/></label>
-            <div className="credit-note-button"><button className="primary-button" disabled={busy || !canCredit || creditReason.trim().length < 3 || (creditAmount.trim().length > 0 && !/^(?:0|[1-9][0-9]{0,15})(?:[.][0-9]{1,8})?$/.test(creditAmount.trim()))} onClick={() => void issueCreditNote(selectedInvoice)}>{creditAmount.trim() ? "Émettre l’avoir partiel" : "Émettre l’avoir intégral"}</button></div>
-          </div>
-          {creditNotes.length > 0 && <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Avoir</th><th>Type</th><th>Motif</th><th>Montant</th><th>Date</th><th>Documents</th></tr></thead><tbody>{creditNotes.map((note) => <tr key={note.id}><td><strong>{note.creditNoteCode}</strong></td><td>{note.creditKind === "PARTIAL" ? "Partiel" : "Intégral"}</td><td>{note.reason}</td><td>{note.currencyCode} {note.grandTotal}</td><td>{new Date(note.issuedAt).toLocaleDateString("fr-FR")}</td><td><div className="invoice-actions"><button className="small-action" title="Aperçu / imprimer" onClick={() => openCreditNoteDocument(note.id)}><Printer size={14}/></button><button className="small-action" title="HTML" onClick={() => void downloadCreditNote(note.id, "document", note.creditNoteCode)}><Download size={14}/></button><button className="small-action" title="PDF" onClick={() => void downloadCreditNote(note.id, "document.pdf", note.creditNoteCode)}><FileText size={14}/></button></div></td></tr>)}</tbody></table></div>}
-        </section>}
+        <IssuedInvoiceDocumentsPanel
+          invoice={selectedInvoice}
+          creditNotes={creditNotes}
+          creditReason={creditReason}
+          creditAmount={creditAmount}
+          remainingCredit={remainingCredit}
+          busy={busy}
+          canCredit={canCredit}
+          onOpenInvoice={openIssuedDocument}
+          onDownloadInvoice={downloadDocument}
+          onLoadCreditNotes={loadCreditNotes}
+          onCreditReasonChange={setCreditReason}
+          onCreditAmountChange={setCreditAmount}
+          onIssueCreditNote={issueCreditNote}
+          onOpenCreditNote={openCreditNoteDocument}
+          onDownloadCreditNote={downloadCreditNote}
+        />
     {notice && <div className="notice invoice-notice" role="status"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Fermer">×</button></div>}
   </section>;
 }
