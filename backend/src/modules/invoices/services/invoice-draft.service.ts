@@ -61,6 +61,8 @@ export const invoiceDraftService = {
       const totals = calculateInvoiceTotals({
         currency: currency.code,
         currencyDecimalPlaces: currency.minorUnit,
+        globalDiscountPercent: input.document?.globalDiscountPercent ?? "0",
+        globalDiscountAmount: input.document?.globalDiscountAmount ?? "0",
         lines: input.lines.map((line) => ({
           quantity: line.quantity,
           unitPrice: line.unitPrice,

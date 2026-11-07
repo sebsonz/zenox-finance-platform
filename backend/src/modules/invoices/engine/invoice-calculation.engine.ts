@@ -119,8 +119,6 @@ export function calculateInvoiceTotals(input: InvoiceCalculationInput): Calculat
   if (globalPercent.lt(0) || globalPercent.gt(100)) throw new Error("GLOBAL_DISCOUNT_PERCENT_OUT_OF_RANGE");
   if (globalAmount.lt(0)) throw new Error("GLOBAL_DISCOUNT_AMOUNT_OUT_OF_RANGE");
   if (globalPercent.gt(0) && globalAmount.gt(0)) throw new Error("GLOBAL_DISCOUNT_PERCENT_AND_AMOUNT_MUTUALLY_EXCLUSIVE");
-  const initialSubtotal = initialLines.reduce((sum, line) => sum.plus(line.subtotal), new CalculationDecimal(0));
-  const initialDiscount = initialLines.reduce((sum, line) => sum.plus(line.discountAmount), new CalculationDecimal(0));
   const initialTaxable = initialLines.reduce((sum, line) => sum.plus(line.taxableAmount), new CalculationDecimal(0));
   const requestedGlobalDiscount = globalPercent.gt(0)
     ? initialTaxable.times(globalPercent).div(100).toDecimalPlaces(places, CalculationDecimal.ROUND_HALF_UP)
