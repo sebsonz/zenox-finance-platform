@@ -16,7 +16,7 @@ import { recordInvoiceAudit } from "../../invoices/repositories/invoice-audit.re
 
 export const userCommercialDocumentsRouter = Router();
 const uuid = z.string().uuid();
-const decimal = z.string().regex(/^(?:0|[1-9]\\d*)(?:\\.\\d+)?$/);
+const decimal = z.string().regex(/^(?:0|[1-9]\d*)(?:\.\d+)?$/);
 const FinanceDecimal = Decimal.clone({precision:40,rounding:Decimal.ROUND_HALF_UP});
 const lineSchema = z.object({
  description:z.string().trim().min(1).max(500), itemCode:z.string().trim().max(100).optional(),
