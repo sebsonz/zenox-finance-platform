@@ -208,7 +208,7 @@ userCommercialDocumentsRouter.post("/:tenantId/proformas/:proformaId/issue",requ
 
 
 
-const invoiceRelationshipSchema=z.object({advanceInvoiceId:uuid,relationshipType:z.enum(["ADVANCE_FOR","BALANCE_OF"]),appliedAmount:decimal,sourceReference:z.string().trim().max(160).optional()}).strict();
+const invoiceRelationshipSchema=z.object({advanceInvoiceId:uuid,relationshipType:z.enum(["ADVANCE_FOR","BALANCE_OF"]),appliedAmount:moneyDecimal,sourceReference:z.string().trim().max(160).optional()}).strict();
 userCommercialDocumentsRouter.get("/:tenantId/invoices/:invoiceId/relationships",requireUserAuth(),async(req,res,next)=>{
  try{const id=uuid.safeParse(req.params["tenantId"]),iid=uuid.safeParse(req.params["invoiceId"]);if(!id.success||!iid.success)return fail(res,"INVALID_ID","Invalid resource ID.",400);const ctx=await contextFor(id.data,req,res,"invoices:read");if(!ctx)return;const rows=await withTenantTransaction(id.data,c=>c.query("SELECT r.id,r.relationship_type,r.source_reference,r.applied_amount,r.created_at,r.source_invoice_id,r.related_invoice_id,a.invoice_code AS advance_invoice_code,b.invoice_code AS related_invoice_code FROM public.finance_invoice_relationships r JOIN public.finance_invoices a ON a.tenant_id=r.tenant_id AND a.id=r.source_invoice_id JOIN public.finance_invoices b ON b.tenant_id=r.tenant_id AND b.id=r.related_invoice_id WHERE r.tenant_id=$1 AND (r.source_invoice_id=$2 OR r.related_invoice_id=$2) ORDER BY r.created_at",[id.data,iid.data]));res.json({data:{relationships:rows.rows,correlationId:ctx.correlationId}});
  }catch(e){next(e);}
@@ -233,7 +233,7 @@ userCommercialDocumentsRouter.get("/:tenantId/invoice-adjustments/:adjustmentId/
 });
 const adjustmentSchema=z.object({
  type:z.enum(["CREDIT_NOTE","DEBIT_NOTE"]),reason:z.string().trim().min(3).max(2000),
- lines:z.array(z.object({sourceInvoiceLineId:uuid,quantity:decimal}).strict()).min(1).max(500),
+ lines:z.array(z.object({sourceInvoiceLineId:uuid,quantity:moneyDecimal}).strict()).min(1).max(500),
 }).strict();
 function esc(value:unknown):string{return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]!));}
 userCommercialDocumentsRouter.get("/:tenantId/invoices/:invoiceId/adjustments",requireUserAuth(),async(req,res,next)=>{
