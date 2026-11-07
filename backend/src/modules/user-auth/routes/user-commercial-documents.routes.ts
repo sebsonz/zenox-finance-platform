@@ -155,3 +155,75 @@ userCommercialDocumentsRouter.post("/:tenantId/proformas/:proformaId/issue",requ
  const result=await withTenantTransaction(id.data,async c=>{const p=await c.query("SELECT * FROM public.finance_proformas WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,pid.data]);if(!p.rows[0]||p.rows[0].status!=="DRAFT")throw new Error("PROFORMA_NOT_DRAFT");const today=new Date().toISOString().slice(0,10),year=Number(today.slice(0,4));const seq=await c.query("INSERT INTO public.finance_proforma_sequences(tenant_id,fiscal_year,next_number) VALUES($1,$2,2) ON CONFLICT(tenant_id,fiscal_year) DO UPDATE SET next_number=public.finance_proforma_sequences.next_number+1 RETURNING next_number-1 AS allocated",[id.data,year]);const code="PRO-"+year+"-"+String(seq.rows[0].allocated).padStart(6,"0");const out=await c.query("UPDATE public.finance_proformas SET status='ISSUED',proforma_code=$3,issue_date=$4,updated_at=now(),updated_by_actor_type='USER',updated_by_actor_ref=$5 WHERE tenant_id=$1 AND id=$2 RETURNING *",[id.data,pid.data,code,today,ctx.actor.ref]);await recordInvoiceAudit(c,ctx,"proforma.issued","PROFORMA",pid.data,{proformaCode:code});return out.rows[0];});res.json({data:{proforma:result,correlationId:ctx.correlationId}});
  }catch(e){if(e instanceof Error&&e.message==="PROFORMA_NOT_DRAFT")return fail(res,e.message,"Only a draft pro forma can be issued.",409);next(e);}
 });
+
+
+const recurringSchema=z.object({
+ customerId:uuid,currencyCode:z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
+ frequency:z.enum(["WEEKLY","MONTHLY","QUARTERLY","SEMIANNUALLY","ANNUALLY"]),
+ intervalCount:z.number().int().min(1).max(24).default(1),
+ startsOn:z.iso.date(),endsOn:z.iso.date().optional(),dueDays:z.number().int().min(0).max(365).default(0),
+ notes:z.string().trim().max(5000).optional(),document:z.record(z.string(),z.unknown()).optional(),
+ lines:z.array(lineSchema).min(1).max(500),
+}).strict().refine(x=>!x.endsOn||x.endsOn>=x.startsOn,{message:"End date must be on or after start date.",path:["endsOn"]});
+function nextOccurrence(date:string,frequency:string,interval:number):string{
+ const d=new Date(date+"T12:00:00.000Z");
+ if(frequency==="WEEKLY")d.setUTCDate(d.getUTCDate()+7*interval);
+ else if(frequency==="MONTHLY"||frequency==="QUARTERLY"||frequency==="SEMIANNUALLY"||frequency==="ANNUALLY"){
+  const months=frequency==="MONTHLY"?1:frequency==="QUARTERLY"?3:frequency==="SEMIANNUALLY"?6:12;
+  const day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+months*interval);
+  const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last));
+ }
+ return d.toISOString().slice(0,10);
+}
+userCommercialDocumentsRouter.get("/:tenantId/recurring-invoices",requireUserAuth(),async(req,res,next)=>{
+ try{const id=uuid.safeParse(req.params["tenantId"]);if(!id.success)return fail(res,"INVALID_TENANT_ID","Invalid tenant ID.",400);const ctx=await contextFor(id.data,req,res,"invoices:read");if(!ctx)return;const rows=await withTenantTransaction(id.data,c=>c.query("SELECT id,schedule_code,status,frequency,interval_count,starts_on,ends_on,next_run_on,due_days,currency_code,created_at FROM public.finance_recurring_invoice_schedules WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 200",[id.data]));res.json({data:{schedules:rows.rows,correlationId:ctx.correlationId}});
+ }catch(e){next(e);}
+});
+userCommercialDocumentsRouter.post("/:tenantId/recurring-invoices",requireUserAuth(),async(req,res,next)=>{
+ try{const id=uuid.safeParse(req.params["tenantId"]),body=recurringSchema.safeParse(req.body);if(!id.success||!body.success)return fail(res,"INVALID_RECURRING_SCHEDULE","Schedule payload is invalid.",400);const ctx=await contextFor(id.data,req,res,"invoices:create");if(!ctx)return;
+ const currency=await currencyRepository.findActiveByCode(body.data.currencyCode);if(!currency)return fail(res,"CURRENCY_NOT_SUPPORTED","Currency is unavailable.",422);
+ const result=await withTenantTransaction(id.data,async c=>{const customer=await customerRepository.findById(c,body.data.customerId);if(!customer||customer.status!=="ACTIVE")throw new Error("CUSTOMER_NOT_ACTIVE");
+ const seq=await c.query("SELECT COALESCE(max((regexp_match(schedule_code,'([0-9]+)$'))[1]::bigint),0)+1 AS n FROM public.finance_recurring_invoice_schedules WHERE tenant_id=$1",[id.data]);
+ const code="REC-"+String(seq.rows[0].n).padStart(6,"0");
+ const inserted=await c.query("INSERT INTO public.finance_recurring_invoice_schedules(tenant_id,customer_id,schedule_code,status,currency_code,currency_minor_unit,frequency,interval_count,starts_on,ends_on,next_run_on,due_days,auto_issue,document_metadata,notes,created_by_actor_type,created_by_actor_ref,updated_by_actor_type,updated_by_actor_ref) VALUES($1,$2,$3,'DRAFT',$4,$5,$6,$7,$8,$9,$8,$10,false,$11::jsonb,$12,'USER',$13,'USER',$13) RETURNING *",[id.data,customer.id,code,currency.code,currency.minorUnit,body.data.frequency,body.data.intervalCount,body.data.startsOn,body.data.endsOn??null,body.data.dueDays,JSON.stringify(body.data.document??{}),body.data.notes??null,ctx.actor.ref]);
+ const schedule=inserted.rows[0];for(let i=0;i<body.data.lines.length;i++){const l=body.data.lines[i]!;await c.query("INSERT INTO public.finance_recurring_invoice_lines(tenant_id,schedule_id,line_number,description,item_code,unit_label,quantity,unit_price,discount_percent,tax_rate_percent) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",[id.data,schedule.id,i+1,l.description,l.itemCode??null,l.unit??null,l.quantity,l.unitPrice,l.discountPercent,l.taxRatePercent]);}
+ await recordInvoiceAudit(c,ctx,"recurring_invoice.schedule_created","RECURRING_INVOICE_SCHEDULE",schedule.id,{lineCount:body.data.lines.length});return schedule;});
+ res.status(201).json({data:{schedule:result,correlationId:ctx.correlationId}});
+ }catch(e){if(e instanceof Error&&e.message==="CUSTOMER_NOT_ACTIVE")return fail(res,e.message,"Customer is unavailable.",422);next(e);}
+});
+for(const action of ["activate","pause","cancel"] as const){
+ userCommercialDocumentsRouter.post("/:tenantId/recurring-invoices/:scheduleId/"+action,requireUserAuth(),async(req,res,next)=>{
+ try{const id=uuid.safeParse(req.params["tenantId"]),sid=uuid.safeParse(req.params["scheduleId"]);if(!id.success||!sid.success)return fail(res,"INVALID_ID","Invalid resource ID.",400);const ctx=await contextFor(id.data,req,res,"invoices:create");if(!ctx)return;
+ const allowed=action==="activate"?["DRAFT","PAUSED"]:action==="pause"?["ACTIVE"]:["DRAFT","ACTIVE","PAUSED"];
+ const status=action==="activate"?"ACTIVE":action==="pause"?"PAUSED":"CANCELLED";
+ const result=await withTenantTransaction(id.data,async c=>{const q=await c.query("UPDATE public.finance_recurring_invoice_schedules SET status=$3,updated_at=now(),updated_by_actor_type='USER',updated_by_actor_ref=$4 WHERE tenant_id=$1 AND id=$2 AND status=ANY($5::text[]) RETURNING *",[id.data,sid.data,status,ctx.actor.ref,allowed]);if(!q.rows[0])throw new Error("INVALID_SCHEDULE_TRANSITION");await recordInvoiceAudit(c,ctx,"recurring_invoice."+action,"RECURRING_INVOICE_SCHEDULE",sid.data,{});return q.rows[0];});res.json({data:{schedule:result,correlationId:ctx.correlationId}});
+ }catch(e){if(e instanceof Error&&e.message==="INVALID_SCHEDULE_TRANSITION")return fail(res,e.message,"Schedule does not allow this status transition.",409);next(e);}
+ });
+}
+userCommercialDocumentsRouter.post("/:tenantId/recurring-invoices/:scheduleId/generate",requireUserAuth(),async(req,res,next)=>{
+ try{const id=uuid.safeParse(req.params["tenantId"]),sid=uuid.safeParse(req.params["scheduleId"]);if(!id.success||!sid.success)return fail(res,"INVALID_ID","Invalid resource ID.",400);const ctx=await contextFor(id.data,req,res,"invoices:create");if(!ctx)return;
+ const result=await withTenantTransaction(id.data,async c=>{
+  const found=await c.query("SELECT * FROM public.finance_recurring_invoice_schedules WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,sid.data]);const schedule=found.rows[0];
+  if(!schedule||schedule.status!=="ACTIVE"||!schedule.next_run_on)throw new Error("SCHEDULE_NOT_ACTIVE");
+  const scheduledFor=String(schedule.next_run_on).slice(0,10),today=new Date().toISOString().slice(0,10);
+  if(scheduledFor>today)throw new Error("SCHEDULE_NOT_DUE");
+  const existing=await c.query("SELECT invoice_id,status FROM public.finance_recurring_invoice_runs WHERE tenant_id=$1 AND schedule_id=$2 AND scheduled_for=$3",[id.data,sid.data,scheduledFor]);
+  if(existing.rows[0]?.status==="GENERATED")return {invoiceId:existing.rows[0].invoice_id,alreadyGenerated:true};
+  const customer=await customerRepository.findById(c,schedule.customer_id);if(!customer||customer.status!=="ACTIVE")throw new Error("CUSTOMER_NOT_ACTIVE");
+  const currency=await currencyRepository.findActiveByCode(String(schedule.currency_code).trim());if(!currency)throw new Error("CURRENCY_NOT_SUPPORTED");
+  const lineRows=await c.query("SELECT description,item_code,unit_label,quantity::text,unit_price::text,discount_percent::text,tax_rate_percent::text FROM public.finance_recurring_invoice_lines WHERE tenant_id=$1 AND schedule_id=$2 ORDER BY line_number",[id.data,sid.data]);
+  const lines=lineRows.rows.map((l:any)=>({description:l.description,...(l.item_code?{itemCode:l.item_code}:{}),...(l.unit_label?{unit:l.unit_label}:{}),quantity:l.quantity,unitPrice:l.unit_price,discountPercent:l.discount_percent,taxRatePercent:l.tax_rate_percent}));
+  const totals=calculateInvoiceTotals({currency:currency.code,currencyDecimalPlaces:currency.minorUnit,lines:lines.map(l=>({quantity:l.quantity,unitPrice:l.unitPrice,discountPercent:l.discountPercent,taxRatePercent:l.taxRatePercent}))});
+  const due=new Date(scheduledFor+"T12:00:00.000Z");due.setUTCDate(due.getUTCDate()+Number(schedule.due_days));const dueDate=due.toISOString().slice(0,10);
+  const invoice=await invoiceRepository.createDraft(c,ctx,{customerId:schedule.customer_id,currencyCode:currency.code,dueDate,notes:schedule.notes??undefined,document:schedule.document_metadata??{},lines},currency.minorUnit,totals,totals.lines,customer);
+  const key="recurring:"+schedule.id+":"+scheduledFor;
+  await c.query("INSERT INTO public.finance_recurring_invoice_runs(tenant_id,schedule_id,scheduled_for,status,invoice_id,idempotency_key,completed_at) VALUES($1,$2,$3,'GENERATED',$4,$5,now())",[id.data,sid.data,scheduledFor,invoice.id,key]);
+  const next=nextOccurrence(scheduledFor,schedule.frequency,Number(schedule.interval_count));
+  const status=schedule.ends_on&&next>String(schedule.ends_on).slice(0,10)?"COMPLETED":"ACTIVE";
+  await c.query("UPDATE public.finance_recurring_invoice_schedules SET status=$3,next_run_on=$4,updated_at=now(),updated_by_actor_type='SYSTEM',updated_by_actor_ref='recurring-engine' WHERE tenant_id=$1 AND id=$2",[id.data,sid.data,status,status==="COMPLETED"?null:next]);
+  await recordInvoiceAudit(c,ctx,"recurring_invoice.generated","INVOICE",invoice.id,{scheduleId:schedule.id,scheduledFor});
+  return {invoiceId:invoice.id,alreadyGenerated:false};
+ });
+ res.status(result.alreadyGenerated?200:201).json({data:{...result,correlationId:ctx.correlationId}});
+ }catch(e){if(e instanceof Error&&["SCHEDULE_NOT_ACTIVE","SCHEDULE_NOT_DUE"].includes(e.message))return fail(res,e.message,"Schedule is not eligible for generation.",409);if(e instanceof Error&&["CUSTOMER_NOT_ACTIVE","CURRENCY_NOT_SUPPORTED"].includes(e.message))return fail(res,e.message,"Customer or currency is unavailable.",422);next(e);}
+});
