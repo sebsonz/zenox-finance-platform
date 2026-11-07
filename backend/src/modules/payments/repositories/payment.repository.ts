@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { Decimal } from "decimal.js";
 import type { PoolClient } from "pg";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinancePaymentContext } from "../types/payment-operation-context.js";
+import { paymentActor } from "../types/payment-operation-context.js";
 import type { AllocatePaymentInput, CreatePaymentInput, ReverseAllocationInput } from "../validators/payment.schema.js";
 import type { InvoiceBalanceRecord, PaymentAllocationRecord, PaymentRecord, PaymentStatus } from "../types/payment.types.js";
 
@@ -36,7 +37,7 @@ function requestHash(value: unknown): string {
 }
 
 async function beginCommand(
-  client: PoolClient, context: FinanceRequestContext, operation: string, key: string, hash: string,
+  client: PoolClient, context: FinancePaymentContext, operation: string, key: string, hash: string,
 ): Promise<{ replayResourceId: string | null }> {
   await client.query(
     `INSERT INTO public.finance_payment_commands (tenant_id, operation, idempotency_key, request_hash)
@@ -55,7 +56,7 @@ async function beginCommand(
   return { replayResourceId: null };
 }
 async function completeCommand(
-  client: PoolClient, context: FinanceRequestContext, operation: string, key: string, resourceType: string, resourceId: string,
+  client: PoolClient, context: FinancePaymentContext, operation: string, key: string, resourceType: string, resourceId: string,
 ): Promise<void> {
   await client.query(
     `UPDATE public.finance_payment_commands SET state='SUCCEEDED', resource_type=$4::text, resource_id=$5::uuid,
@@ -65,25 +66,27 @@ async function completeCommand(
   );
 }
 async function audit(
-  client: PoolClient, context: FinanceRequestContext, action: string, resourceType: string, resourceId: string,
+  client: PoolClient, context: FinancePaymentContext, action: string, resourceType: string, resourceId: string,
   metadata: Record<string, unknown> = {},
 ): Promise<void> {
+  const actor = paymentActor(context);
   await client.query(
     `INSERT INTO public.finance_audit_events
       (tenant_id, actor_type, actor_ref, action, resource_type, resource_id, correlation_id, safe_metadata)
-     VALUES ($1,'SERVICE',$2,$3,$4,$5,$6,$7::jsonb)`,
-    [context.tenantId, context.principal.id, action, resourceType, resourceId, context.correlationId, JSON.stringify(metadata)],
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)`,
+    [context.tenantId, actor.type, actor.ref, action, resourceType, resourceId, context.correlationId, JSON.stringify(metadata)],
   );
 }
 async function paymentEvent(
-  client: PoolClient, context: FinanceRequestContext, paymentId: string, eventType: string,
+  client: PoolClient, context: FinancePaymentContext, paymentId: string, eventType: string,
   fromStatus: string | null, toStatus: string | null, key: string | null, metadata: Record<string, unknown> = {},
 ): Promise<void> {
+  const actor = paymentActor(context);
   await client.query(
     `INSERT INTO public.finance_payment_events
       (tenant_id,payment_id,event_type,from_status,to_status,actor_type,actor_ref,correlation_id,idempotency_key,safe_metadata)
-     VALUES ($1,$2,$3,$4,$5,'SERVICE',$6,$7,$8,$9::jsonb)`,
-    [context.tenantId, paymentId, eventType, fromStatus, toStatus, context.principal.id,
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb)`,
+    [context.tenantId, paymentId, eventType, fromStatus, toStatus, actor.type, actor.ref,
       context.correlationId, key, JSON.stringify(metadata)],
   );
 }
@@ -98,8 +101,9 @@ export const paymentRepository = {
   },
 
   async createInTransaction(
-    client: PoolClient, context: FinanceRequestContext, input: CreatePaymentInput, key: string,
+    client: PoolClient, context: FinancePaymentContext, input: CreatePaymentInput, key: string,
   ): Promise<PaymentRecord> {
+    const actor = paymentActor(context);
     const hash = requestHash(input);
     const command = await beginCommand(client, context, "PAYMENT_CREATE", key, hash);
     if (command.replayResourceId) {
@@ -119,10 +123,10 @@ export const paymentRepository = {
       `INSERT INTO public.finance_payments
         (tenant_id,amount,currency_code,status,source,method,external_reference,provider_code,description,
          created_by_actor_type,created_by_actor_ref)
-       VALUES ($1,$2,$3,'PENDING',$4,$5,$6,$7,$8,'SERVICE',$9)
+       VALUES ($1,$2,$3,'PENDING',$4,$5,$6,$7,$8,$9,$10)
        RETURNING ${paymentColumns}`,
       [context.tenantId,input.amount,input.currencyCode,input.source,input.method,
-       input.externalReference ?? null,input.providerCode ?? null,input.description ?? null,context.principal.id],
+       input.externalReference ?? null,input.providerCode ?? null,input.description ?? null,actor.type,actor.ref],
     );
     const row = result.rows[0];
     if (!row) throw new Error("PAYMENT_INSERT_RETURNED_NO_ROW");
@@ -138,8 +142,9 @@ export const paymentRepository = {
   },
 
   async confirmManualInTransaction(
-    client: PoolClient, context: FinanceRequestContext, paymentId: string, key: string,
+    client: PoolClient, context: FinancePaymentContext, paymentId: string, key: string,
   ): Promise<PaymentRecord> {
+    const actor = paymentActor(context);
     const command = await beginCommand(client, context, "PAYMENT_CONFIRM_MANUAL", key, requestHash({ paymentId }));
     if (command.replayResourceId) {
       const replay = await this.findById(client, context.tenantId, command.replayResourceId);
@@ -156,9 +161,9 @@ export const paymentRepository = {
     if (existing.status !== "PENDING") throw new Error("PAYMENT_NOT_PENDING");
     const updated = await client.query<PaymentRow>(
       `UPDATE public.finance_payments SET status='CONFIRMED', confirmed_at=clock_timestamp(),
-         confirmed_by_actor_type='SERVICE', confirmed_by_actor_ref=$3, updated_at=clock_timestamp()
+         confirmed_by_actor_type=$3, confirmed_by_actor_ref=$4, updated_at=clock_timestamp()
        WHERE tenant_id=$1 AND id=$2 AND status='PENDING' RETURNING ${paymentColumns}`,
-      [context.tenantId,paymentId,context.principal.id],
+      [context.tenantId,paymentId,actor.type,actor.ref],
     );
     const row = updated.rows[0];
     if (!row) throw new Error("PAYMENT_CONFIRMATION_RACE");
@@ -172,8 +177,9 @@ export const paymentRepository = {
   },
 
   async allocateInTransaction(
-    client: PoolClient, context: FinanceRequestContext, paymentId: string, input: AllocatePaymentInput, key: string,
+    client: PoolClient, context: FinancePaymentContext, paymentId: string, input: AllocatePaymentInput, key: string,
   ): Promise<PaymentAllocationRecord> {
+    const actor = paymentActor(context);
     const hash = requestHash({ paymentId, ...input });
     const command = await beginCommand(client, context, "PAYMENT_ALLOCATE", key, hash);
     if (command.replayResourceId) {
@@ -246,8 +252,8 @@ export const paymentRepository = {
       `INSERT INTO public.finance_payment_allocations
         (tenant_id,payment_id,invoice_id,amount,currency_code,idempotency_key,request_hash,
          allocated_by_actor_type,allocated_by_actor_ref)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'SERVICE',$8) RETURNING ${allocationColumns}`,
-      [context.tenantId,paymentId,input.invoiceId,input.amount,payment.currency_code,key,hash,context.principal.id],
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING ${allocationColumns}`,
+      [context.tenantId,paymentId,input.invoiceId,input.amount,payment.currency_code,key,hash,actor.type,actor.ref],
     );
     const allocationRow = created.rows[0];
     if (!allocationRow) throw new Error("PAYMENT_ALLOCATION_INSERT_RETURNED_NO_ROW");
@@ -263,8 +269,9 @@ export const paymentRepository = {
   },
 
   async reverseAllocationInTransaction(
-    client: PoolClient, context: FinanceRequestContext, paymentId: string, allocationId: string, input: ReverseAllocationInput, key: string,
+    client: PoolClient, context: FinancePaymentContext, paymentId: string, allocationId: string, input: ReverseAllocationInput, key: string,
   ): Promise<{ id: string; allocationId: string; amount: string; reason: string; createdAt: string }> {
+    const actor = paymentActor(context);
     const hash = requestHash({ paymentId, allocationId, ...input });
     const command = await beginCommand(client, context, "ALLOCATION_REVERSE", key, hash);
     if (command.replayResourceId) {
@@ -296,9 +303,9 @@ export const paymentRepository = {
     const result = await client.query<{ id: string; allocation_id: string; amount: string; reason: string; created_at: string }>(
       `INSERT INTO public.finance_payment_allocation_reversals
         (tenant_id,allocation_id,amount,reason,idempotency_key,request_hash,reversed_by_actor_type,reversed_by_actor_ref)
-       VALUES ($1,$2,$3,$4,$5,$6,'SERVICE',$7)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        RETURNING id,allocation_id,amount::text,reason,to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at`,
-      [context.tenantId,allocationId,input.amount,input.reason,key,hash,context.principal.id],
+      [context.tenantId,allocationId,input.amount,input.reason,key,hash,actor.type,actor.ref],
     );
     const row = result.rows[0];
     if (!row) throw new Error("ALLOCATION_REVERSAL_INSERT_RETURNED_NO_ROW");
