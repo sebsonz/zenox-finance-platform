@@ -170,7 +170,7 @@ export function App() {
         {notice && <div className="notice"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Fermer"><X size={16}/></button></div>}
         {page === "dashboard" && activeTenant && <Dashboard onNavigate={navigate} tenantId={activeTenant.id}/>}
         {page === "tax" && <TaxWorkspace amount={amount} setAmount={setAmount} currency={currency} setCurrency={setCurrency} onSubmit={() => setNotice("Calcul non exécuté : connectez le formulaire à l’API Finance sécurisée avant tout calcul réel.")}/>}
-        {page === "commercial" && activeTenant && <CommercialDocumentsWorkspace tenantId={activeTenant.id} canManage={["OWNER","ADMIN","FINANCE_MANAGER","FINANCE_OPERATOR"].includes(activeTenant.role)}/>}
+        {page === "commercial" && activeTenant && <CommercialDocumentsWorkspace tenantId={activeTenant.id} canManage={["OWNER","ADMIN","FINANCE_MANAGER","FINANCE_OPERATOR"].includes(activeTenant.role)} canIssue={["OWNER","ADMIN","FINANCE_MANAGER"].includes(activeTenant.role)}/>}
         {page === "invoices" && activeTenant && <InvoiceWorkspace key={activeTenant.id} sessionUser={sessionUser} activeTenant={activeTenant} tenants={tenants} onTenantChange={(tenantId) => setActiveTenant(tenants.find((tenant) => tenant.id === tenantId) ?? null)}/>}
         {page === "customers" && activeTenant && <CustomersWorkspace tenantId={activeTenant.id} canManage={["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(activeTenant.role)}/>}
         {page === "payments" && activeTenant && <PaymentsWorkspace tenantId={activeTenant.id} canManage={["OWNER","ADMIN","FINANCE_MANAGER","FINANCE_OPERATOR"].includes(activeTenant.role)}/>}
