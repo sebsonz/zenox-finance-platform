@@ -12,10 +12,9 @@ import { useCreditNotes } from "../modules/billing/freight/invoices/hooks/useCre
 import { useInvoiceDocuments } from "../modules/billing/freight/invoices/hooks/useInvoiceDocuments.js";
 import { useInvoiceList } from "../modules/billing/freight/invoices/hooks/useInvoiceList.js";
 import type { DraftForm, InvoiceDraftRecord } from "../modules/billing/freight/invoices/types/invoice-draft.js";
-import type { Customer, Currency, Jurisdiction } from "../modules/billing/freight/invoices/types/workspace-resources.js";
+import type { Customer, Currency } from "../modules/billing/freight/invoices/types/workspace-resources.js";
 import { FileText, RefreshCw, ShieldCheck } from "lucide-react";
 
-type ApiError = { error?: { code?: string; message?: string } };
 type Invoice = InvoiceDraftRecord;
 type SessionUser = { id: string; email?: string };
 type ActiveTenant = { id: string; tenantCode: string; legalName: string; role: string };
@@ -35,18 +34,6 @@ const emptyTaxFacts = (): TaxFactsForm => ({
   transactionType: "", supplierIfuStatus: "", customerIfuStatus: "", customerTaxStatus: "",
   customerCountryCode: "", supplierCountryCode: "", isImport: "", isExport: "", goodsCategory: "",
 });
-type ApiPayload<T> = { data?: T } & ApiError;
-async function responseError(response: Response, fallback: string): Promise<string> {
-  try { const payload = await response.json() as ApiError; return payload.error?.message ?? fallback; }
-  catch { return fallback; }
-}
-async function readData<T>(response: Response, fallback: string): Promise<T> {
-  if (!response.ok) throw new Error(await responseError(response, fallback));
-  const payload = await response.json() as ApiPayload<T>;
-  if (!payload.data) throw new Error(fallback);
-  return payload.data;
-}
-
 export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantChange }: InvoiceWorkspaceProps) {
   const tenantId = activeTenant.id;
 
