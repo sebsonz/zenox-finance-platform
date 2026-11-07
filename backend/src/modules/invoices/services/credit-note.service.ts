@@ -187,7 +187,7 @@ export const creditNoteService = {
         taxResult: snapshot.result_snapshot,
         documentLabel: "AVOIR",
       });
-      const pdfContent = renderInvoicePdfDocument(documentInvoice, "AVOIR");
+      const pdfContent = await renderInvoicePdfDocument(documentInvoice, "AVOIR");
       const htmlSha256 = createHash("sha256").update(htmlContent, "utf8").digest("hex");
       const pdfSha256 = createHash("sha256").update(pdfContent).digest("hex");
       const inserted = await client.query<{
