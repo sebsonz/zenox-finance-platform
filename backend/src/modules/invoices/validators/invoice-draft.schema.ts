@@ -40,6 +40,7 @@ export const updateInvoiceDraftSchema = createInvoiceDraftSchema.extend({
 
 export const listInvoiceDraftsQuerySchema = z.object({
   status: z.enum(["DRAFT", "ISSUED", "CANCELLED"]).optional(),
+  search: z.string().trim().min(1).max(120).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   cursor: z.string().uuid().optional(),
 }).strict();
