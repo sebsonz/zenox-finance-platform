@@ -48,6 +48,28 @@ describe("invoice document rendering", () => {
     expect(html).toContain("3422.00000000");
   });
 
+  it("renders professional payment terms and references as escaped customer-facing content", () => {
+    const html = renderInvoiceHtmlDocument({
+      invoice: {
+        ...invoice,
+        purchaseOrderReference: "BC-2026-0042",
+        serviceDate: "2026-11-05",
+        paymentTerms: "Paiement à 14 jours",
+        paymentInstructions: "Virement ou Mobile Money",
+        externalReference: "<REF-CLIENT>",
+        footerNote: "Merci de votre confiance.",
+      },
+      appliedRules: [],
+      taxResult: {},
+    });
+    expect(html).toContain("BC-2026-0042");
+    expect(html).toContain("Paiement à 14 jours");
+    expect(html).toContain("Virement ou Mobile Money");
+    expect(html).toContain("&lt;REF-CLIENT&gt;");
+    expect(html).not.toContain("<REF-CLIENT>");
+    expect(html).toContain("Merci de votre confiance.");
+  });
+
   it("creates a valid PDF header and includes every line and total across its pages", () => {
     const pdf = renderInvoicePdfDocument(invoice);
     expect(pdf.subarray(0, 8).toString("ascii")).toBe("%PDF-1.4");
