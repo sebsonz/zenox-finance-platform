@@ -9,7 +9,7 @@ import { tenantRepository } from "../../tenants/repositories/tenant.repository.j
 
 export const commercialDocumentRouter = Router();
 const idSchema = z.string().uuid();
-const decimalSchema = z.string().regex(/^(?:0|[1-9]\d*)(?:\.\d{1,8})?$/);
+const decimalSchema = z.string().regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,8})?$/);
 const lineSchema = z.object({
   description: z.string().trim().min(1).max(1000),
   unit: z.string().trim().max(32).optional(),
@@ -101,6 +101,7 @@ function registerRoutes(kind: Kind) {
       const tenant = idSchema.safeParse(req.params["tenantId"]);
       const body = documentSchema.safeParse(req.body);
       if (!tenant.success || !body.success) { res.status(400).json({ error: { code: "INVALID_COMMERCIAL_DOCUMENT", message: "The document data is invalid." } }); return; }
+      if (body.data.validUntil && body.data.validUntil < new Date().toISOString().slice(0, 10)) { res.status(422).json({ error: { code: "INVALID_VALIDITY_DATE", message: "The validity date cannot be before today." } }); return; }
       try {
         const context = await contextFor(req, res, tenant.data, writePermission); if (!context) return;
         const totals = calculate(body.data.lines);
