@@ -19,7 +19,7 @@ export interface FinanceInvoice {
   paymentInstructions: string | null;
   externalReference: string | null;
   footerNote: string | null;
-  issuerSnapshot: Record<string, unknown>;
+  issuerSnapshot?: Record<string, unknown>;
   customerSnapshot: Record<string, unknown>;
   subtotal: string;
   discountTotal: string;
