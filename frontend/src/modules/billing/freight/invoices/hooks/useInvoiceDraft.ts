@@ -20,12 +20,13 @@ export function useInvoiceDraft({ customers, currencies, setSelectedInvoiceId, s
 
   const resetDraft = useCallback(() => {
     setEditing(null);
+    setSelectedInvoiceId("");
     setForm({
       ...createEmptyInvoiceDraft(),
       customerId: customers[0]?.id ?? "",
       currencyCode: currencies[0]?.code ?? "XOF",
     });
-  }, [customers, currencies]);
+  }, [customers, currencies, setSelectedInvoiceId]);
 
   const startEdit = useCallback((invoice: InvoiceDraftRecord) => {
     if (invoice.status !== "DRAFT") {
