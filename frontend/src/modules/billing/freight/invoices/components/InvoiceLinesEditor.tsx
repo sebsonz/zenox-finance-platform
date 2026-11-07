@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Pencil, Plus, Trash2, GripVertical, PackageSearch } from "lucide-react";
+import { Copy, Pencil, Plus, Trash2, GripVertical } from "lucide-react";
 
 type InvoiceLine = { id?: string; description: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string };
 type Props = {
@@ -9,10 +9,12 @@ type Props = {
   onUpdate: (index: number, field: keyof InvoiceLine, value: string) => void;
   onRemove: (index: number) => void;
   onDuplicate: (index: number) => void;
+  onReorder: (fromIndex: number, toIndex: number) => void;
 };
 
-export function InvoiceLinesEditor({ documentType, lines, onAdd, onUpdate, onRemove, onDuplicate }: Props) {
+export function InvoiceLinesEditor({ documentType, lines, onAdd, onUpdate, onRemove, onDuplicate, onReorder }: Props) {
   const [detailsIndex, setDetailsIndex] = useState<number | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   if (documentType === "CREDIT_NOTE") return null;
   const details = detailsIndex === null ? null : lines[detailsIndex];
 
@@ -20,7 +22,7 @@ export function InvoiceLinesEditor({ documentType, lines, onAdd, onUpdate, onRem
     <div className="invoice-lines-heading">
       <div><h3>Lignes de facture <span className="invoice-lines-count">{lines.length}</span></h3><p>Prix unitaires hors taxes · jusqu’à 500 lignes</p></div>
       <div className="invoice-lines-toolbar">
-        <button className="outline-button" type="button" disabled title="Le catalogue d’articles n’est pas encore exposé par l’API Finance."><PackageSearch size={14}/> Catalogue</button>
+        
         <button className="primary-button" type="button" onClick={onAdd} disabled={lines.length >= 500}><Plus size={14}/> Ajouter une ligne</button>
       </div>
     </div>
@@ -28,8 +30,8 @@ export function InvoiceLinesEditor({ documentType, lines, onAdd, onUpdate, onRem
       <table className="invoice-lines-table">
         <thead><tr><th className="line-grip-col"></th><th>N°</th><th>Désignation</th><th>Qté</th><th>Prix unitaire HT</th><th>Remise %</th><th>TVA %</th><th>Actions</th></tr></thead>
         <tbody>
-          {lines.map((line, index) => <tr key={line.id ?? index}>
-            <td className="line-grip"><GripVertical size={15}/></td>
+          {lines.map((line, index) => <tr key={line.id ?? index} draggable onDragStart={() => setDraggedIndex(index)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggedIndex !== null) onReorder(draggedIndex, index); setDraggedIndex(null); }} onDragEnd={() => setDraggedIndex(null)} className={draggedIndex === index ? "invoice-line-row-dragging" : undefined}>
+            <td className="line-grip" title="Faire glisser pour réordonner"><GripVertical size={15}/></td>
             <td className="line-number">{index + 1}</td>
             <td className="line-description-cell"><input aria-label={`Désignation ligne ${index + 1}`} value={line.description} maxLength={500} placeholder="Désignation du produit ou service" onChange={(event) => onUpdate(index, "description", event.target.value)} required/></td>
             <td><input className="line-number-input" aria-label={`Quantité ligne ${index + 1}`} inputMode="decimal" value={line.quantity} onChange={(event) => onUpdate(index, "quantity", event.target.value)} required/></td>
