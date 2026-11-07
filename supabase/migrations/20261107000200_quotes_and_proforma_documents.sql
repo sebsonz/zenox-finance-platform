@@ -153,5 +153,90 @@ CREATE INDEX IF NOT EXISTS finance_quotes_tenant_status_created_idx ON public.fi
 CREATE INDEX IF NOT EXISTS finance_quote_lines_tenant_quote_idx ON public.finance_quote_lines(tenant_id,quote_id,line_number);
 CREATE INDEX IF NOT EXISTS finance_proformas_tenant_status_created_idx ON public.finance_proformas(tenant_id,status,created_at DESC);
 CREATE INDEX IF NOT EXISTS finance_proforma_lines_tenant_document_idx ON public.finance_proforma_lines(tenant_id,proforma_id,line_number);
+
+-- Status transitions and issued-document immutability are enforced in the database.
+CREATE OR REPLACE FUNCTION public.finance_guard_quote_lifecycle()
+RETURNS trigger LANGUAGE plpgsql AS $function$
+BEGIN
+ IF TG_OP='DELETE' THEN
+   IF OLD.status <> 'DRAFT' THEN RAISE EXCEPTION 'NON_DRAFT_QUOTE_IMMUTABLE' USING ERRCODE='55000'; END IF;
+   RETURN OLD;
+ END IF;
+ IF OLD.status <> 'DRAFT' THEN
+   IF (to_jsonb(NEW)-'status'-'accepted_at'-'rejected_at'-'converted_invoice_id'-'updated_at'-'updated_by_actor_type'-'updated_by_actor_ref')
+      IS DISTINCT FROM
+      (to_jsonb(OLD)-'status'-'accepted_at'-'rejected_at'-'converted_invoice_id'-'updated_at'-'updated_by_actor_type'-'updated_by_actor_ref')
+   THEN RAISE EXCEPTION 'NON_DRAFT_QUOTE_IMMUTABLE' USING ERRCODE='55000'; END IF;
+   IF NOT (
+     (OLD.status='SENT' AND NEW.status IN ('ACCEPTED','REJECTED','EXPIRED','CANCELLED'))
+     OR (OLD.status='ACCEPTED' AND NEW.status='CONVERTED')
+   ) THEN RAISE EXCEPTION 'INVALID_QUOTE_STATUS_TRANSITION' USING ERRCODE='23514'; END IF;
+ ELSE
+   IF NEW.status NOT IN ('DRAFT','SENT','CANCELLED') THEN RAISE EXCEPTION 'INVALID_QUOTE_STATUS_TRANSITION' USING ERRCODE='23514'; END IF;
+   IF NEW.status='SENT' AND (NEW.quote_code IS NULL OR NEW.issue_date IS NULL) THEN
+     RAISE EXCEPTION 'QUOTE_SEND_REQUIRES_NUMBER_AND_ISSUE_DATE' USING ERRCODE='23514';
+   END IF;
+ END IF;
+ RETURN NEW;
+END;
+$function$;
+CREATE OR REPLACE FUNCTION public.finance_guard_quote_lines()
+RETURNS trigger LANGUAGE plpgsql AS $function$
+DECLARE t uuid; q uuid;
+BEGIN
+ t:=CASE WHEN TG_OP='DELETE' THEN OLD.tenant_id ELSE NEW.tenant_id END;
+ q:=CASE WHEN TG_OP='DELETE' THEN OLD.quote_id ELSE NEW.quote_id END;
+ IF EXISTS(SELECT 1 FROM public.finance_quotes WHERE tenant_id=t AND id=q AND status<>'DRAFT') THEN
+  RAISE EXCEPTION 'NON_DRAFT_QUOTE_LINES_IMMUTABLE' USING ERRCODE='55000';
+ END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+ RETURN NEW;
+END;
+$function$;
+CREATE OR REPLACE FUNCTION public.finance_guard_proforma_lifecycle()
+RETURNS trigger LANGUAGE plpgsql AS $function$
+BEGIN
+ IF TG_OP='DELETE' THEN
+  IF OLD.status<>'DRAFT' THEN RAISE EXCEPTION 'ISSUED_PROFORMA_IMMUTABLE' USING ERRCODE='55000'; END IF;
+  RETURN OLD;
+ END IF;
+ IF OLD.status='ISSUED' OR OLD.status='CANCELLED' THEN RAISE EXCEPTION 'ISSUED_PROFORMA_IMMUTABLE' USING ERRCODE='55000'; END IF;
+ IF NEW.status NOT IN ('DRAFT','ISSUED','CANCELLED') THEN RAISE EXCEPTION 'INVALID_PROFORMA_STATUS_TRANSITION' USING ERRCODE='23514'; END IF;
+ IF NEW.status='ISSUED' AND (NEW.proforma_code IS NULL OR NEW.issue_date IS NULL) THEN
+  RAISE EXCEPTION 'PROFORMA_ISSUE_REQUIRES_NUMBER_AND_DATE' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END;
+$function$;
+CREATE OR REPLACE FUNCTION public.finance_guard_proforma_lines()
+RETURNS trigger LANGUAGE plpgsql AS $function$
+DECLARE t uuid; p uuid;
+BEGIN
+ t:=CASE WHEN TG_OP='DELETE' THEN OLD.tenant_id ELSE NEW.tenant_id END;
+ p:=CASE WHEN TG_OP='DELETE' THEN OLD.proforma_id ELSE NEW.proforma_id END;
+ IF EXISTS(SELECT 1 FROM public.finance_proformas WHERE tenant_id=t AND id=p AND status<>'DRAFT') THEN
+  RAISE EXCEPTION 'ISSUED_PROFORMA_LINES_IMMUTABLE' USING ERRCODE='55000';
+ END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+ RETURN NEW;
+END;
+$function$;
+DROP TRIGGER IF EXISTS finance_quote_lifecycle_guard ON public.finance_quotes;
+CREATE TRIGGER finance_quote_lifecycle_guard BEFORE UPDATE OR DELETE ON public.finance_quotes
+ FOR EACH ROW EXECUTE FUNCTION public.finance_guard_quote_lifecycle();
+DROP TRIGGER IF EXISTS finance_quote_lines_guard ON public.finance_quote_lines;
+CREATE TRIGGER finance_quote_lines_guard BEFORE INSERT OR UPDATE OR DELETE ON public.finance_quote_lines
+ FOR EACH ROW EXECUTE FUNCTION public.finance_guard_quote_lines();
+DROP TRIGGER IF EXISTS finance_proforma_lifecycle_guard ON public.finance_proformas;
+CREATE TRIGGER finance_proforma_lifecycle_guard BEFORE UPDATE OR DELETE ON public.finance_proformas
+ FOR EACH ROW EXECUTE FUNCTION public.finance_guard_proforma_lifecycle();
+DROP TRIGGER IF EXISTS finance_proforma_lines_guard ON public.finance_proforma_lines;
+CREATE TRIGGER finance_proforma_lines_guard BEFORE INSERT OR UPDATE OR DELETE ON public.finance_proforma_lines
+ FOR EACH ROW EXECUTE FUNCTION public.finance_guard_proforma_lines();
+REVOKE ALL ON FUNCTION public.finance_guard_quote_lifecycle() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.finance_guard_quote_lines() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.finance_guard_proforma_lifecycle() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.finance_guard_proforma_lines() FROM PUBLIC;
+
 COMMENT ON TABLE public.finance_quotes IS 'Commercial quote lifecycle. A quote is not a tax invoice and carries only estimated taxes until conversion.';
 COMMENT ON TABLE public.finance_proformas IS 'Separate non-fiscal pro-forma document lifecycle; never receives an invoice tax snapshot or fiscal invoice number.';
