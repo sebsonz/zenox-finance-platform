@@ -10,6 +10,7 @@ export const router = createBrowserRouter([
       { index: true },
       { path: "dashboard" },
       { path: "invoices" },
+      { path: "commercial-documents" },
       { path: "customers" },
       { path: "payments" },
       { path: "tax" },
