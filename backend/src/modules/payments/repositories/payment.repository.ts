@@ -92,6 +92,16 @@ async function paymentEvent(
 }
 
 export const paymentRepository = {
+  async listAllocations(client:PoolClient,tenantId:string,paymentId:string) {
+    const result=await client.query(`SELECT a.id,a.payment_id,a.invoice_id,a.amount::text,btrim(a.currency_code) AS currency_code,
+      COALESCE((SELECT sum(x.amount) FROM public.finance_payment_allocation_reversals x WHERE x.tenant_id=a.tenant_id AND x.allocation_id=a.id),0)::text AS reversed_amount,
+      (a.amount-COALESCE((SELECT sum(x.amount) FROM public.finance_payment_allocation_reversals x WHERE x.tenant_id=a.tenant_id AND x.allocation_id=a.id),0))::text AS remaining_amount,
+      a.created_at,i.invoice_code
+      FROM public.finance_payment_allocations a JOIN public.finance_invoices i ON i.tenant_id=a.tenant_id AND i.id=a.invoice_id
+      WHERE a.tenant_id=$1 AND a.payment_id=$2 ORDER BY a.created_at DESC`,[tenantId,paymentId]);
+    return result.rows;
+  },
+
   async findById(client: PoolClient, tenantId: string, paymentId: string): Promise<PaymentRecord | null> {
     const result = await client.query<PaymentRow>(
       `SELECT ${paymentColumns} FROM public.finance_payments WHERE tenant_id=$1 AND id=$2`,

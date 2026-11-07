@@ -78,6 +78,10 @@ export const paymentService = {
     }
   },
 
+  async listAllocations(context:FinancePaymentContext,paymentId:string) {
+    return withTenantTransaction(context.tenantId,client=>paymentRepository.listAllocations(client,context.tenantId,paymentId));
+  },
+
   async get(context: FinancePaymentContext, paymentId: string) {
     return withTenantTransaction(context.tenantId, async (client) => {
       const payment = await paymentRepository.findById(client, context.tenantId, paymentId);

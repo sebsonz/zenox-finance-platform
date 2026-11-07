@@ -46,6 +46,9 @@ userPaymentRouter.post("/:tenantId/payments/:paymentId/allocations",requireUserA
 userPaymentRouter.post("/:tenantId/payments/:paymentId/allocations/:allocationId/reverse",requireUserAuth(),async(req,res,next)=>{
  try{const id=uuid.safeParse(req.params["tenantId"]),pid=uuid.safeParse(req.params["paymentId"]),aid=uuid.safeParse(req.params["allocationId"]),body=reverseAllocationSchema.safeParse(req.body);if(!id.success||!pid.success||!aid.success||!body.success)return fail(res,"INVALID_REVERSAL","Reversal payload is invalid.",400);const ctx=await contextFor(id.data,req,res,"payments:allocate");if(!ctx)return;const idem=key(req,res);if(!idem)return;const result=await paymentService.reverseAllocation(ctx,pid.data,aid.data,body.data,idem);res.status(201).json({data:{allocation:result,correlationId:ctx.correlationId}});}catch(e){serviceError(e,res,next,String(res.locals["correlationId"]??""));}
 });
+userPaymentRouter.get("/:tenantId/payments/:paymentId/allocations",requireUserAuth(),async(req,res,next)=>{
+ try{const id=uuid.safeParse(req.params["tenantId"]),pid=uuid.safeParse(req.params["paymentId"]);if(!id.success||!pid.success)return fail(res,"INVALID_ID","Invalid payment ID.",400);const ctx=await contextFor(id.data,req,res,"payments:read");if(!ctx)return;const allocations=await paymentService.listAllocations(ctx,pid.data);res.json({data:{allocations,correlationId:ctx.correlationId}});}catch(e){next(e);}
+});
 userPaymentRouter.get("/:tenantId/payments/:paymentId/events",requireUserAuth(),async(req,res,next)=>{
  try{const id=uuid.safeParse(req.params["tenantId"]),pid=uuid.safeParse(req.params["paymentId"]);if(!id.success||!pid.success)return fail(res,"INVALID_ID","Invalid payment ID.",400);const ctx=await contextFor(id.data,req,res,"payments:read");if(!ctx)return;const events=await paymentEventsService.listPaymentEvents(ctx,pid.data,100);res.json({data:{events,correlationId:ctx.correlationId}});}catch(e){next(e);}
 });
