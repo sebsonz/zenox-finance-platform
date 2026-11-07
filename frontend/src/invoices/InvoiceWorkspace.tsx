@@ -408,6 +408,16 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     finally { setBusy(false); }
   }
 
+  function openCreditNoteDocument(id: string) {
+    // Open synchronously from the user's click so the authenticated document
+    // response can be previewed and printed without a popup-blocker race.
+    window.open(
+      `/api/v1/user/tenants/${tenantId}/invoices/credit-notes/${id}/document`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  }
+
   const selectedInvoice = invoices.find((invoice) => invoice.id === selectedInvoiceId) ?? editing;
   const creditedTotal = creditNotes.reduce((sum, note) => sum + Number(note.grandTotal || 0), 0);
   const remainingCredit = Math.max(0, Number(selectedInvoice?.grandTotal ?? 0) - creditedTotal);
@@ -538,7 +548,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
             <label>Montant à créditer ({selectedInvoice.currencyCode})<input inputMode="decimal" value={creditAmount} onChange={(event) => setCreditAmount(event.target.value)} placeholder={`Vide = avoir intégral · reste disponible : ${remainingCredit.toFixed(selectedInvoice.currencyMinorUnit)}`}/></label>
             <div className="credit-note-button"><button className="primary-button" disabled={busy || !canCredit || creditReason.trim().length < 3 || (creditAmount.trim().length > 0 && !/^(?:0|[1-9][0-9]{0,15})(?:[.][0-9]{1,8})?$/.test(creditAmount.trim()))} onClick={() => void issueCreditNote(selectedInvoice)}>{creditAmount.trim() ? "Émettre l’avoir partiel" : "Émettre l’avoir intégral"}</button></div>
           </div>
-          {creditNotes.length > 0 && <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Avoir</th><th>Type</th><th>Motif</th><th>Montant</th><th>Date</th><th>Documents</th></tr></thead><tbody>{creditNotes.map((note) => <tr key={note.id}><td><strong>{note.creditNoteCode}</strong></td><td>{note.creditKind === "PARTIAL" ? "Partiel" : "Intégral"}</td><td>{note.reason}</td><td>{note.currencyCode} {note.grandTotal}</td><td>{new Date(note.issuedAt).toLocaleDateString("fr-FR")}</td><td><div className="invoice-actions"><button className="small-action" title="HTML" onClick={() => void downloadCreditNote(note.id, "document", note.creditNoteCode)}><Download size={14}/></button><button className="small-action" title="PDF" onClick={() => void downloadCreditNote(note.id, "document.pdf", note.creditNoteCode)}><FileText size={14}/></button></div></td></tr>)}</tbody></table></div>}
+          {creditNotes.length > 0 && <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Avoir</th><th>Type</th><th>Motif</th><th>Montant</th><th>Date</th><th>Documents</th></tr></thead><tbody>{creditNotes.map((note) => <tr key={note.id}><td><strong>{note.creditNoteCode}</strong></td><td>{note.creditKind === "PARTIAL" ? "Partiel" : "Intégral"}</td><td>{note.reason}</td><td>{note.currencyCode} {note.grandTotal}</td><td>{new Date(note.issuedAt).toLocaleDateString("fr-FR")}</td><td><div className="invoice-actions"><button className="small-action" title="Aperçu / imprimer" onClick={() => openCreditNoteDocument(note.id)}><Printer size={14}/></button><button className="small-action" title="HTML" onClick={() => void downloadCreditNote(note.id, "document", note.creditNoteCode)}><Download size={14}/></button><button className="small-action" title="PDF" onClick={() => void downloadCreditNote(note.id, "document.pdf", note.creditNoteCode)}><FileText size={14}/></button></div></td></tr>)}</tbody></table></div>}
         </section>}
     {notice && <div className="notice invoice-notice" role="status"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Fermer">×</button></div>}
   </section>;
