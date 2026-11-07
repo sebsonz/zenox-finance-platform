@@ -93,6 +93,7 @@ export const invoiceDraftService = {
       if (!customer) throw new InvoiceDraftServiceError("CUSTOMER_NOT_FOUND", "The customer was not found in this tenant.");
       if (customer.status !== "ACTIVE") throw new InvoiceDraftServiceError("CUSTOMER_NOT_ACTIVE", "Archived customers cannot be used for new invoices.");
 
+      const issuerSnapshot = await loadIssuerSnapshot(client, context.tenantId);
       const totals = calculateInvoiceTotals({
         currency: currency.code,
         currencyDecimalPlaces: currency.minorUnit,
