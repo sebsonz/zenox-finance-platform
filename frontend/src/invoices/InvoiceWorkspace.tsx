@@ -539,12 +539,12 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
           remainingCredit={remainingCredit}
           busy={busy}
           canCredit={canCredit}
-          onOpenInvoice={openIssuedDocument}
-          onDownloadInvoice={downloadDocument}
-          onLoadCreditNotes={loadCreditNotes}
+          onOpenInvoice={(item) => { const invoice = invoices.find((candidate) => candidate.id === item.id); if (invoice) openIssuedDocument(invoice); }}
+          onDownloadInvoice={(item, format) => { const invoice = invoices.find((candidate) => candidate.id === item.id); if (invoice) void downloadDocument(invoice, format); }}
+          onLoadCreditNotes={(item) => { const invoice = invoices.find((candidate) => candidate.id === item.id); if (invoice) void loadCreditNotes(invoice); }}
           onCreditReasonChange={setCreditReason}
           onCreditAmountChange={setCreditAmount}
-          onIssueCreditNote={issueCreditNote}
+          onIssueCreditNote={(item) => { const invoice = invoices.find((candidate) => candidate.id === item.id); if (invoice) void issueCreditNote(invoice); }}
           onOpenCreditNote={openCreditNoteDocument}
           onDownloadCreditNote={downloadCreditNote}
         />
