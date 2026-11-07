@@ -165,7 +165,7 @@ async function prepare(): Promise<void> {
     await client.query("GRANT SELECT, INSERT ON public.finance_invoice_relationships, public.finance_invoice_adjustments TO finance_runtime_test");
     await client.query("GRANT SELECT, INSERT, UPDATE ON public.finance_invoice_adjustment_sequences TO finance_runtime_test");
     await client.query("GRANT SELECT, INSERT, UPDATE ON public.finance_recurring_invoice_schedules, public.finance_recurring_invoice_lines TO finance_runtime_test");
-    await client.query("GRANT SELECT, INSERT ON public.finance_recurring_invoice_runs, public.finance_proforma_conversions TO finance_runtime_test");
+    await client.query("GRANT SELECT, INSERT ON public.finance_recurring_invoice_runs, public.finance_proforma_conversions, public.finance_commercial_document_artifacts TO finance_runtime_test");
     await client.query("REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.finance_invoice_relationships, public.finance_invoice_adjustments, public.finance_recurring_invoice_runs FROM finance_runtime_test");
 
 
