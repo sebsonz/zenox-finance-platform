@@ -120,7 +120,7 @@ userCommercialDocumentsRouter.post("/:tenantId/quotes/:quoteId/convert",requireU
   const ctx=await contextFor(id.data,req,res,"invoices:create");if(!ctx)return;
   const invoice=await withTenantTransaction(id.data,async c=>{
    const found=await c.query("SELECT * FROM public.finance_quotes WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,qid.data]);
-   const q=found.rows[0];if(!q||q.status!=="ACCEPTED")throw new Error("QUOTE_NOT_ACCEPTED");
+   const q=found.rows[0];if(!q)throw new Error("QUOTE_NOT_ACCEPTED");if(q.status==="CONVERTED"&&q.converted_invoice_id){const existing=await invoiceRepository.findById(c,id.data,q.converted_invoice_id);if(existing)return existing;throw new Error("QUOTE_CONVERSION_RECORD_INVALID");}if(q.status!=="ACCEPTED")throw new Error("QUOTE_NOT_ACCEPTED");
    const lineResult=await c.query<{description:string;item_code:string|null;unit_label:string|null;line_note:string|null;quantity:string;unit_price:string;discount_percent:string;indicative_tax_rate:string}>("SELECT description,item_code,unit_label,line_note,quantity::text,unit_price::text,discount_percent::text,indicative_tax_rate::text FROM public.finance_quote_lines WHERE tenant_id=$1 AND quote_id=$2 ORDER BY line_number",[id.data,qid.data]);
    const customer=await customerRepository.findById(c,q.customer_id);
    if(!customer||customer.status!=="ACTIVE")throw new Error("CUSTOMER_NOT_ACTIVE");
