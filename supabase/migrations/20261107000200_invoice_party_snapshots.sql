@@ -56,6 +56,7 @@ UPDATE public.finance_invoices AS i
          'postalCode', c.address_postal_code
        ))
   FROM public.finance_tenants AS t
+  JOIN public.finance_customers AS c ON c.tenant_id = t.id
   LEFT JOIN public.finance_tenant_profiles AS p ON p.tenant_id = t.id
   LEFT JOIN LATERAL (
     SELECT address_line1, address_line2, city, region, postal_code, country_code
@@ -69,8 +70,7 @@ UPDATE public.finance_invoices AS i
               valid_from DESC, id
      LIMIT 1
   ) AS a ON true
-  JOIN public.finance_customers AS c
-    ON c.tenant_id = t.id AND c.id = i.customer_id
  WHERE i.tenant_id = t.id
+   AND c.id = i.customer_id
    AND i.status = 'DRAFT'
    AND i.issuer_snapshot = '{}'::jsonb;
