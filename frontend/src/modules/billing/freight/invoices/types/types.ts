@@ -1,5 +1,3 @@
-import type { ChangeEvent } from "react";
-
 export type InvoiceOption = { id: string; invoiceCode: string | null; status: "DRAFT" | "ISSUED" | "CANCELLED"; documentType: "STANDARD" | "DEPOSIT" | "BALANCE"; grandTotal: string; currencyCode: string; customerId: string; customerSnapshot?: { legalName?: string } };
 export type InvoiceCustomer = { id: string; customerCode: string; legalName: string; displayName: string | null };
 export type InvoiceCurrency = { code: string; name: string };
