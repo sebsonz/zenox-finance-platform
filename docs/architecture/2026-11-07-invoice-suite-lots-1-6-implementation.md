@@ -49,7 +49,7 @@ This branch is additive and independent of ZENOX FRET. No hosted database migrat
 ## Database migrations added
 - `20261107000100_professional_invoice_document_metadata.sql`
 - `20261107000200_quotes_and_proforma_documents.sql`
-- `20261107000300_invoice_adjustments_and_recurring_billing.sql`
+- `20261107000300_invoice_advances_adjustments_and_recurring.sql`
 - `20261107000400_invoice_advance_applied_amount.sql`
 - `20261107000500_commercial_ledger_guards.sql`
 - `20261107000600_invoice_line_classification.sql`
