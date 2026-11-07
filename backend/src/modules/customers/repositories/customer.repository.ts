@@ -9,6 +9,11 @@ export interface FinanceCustomer {
   displayName: string | null;
   email: string | null;
   phone: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  addressRegion: string | null;
+  addressCity: string | null;
+  addressPostalCode: string | null;
   countryCode: string;
   taxIdentifier: string | null;
   registrationIdentifier: string | null;
@@ -26,6 +31,11 @@ interface CustomerRow {
   display_name: string | null;
   email: string | null;
   phone: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  address_region: string | null;
+  address_city: string | null;
+  address_postal_code: string | null;
   country_code: string;
   tax_identifier: string | null;
   registration_identifier: string | null;
@@ -44,6 +54,11 @@ function mapCustomer(row: CustomerRow): FinanceCustomer {
     displayName: row.display_name,
     email: row.email,
     phone: row.phone,
+    addressLine1: row.address_line1,
+    addressLine2: row.address_line2,
+    addressRegion: row.address_region,
+    addressCity: row.address_city,
+    addressPostalCode: row.address_postal_code,
     countryCode: row.country_code,
     taxIdentifier: row.tax_identifier,
     registrationIdentifier: row.registration_identifier,
@@ -55,7 +70,8 @@ function mapCustomer(row: CustomerRow): FinanceCustomer {
 }
 
 const customerColumns = `id, customer_code, customer_type, legal_name, display_name,
-  email, phone, country_code, tax_identifier, registration_identifier,
+  email, phone, address_line1, address_line2, address_region, address_city, address_postal_code,
+  country_code, tax_identifier, registration_identifier,
   default_currency, status, created_at, updated_at`;
 
 export const customerRepository = {
@@ -68,16 +84,19 @@ export const customerRepository = {
     const result = await client.query<CustomerRow>(
       `INSERT INTO public.finance_customers (
         tenant_id, customer_code, customer_type, legal_name, display_name,
-        email, phone, country_code, tax_identifier, registration_identifier,
+        email, phone, address_line1, address_line2, address_region, address_city, address_postal_code,
+        country_code, tax_identifier, registration_identifier,
         default_currency, external_system, external_customer_id, metadata,
         created_by_principal_id
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19::jsonb, $20
       )
       RETURNING ${customerColumns}`,
       [
         tenantId, input.customerCode, input.customerType, input.legalName,
         input.displayName ?? null, input.email ?? null, input.phone ?? null,
+        input.addressLine1 ?? null, input.addressLine2 ?? null, input.addressRegion ?? null,
+        input.addressCity ?? null, input.addressPostalCode ?? null,
         input.countryCode, input.taxIdentifier ?? null,
         input.registrationIdentifier ?? null, input.defaultCurrency ?? null,
         input.externalSystem ?? null, input.externalCustomerId ?? null,
@@ -111,6 +130,11 @@ export const customerRepository = {
       displayName: "display_name",
       email: "email",
       phone: "phone",
+      addressLine1: "address_line1",
+      addressLine2: "address_line2",
+      addressRegion: "address_region",
+      addressCity: "address_city",
+      addressPostalCode: "address_postal_code",
       countryCode: "country_code",
       taxIdentifier: "tax_identifier",
       registrationIdentifier: "registration_identifier",
