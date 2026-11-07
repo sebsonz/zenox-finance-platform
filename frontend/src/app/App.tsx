@@ -5,12 +5,13 @@ import { TaxWorkspace } from "../modules/tax/TaxWorkspace.js";
 import { ComingSoon } from "../shared/components/ComingSoon.js";
 import { pageFromPath, pagePaths, type Page } from "./navigation.js";
 import {
-  Bell, Building2, ChevronDown, CircleHelp, CreditCard, FileText, Globe2, Users,
+  Bell, Building2, ChevronDown, CircleHelp, CreditCard, FileText, FilePlus2, Globe2, Users,
   LayoutDashboard, Menu, Search, Settings2, ShieldCheck, WalletCards, X
 } from "lucide-react";
 import { RegistrationWorkspace } from "../auth/RegistrationWorkspace.js";
 import { PlatformEntryWorkspace } from "../auth/PlatformEntryWorkspace.js";
 import { InvoiceWorkspace } from "../invoices/InvoiceWorkspace.js";
+import { CommercialDocumentsWorkspace } from "../features/commercial/CommercialDocumentsWorkspace.js";
 import { CustomersWorkspace } from "../features/customers/CustomersWorkspace.js";
 import { PlatformReviewWorkspace } from "../platform/PlatformReviewWorkspace.js";
 import { PlatformAdminDashboard } from "../platform/PlatformAdminDashboard.js";
@@ -29,6 +30,7 @@ async function readEntryData<T>(response: Response): Promise<T> {
 const navigation: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Vue d’ensemble", icon: LayoutDashboard },
   { id: "invoices", label: "Factures", icon: FileText },
+  { id: "commercial", label: "Devis & pro forma", icon: FilePlus2 },
   { id: "customers", label: "Clients", icon: Users },
   { id: "payments", label: "Paiements", icon: CreditCard },
   { id: "tax", label: "Moteur fiscal", icon: Globe2 },
@@ -167,6 +169,7 @@ export function App() {
         {notice && <div className="notice"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Fermer"><X size={16}/></button></div>}
         {page === "dashboard" && activeTenant && <Dashboard onNavigate={navigate} tenantId={activeTenant.id}/>}
         {page === "tax" && <TaxWorkspace amount={amount} setAmount={setAmount} currency={currency} setCurrency={setCurrency} onSubmit={() => setNotice("Calcul non exécuté : connectez le formulaire à l’API Finance sécurisée avant tout calcul réel.")}/>}
+        {page === "commercial" && activeTenant && <CommercialDocumentsWorkspace tenantId={activeTenant.id} canManage={["OWNER","ADMIN","FINANCE_MANAGER","FINANCE_OPERATOR"].includes(activeTenant.role)}/>}
         {page === "invoices" && activeTenant && <InvoiceWorkspace key={activeTenant.id} sessionUser={sessionUser} activeTenant={activeTenant} tenants={tenants} onTenantChange={(tenantId) => setActiveTenant(tenants.find((tenant) => tenant.id === tenantId) ?? null)}/>}
         {page === "customers" && activeTenant && <CustomersWorkspace tenantId={activeTenant.id} canManage={["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(activeTenant.role)}/>}
         {page === "payments" && <ComingSoon icon={WalletCards} title="Paiements & allocations" description="Les paiements, affectations et soldes seront servis par le backend Finance, avec idempotence et contrôle multi-tenant."/>}
