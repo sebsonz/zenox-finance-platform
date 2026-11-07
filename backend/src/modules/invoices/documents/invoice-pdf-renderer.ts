@@ -116,7 +116,7 @@ export async function renderInvoicePdfDocument(invoice: FinanceInvoice, document
 
   const issuer = invoice.issuerSnapshot ?? {};
   const customer = invoice.customerSnapshot;
-  const issuerName = text(issuer["tradeName"] ?? issuer["legalName"], "ZENOX Finance");
+  const issuerName = text(issuer["tradeName"] || issuer["legalName"], "ZENOX Finance");
   const issuerDetails = partyLines(issuer);
   const customerName = text(customer["legalName"] ?? customer["displayName"]);
   const customerDetails = partyLines(customer);
