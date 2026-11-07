@@ -14,6 +14,42 @@ export class InvoiceDraftServiceError extends Error {
   }
 }
 
+async function loadIssuerSnapshot(client: import("pg").PoolClient, tenantId: string): Promise<Record<string, unknown>> {
+  const result = await client.query<{
+    legal_name: string; country_code: string; trade_name: string | null; website_url: string | null;
+    general_email: string | null; general_phone: string | null; address_line1: string | null;
+    address_line2: string | null; city: string | null; region: string | null;
+    postal_code: string | null; address_country_code: string | null;
+  }>(
+    `SELECT t.legal_name, t.country_code, p.trade_name, p.website_url, p.general_email, p.general_phone,
+            a.address_line1, a.address_line2, a.city, a.region, a.postal_code,
+            a.country_code AS address_country_code
+       FROM public.finance_tenants t
+       LEFT JOIN public.finance_tenant_profiles p ON p.tenant_id = t.id
+       LEFT JOIN LATERAL (
+         SELECT address_line1, address_line2, city, region, postal_code, country_code
+           FROM public.finance_tenant_addresses
+          WHERE tenant_id = t.id AND status = 'ACTIVE'
+            AND valid_from <= CURRENT_DATE AND (valid_to IS NULL OR valid_to >= CURRENT_DATE)
+          ORDER BY is_primary DESC,
+                   CASE address_type WHEN 'BILLING' THEN 0 WHEN 'REGISTERED' THEN 1 WHEN 'BUSINESS' THEN 2 ELSE 3 END,
+                   valid_from DESC, id
+          LIMIT 1
+       ) a ON true
+      WHERE t.id = $1 LIMIT 1`,
+    [tenantId],
+  );
+  const issuer = result.rows[0];
+  if (!issuer) throw new Error("INVOICE_ISSUER_TENANT_NOT_FOUND");
+  return {
+    legalName: issuer.legal_name, tradeName: issuer.trade_name,
+    countryCode: issuer.address_country_code ?? issuer.country_code,
+    address: issuer.address_line1, addressLine2: issuer.address_line2,
+    city: issuer.city, region: issuer.region, postalCode: issuer.postal_code,
+    email: issuer.general_email, phone: issuer.general_phone, websiteUrl: issuer.website_url,
+  };
+}
+
 export const invoiceDraftService = {
   async create(context: FinanceInvoiceOperationContext, input: CreateInvoiceDraftInput): Promise<FinanceInvoice> {
     const currency = await currencyRepository.findActiveByCode(input.currencyCode);
@@ -24,6 +60,7 @@ export const invoiceDraftService = {
       if (!customer) throw new InvoiceDraftServiceError("CUSTOMER_NOT_FOUND", "The customer was not found in this tenant.");
       if (customer.status !== "ACTIVE") throw new InvoiceDraftServiceError("CUSTOMER_NOT_ACTIVE", "Archived customers cannot be used for new invoices.");
 
+      const issuerSnapshot = await loadIssuerSnapshot(client, context.tenantId);
       const totals = calculateInvoiceTotals({
         currency: currency.code,
         currencyDecimalPlaces: currency.minorUnit,
@@ -35,7 +72,7 @@ export const invoiceDraftService = {
         })),
       });
       const invoice = await invoiceRepository.createDraft(
-        client, context, input, currency.minorUnit, totals, totals.lines, customer,
+        client, context, input, currency.minorUnit, totals, totals.lines, customer, issuerSnapshot,
       );
       await recordInvoiceAudit(client, context, "invoice.draft.created", "INVOICE", invoice.id, {
         status: invoice.status,
@@ -69,7 +106,7 @@ export const invoiceDraftService = {
 
       const invoice = await invoiceRepository.updateDraft(
         client, context, invoiceId, input.expectedUpdatedAt, input, currency.minorUnit,
-        totals, totals.lines, customer,
+        totals, totals.lines, customer, issuerSnapshot,
       );
       if (!invoice) {
         throw new InvoiceDraftServiceError(
