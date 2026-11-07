@@ -1,5 +1,5 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { Decimal } from "decimal.js";
 import { z } from "zod";
 import { requireUserAuth } from "../../../middleware/require-user-auth.js";
@@ -301,8 +301,7 @@ userCommercialDocumentsRouter.post("/:tenantId/recurring-invoices",requireUserAu
  try{const id=uuid.safeParse(req.params["tenantId"]),body=recurringSchema.safeParse(req.body);if(!id.success||!body.success)return fail(res,"INVALID_RECURRING_SCHEDULE","Schedule payload is invalid.",400);const ctx=await contextFor(id.data,req,res,"invoices:create");if(!ctx)return;
  const currency=await currencyRepository.findActiveByCode(body.data.currencyCode);if(!currency)return fail(res,"CURRENCY_NOT_SUPPORTED","Currency is unavailable.",422);
  const result=await withTenantTransaction(id.data,async c=>{const customer=await customerRepository.findById(c,body.data.customerId);if(!customer||customer.status!=="ACTIVE")throw new Error("CUSTOMER_NOT_ACTIVE");
- const seq=await c.query("SELECT COALESCE(max((regexp_match(schedule_code,'([0-9]+)$'))[1]::bigint),0)+1 AS n FROM public.finance_recurring_invoice_schedules WHERE tenant_id=$1",[id.data]);
- const code="REC-"+String(seq.rows[0].n).padStart(6,"0");
+ const code="REC-"+randomUUID().replace(/-/g,"").slice(0,10).toUpperCase();
  const inserted=await c.query("INSERT INTO public.finance_recurring_invoice_schedules(tenant_id,customer_id,schedule_code,status,currency_code,currency_minor_unit,frequency,interval_count,starts_on,ends_on,next_run_on,due_days,auto_issue,document_metadata,notes,created_by_actor_type,created_by_actor_ref,updated_by_actor_type,updated_by_actor_ref) VALUES($1,$2,$3,'DRAFT',$4,$5,$6,$7,$8,$9,$8,$10,false,$11::jsonb,$12,'USER',$13,'USER',$13) RETURNING *",[id.data,customer.id,code,currency.code,currency.minorUnit,body.data.frequency,body.data.intervalCount,body.data.startsOn,body.data.endsOn??null,body.data.dueDays,JSON.stringify(body.data.document??{}),body.data.notes??null,ctx.actor.ref]);
  const schedule=inserted.rows[0];for(let i=0;i<body.data.lines.length;i++){const l=body.data.lines[i]!;await c.query("INSERT INTO public.finance_recurring_invoice_lines(tenant_id,schedule_id,line_number,description,item_code,unit_label,quantity,unit_price,discount_percent,tax_rate_percent) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",[id.data,schedule.id,i+1,l.description,l.itemCode??null,l.unit??null,l.quantity,l.unitPrice,l.discountPercent,l.taxRatePercent]);}
  await recordInvoiceAudit(c,ctx,"recurring_invoice.schedule_created","RECURRING_INVOICE_SCHEDULE",schedule.id,{lineCount:body.data.lines.length});return schedule;});
