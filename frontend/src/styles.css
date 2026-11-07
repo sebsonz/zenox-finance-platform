@@ -255,3 +255,13 @@
 .invoice-customer-dialog form>footer{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:15px;border-top:1px solid #edf0f5}
 .invoice-customer-dialog form>footer button{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px}
 @media(max-width:700px){.invoice-parties-grid,.invoice-tab-panel,.invoice-terms-grid{grid-template-columns:1fr}.invoice-editor-tabbar{gap:0;overflow-x:auto}.invoice-editor-tabbar button{white-space:nowrap}.invoice-customer-dialog{padding:15px}.invoice-customer-form-grid{grid-template-columns:1fr}.invoice-customer-form-grid label.wide{grid-column:auto}}
+
+
+/* Composer section navigation aligned with the approved invoice creation screen */
+.invoice-composer-tabs{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:5px;margin:0 0 14px;padding:5px 8px;border-bottom:1px solid #e5eaf2;background:#fff}
+.invoice-composer-tabs button{display:inline-flex;align-items:center;gap:7px;padding:10px 14px;border:0;border-bottom:2px solid transparent;border-radius:7px 7px 0 0;background:transparent;color:#52627b;font-size:11px;font-weight:700;cursor:pointer}
+.invoice-composer-tabs button span{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#eef2f8;color:#63748c;font-size:9px}
+.invoice-composer-tabs button.active{border-bottom-color:#145ee6;background:#f4f7ff;color:#145ee6}
+.invoice-composer-tabs button.active span{background:#dce8ff;color:#145ee6}
+#invoice-composer-information,#invoice-composer-parties,#invoice-composer-lines,#invoice-composer-terms{scroll-margin-top:72px}
+@media(max-width:600px){.invoice-composer-tabs{overflow-x:auto}.invoice-composer-tabs button{white-space:nowrap;padding:9px 10px}}
