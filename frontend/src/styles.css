@@ -113,3 +113,62 @@
  .commercial-document-preview { break-inside:avoid; }
  .commercial-preview-sheet { box-shadow:none; border:0; padding:0; }
 }
+
+
+/* Professional multi-line invoice editor */
+.invoice-editor-shell{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+.invoice-editor-main{min-width:0}
+.invoice-summary-sidebar{position:sticky;top:88px;display:grid;gap:14px}
+.invoice-summary-card{background:#fff;border:1px solid #e5eaf2;border-radius:12px;padding:17px;box-shadow:0 3px 12px #1d2b4208}
+.invoice-summary-card h3{display:flex;align-items:center;gap:9px;margin:0 0 16px;font:750 13px Manrope,sans-serif;color:#23334d}
+.invoice-summary-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;background:#edf3ff;color:#3267de}
+.invoice-summary-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;color:#647187;font-size:11px;border-bottom:1px solid #f0f2f6}
+.invoice-summary-row strong{color:#26354c;font-weight:700;white-space:nowrap}
+.invoice-summary-row.total{margin-top:5px;padding:12px 10px;border:0;border-radius:8px;background:#eaf1ff;color:#183b82;font-weight:700}
+.invoice-summary-row.total strong{font:800 18px Manrope;color:#1746a0}
+.invoice-summary-hint{font-size:10px;line-height:1.6;color:#8a96a8;margin:12px 0 0}
+.invoice-editor-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:16px;background:#fff;border:1px solid #e8edf4;border-radius:11px}
+.invoice-editor-meta label,.invoice-party-card label{display:grid;gap:7px;min-width:0;color:#526177;font-size:10px;font-weight:700}
+.invoice-editor-meta input,.invoice-editor-meta select,.invoice-party-card input,.invoice-party-card select{width:100%;height:39px;min-width:0;padding:0 10px;border:1px solid #dfe5ee;border-radius:7px;background:#fff;color:#344157;font-size:11px}
+.invoice-parties-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.invoice-party-card{display:grid;gap:12px;padding:16px;background:#fff;border:1px solid #e8edf4;border-radius:11px}
+.invoice-party-card h3{margin:0;font:750 13px Manrope;color:#293951}
+.invoice-lines-section{display:grid;gap:12px;min-width:0}
+.invoice-lines-heading{align-items:center;margin:0}
+.invoice-lines-heading h3{font-size:14px}
+.invoice-lines-heading p{margin:5px 0 0;color:#8995a7;font-size:10px}
+.invoice-lines-count{display:inline-grid;place-items:center;min-width:22px;height:22px;margin-left:5px;padding:0 6px;border-radius:12px;background:#edf3ff;color:#3267de;font:700 10px "DM Sans",sans-serif}
+.invoice-lines-toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.invoice-lines-table-wrap{width:100%;overflow-x:auto;border:1px solid #e5eaf2;border-radius:10px;background:#fff}
+.invoice-lines-table{width:100%;min-width:850px;border-collapse:separate;border-spacing:0}
+.invoice-lines-table th{padding:12px 9px;background:#f7f9fc;border-bottom:1px solid #e8edf4;color:#718096;text-align:left;font-size:9px;font-weight:800;letter-spacing:.35px;white-space:nowrap}
+.invoice-lines-table td{padding:7px 6px;border-bottom:1px solid #eef1f5;color:#47566d;font-size:10px;vertical-align:middle}
+.invoice-lines-table tr:last-child td{border-bottom:0}
+.invoice-lines-table input{width:100%;height:35px;min-width:0;padding:0 8px;border:1px solid #e5eaf1;border-radius:6px;background:#fff;color:#29384f;font-size:10px;outline:none}
+.invoice-lines-table input:focus{border-color:#7396e7;box-shadow:0 0 0 2px #4876db13}
+.invoice-lines-table .line-description-cell{min-width:210px}
+.invoice-lines-table .line-number-input{min-width:65px;text-align:right}
+.invoice-lines-table .line-money-input{min-width:100px;text-align:right}
+.invoice-lines-table .line-number{width:30px;color:#8a96a8;text-align:center}
+.invoice-lines-table .line-grip{width:24px;color:#b1bbc9;text-align:center}
+.invoice-lines-table .line-grip-col{width:24px}
+.invoice-line-actions{display:flex;align-items:center;gap:4px}
+.invoice-line-actions .small-action{width:27px;height:27px}
+.small-action.danger{color:#c64d56}
+.small-action:disabled{opacity:.35;cursor:not-allowed}
+.invoice-line-details{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:15px;border:1px solid #dce6f8;border-radius:10px;background:#f8faff}
+.invoice-line-details-heading{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between}
+.invoice-line-details-heading strong{font-size:11px;color:#2e4160}
+.invoice-line-details-heading p{margin:4px 0 0;font-size:9px;color:#8794a8}
+.invoice-line-details label{display:grid;gap:6px;color:#66748a;font-size:9px;font-weight:700}
+.invoice-line-details input{width:100%;height:34px;padding:0 8px;border:1px solid #dfe5ee;border-radius:6px;font-size:10px}
+.invoice-notes-card{display:grid;gap:12px;padding:16px;background:#fff;border:1px solid #e8edf4;border-radius:11px}
+.invoice-notes-card label{display:grid;gap:7px;color:#526177;font-size:10px;font-weight:700}
+.invoice-notes-card textarea{width:100%;min-height:78px;resize:vertical;padding:10px;border:1px solid #dfe5ee;border-radius:8px;font:400 11px "DM Sans",sans-serif}
+.invoice-editor-status{display:flex;align-items:center;gap:7px;color:#8491a5;font-size:10px}
+.invoice-editor-status.saved{color:#18845b}
+.invoice-editor-status.error{color:#bd4851}
+.invoice-editor-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+@media(max-width:1100px){.invoice-editor-shell{grid-template-columns:minmax(0,1fr) 300px}.invoice-editor-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.invoice-line-details{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:850px){.invoice-editor-shell{grid-template-columns:1fr}.invoice-summary-sidebar{position:static;grid-template-columns:repeat(2,minmax(0,1fr))}.invoice-summary-card:last-child{grid-column:1/-1}}
+@media(max-width:600px){.invoice-parties-grid,.invoice-summary-sidebar{grid-template-columns:1fr}.invoice-summary-card:last-child{grid-column:auto}.invoice-editor-meta{grid-template-columns:1fr 1fr}.invoice-line-details{grid-template-columns:1fr 1fr}.invoice-lines-heading{align-items:flex-start;flex-direction:column}.invoice-lines-toolbar{width:100%}.invoice-lines-toolbar>*{flex:1}}
