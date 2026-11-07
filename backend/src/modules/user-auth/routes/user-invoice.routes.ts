@@ -406,7 +406,10 @@ userInvoiceRouter.get(
 );
 
 
-const creditNoteRequestSchema = z.object({ reason: z.string().trim().min(3).max(2000) }).strict();
+const creditNoteRequestSchema = z.object({
+  reason: z.string().trim().min(3).max(2000),
+  amount: z.string().trim().regex(/^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,8})?$/).optional(),
+}).strict();
 
 userInvoiceRouter.get(
   "/:tenantId/invoices/:invoiceId/credit-notes",
@@ -445,11 +448,13 @@ userInvoiceRouter.post(
     try {
       const context = await resolveInvoiceWriteContext(tenant.data, req, res, "invoices:credit");
       if (!context) return;
-      const creditNote = await creditNoteService.issueFullReversal(context, invoiceId.data, body.data.reason);
+      const creditNote = body.data.amount
+        ? await creditNoteService.issuePartial(context, invoiceId.data, body.data.reason, body.data.amount)
+        : await creditNoteService.issueFullReversal(context, invoiceId.data, body.data.reason);
       res.status(201).json({ data: { creditNote, correlationId: context.correlationId } });
     } catch (error) {
       if (error instanceof CreditNoteServiceError) {
-        const status = error.code === "CREDIT_NOTE_ALREADY_EXISTS" || error.code === "SOURCE_INVOICE_NOT_ISSUED" ? 409 : 422;
+        const status = error.code === "CREDIT_NOTE_ALREADY_EXISTS" || error.code === "SOURCE_INVOICE_NOT_ISSUED" || error.code === "CREDIT_AMOUNT_EXCEEDS_REMAINING" ? 409 : 422;
         res.status(status).json({ error: { code: error.code, message: error.message, correlationId: String(res.locals["correlationId"] ?? "") } });
         return;
       }
