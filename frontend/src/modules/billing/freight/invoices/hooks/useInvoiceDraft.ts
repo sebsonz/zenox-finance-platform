@@ -108,5 +108,6 @@ export function useInvoiceDraft({ customers, currencies, setSelectedInvoiceId, s
     updateLine,
     addLine,
     removeLine,
+    duplicateLine,
   };
 }
