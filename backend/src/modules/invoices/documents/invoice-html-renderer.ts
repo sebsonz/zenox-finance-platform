@@ -25,7 +25,11 @@ function customerValue(snapshot: Record<string, unknown>, key: string): string {
 }
 
 export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): string {
-  const { invoice, documentLabel = "FACTURE" } = input;
+  const { invoice } = input;
+  const documentLabel = input.documentLabel ?? (
+    invoice.documentType === "DEPOSIT" ? "FACTURE D’ACOMPTE"
+      : invoice.documentType === "BALANCE" ? "FACTURE DE SOLDE" : "FACTURE"
+  );
   if (invoice.status !== "ISSUED" || !invoice.invoiceCode || invoice.taxStatus !== "CALCULATED" || !invoice.taxSnapshotId) {
     throw new Error("INVOICE_DOCUMENT_REQUIRES_ISSUED_TAX_SNAPSHOTTED_INVOICE");
   }
@@ -120,7 +124,7 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
     <div class="muted">Date d'émission : ${escapeHtml(invoice.issueDate ?? "—")}</div>
     <div class="muted">Échéance : ${escapeHtml(invoice.dueDate ?? "—")}</div>
     ${invoice.purchaseOrderReference ? `<div class="muted">Commande : ${escapeHtml(invoice.purchaseOrderReference)}</div>` : ""}
-    ${invoice.externalReference ? `<div class="muted">Référence : ${escapeHtml(invoice.externalReference)}</div>` : ""}
+    ${invoice.externalReference ? `<div class="muted">Référence : ${escapeHtml(invoice.externalReference)}</div>` : ""}\n    ${invoice.documentType === "DEPOSIT" && invoice.contractTotal ? `<div class="muted">Montant total du contrat : ${escapeHtml(invoice.contractTotal)} ${escapeHtml(invoice.currencyCode)}</div>` : ""}\n    ${invoice.documentType === "BALANCE" && invoice.relatedInvoiceId ? `<div class="muted">Facture d’acompte source : ${escapeHtml(invoice.relatedInvoiceId)}</div>` : ""}
     ${invoice.serviceDate ? `<div class="muted">Prestation / livraison : ${escapeHtml(invoice.serviceDate)}</div>` : ""}
   </div>
 </header>
