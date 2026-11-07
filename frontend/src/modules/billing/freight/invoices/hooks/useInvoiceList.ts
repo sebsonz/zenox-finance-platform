@@ -29,7 +29,7 @@ async function readData<T>(response: Response, fallback: string): Promise<T> {
 
 export function useInvoiceList({ tenantId, search, status, setInvoices, setSelectedInvoiceId, setNotice }: Options) {
   const [loading, setLoading] = useState(false);
-  const loadInvoices = useCallback(async (): Promise<InvoiceDraftRecord[]> => {
+  const loadInvoices = useCallback(async (options?: { ignoreFilters?: boolean }): Promise<InvoiceDraftRecord[]> => {
     if (!tenantId) {
       setNotice("Aucune organisation active n’est disponible.");
       return [];
@@ -38,8 +38,8 @@ export function useInvoiceList({ tenantId, search, status, setInvoices, setSelec
     setNotice("");
     try {
       const params = new URLSearchParams({ limit: "100" });
-      if (search.trim()) params.set("search", search.trim());
-      if (status) params.set("status", status);
+      if (!options?.ignoreFilters && search.trim()) params.set("search", search.trim());
+      if (!options?.ignoreFilters && status) params.set("status", status);
       const data = await readData<{ invoices?: InvoiceDraftRecord[] }>(
         await fetch(`/api/v1/user/tenants/${tenantId}/invoices?${params.toString()}`, {
           credentials: "same-origin",
