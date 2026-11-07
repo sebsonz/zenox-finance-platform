@@ -115,7 +115,7 @@ async function buildCustomerSnapshot(client: PoolClient, tenantId: string, custo
 async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow): Promise<FinanceInvoice> {
   const result = await client.query<LineRow>(
     `SELECT id, line_number, description, item_code, unit_label, line_note, quantity::text, unit_price::text,
-      tax_rate_percent::text, subtotal::text, discount_amount::text, taxable_amount::text,
+      discount_percent::text, tax_rate_percent::text, subtotal::text, discount_amount::text, taxable_amount::text,
       tax_amount::text, total::text
      FROM public.finance_invoice_lines WHERE tenant_id = $1 AND invoice_id = $2 ORDER BY line_number`,
     [tenantId, row.id],
