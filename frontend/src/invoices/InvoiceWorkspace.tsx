@@ -6,7 +6,7 @@ import { InvoiceTaxContextPanel } from "../modules/billing/freight/invoices/tax/
 import { InvoiceListPanel } from "../modules/billing/freight/invoices/list/InvoiceListPanel.js";
 import { useInvoiceResources } from "../modules/billing/freight/invoices/hooks/useInvoiceResources.js";
 import { useInvoiceDraft } from "../modules/billing/freight/invoices/hooks/useInvoiceDraft.js";
-import { createEmptyInvoiceDraft, createEmptyInvoiceLine, type DraftForm, type InvoiceDraftRecord, type InvoiceLine } from "../modules/billing/freight/invoices/types/invoice-draft.js";
+import type { DraftForm, InvoiceDraftRecord } from "../modules/billing/freight/invoices/types/invoice-draft.js";
 import type { Customer, Currency, Jurisdiction } from "../modules/billing/freight/invoices/types/workspace-resources.js";
 import { FileText, RefreshCw, ShieldCheck } from "lucide-react";
 
@@ -368,7 +368,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
               lines={form.lines}
               onAdd={addLine}
               onUpdate={updateLine}
-              onRemove={(index) => setForm({ ...form, lines: form.lines.filter((_, i) => i !== index) })}
+              onRemove={removeLine}
             />
 
             <div className="invoice-editor-submit-row"><button className="primary-button" type="submit" disabled={busy || (form.documentType === "CREDIT_NOTE" ? !form.relatedInvoiceId || !canCredit : checkingResources || customers.length === 0 || currencies.length === 0)}>{busy ? "Traitement…" : form.documentType === "CREDIT_NOTE" ? "Émettre la facture d’avoir" : editing ? "Enregistrer les modifications" : "Enregistrer la facture"} <FileText size={15}/></button></div>
