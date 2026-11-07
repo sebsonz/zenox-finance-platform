@@ -101,6 +101,10 @@ async function availableForRefund(client: PoolClient, tenantId: string, paymentI
 }
 
 export const refundRepository = {
+  async listForPayment(client:PoolClient,tenantId:string,paymentId:string):Promise<RefundRecord[]> {
+    const result=await client.query<RefundRow>(`SELECT ${refundColumns} FROM public.finance_payment_refunds WHERE tenant_id=$1 AND payment_id=$2 ORDER BY created_at DESC`,[tenantId,paymentId]);
+    return result.rows.map(mapRefund);
+  },
   async request(client: PoolClient, context: FinancePaymentContext, paymentId: string, input: CreateRefundInput, key: string): Promise<RefundRecord> {
     const actor = paymentActor(context);
     const requestHash = hash({paymentId,...input});

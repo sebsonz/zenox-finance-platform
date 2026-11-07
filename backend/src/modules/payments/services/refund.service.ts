@@ -27,6 +27,9 @@ async function translate<T>(work: () => Promise<T>): Promise<T> {
 }
 
 export const refundService = {
+  list(context:FinancePaymentContext,paymentId:string) {
+    return withTenantTransaction(context.tenantId,client=>refundRepository.listForPayment(client,context.tenantId,paymentId));
+  },
   request(context: FinancePaymentContext,paymentId: string,input: CreateRefundInput,key: string) {
     return translate(() => withTenantTransaction(context.tenantId,client =>
       refundRepository.request(client,context,paymentId,input,key)));

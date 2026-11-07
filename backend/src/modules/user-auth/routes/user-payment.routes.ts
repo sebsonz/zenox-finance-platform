@@ -49,6 +49,9 @@ userPaymentRouter.post("/:tenantId/payments/:paymentId/allocations/:allocationId
 userPaymentRouter.get("/:tenantId/payments/:paymentId/events",requireUserAuth(),async(req,res,next)=>{
  try{const id=uuid.safeParse(req.params["tenantId"]),pid=uuid.safeParse(req.params["paymentId"]);if(!id.success||!pid.success)return fail(res,"INVALID_ID","Invalid payment ID.",400);const ctx=await contextFor(id.data,req,res,"payments:read");if(!ctx)return;const events=await paymentEventsService.listPaymentEvents(ctx,pid.data,100);res.json({data:{events,correlationId:ctx.correlationId}});}catch(e){next(e);}
 });
+userPaymentRouter.get("/:tenantId/payments/:paymentId/refunds",requireUserAuth(),async(req,res,next)=>{
+ try{const id=uuid.safeParse(req.params["tenantId"]),pid=uuid.safeParse(req.params["paymentId"]);if(!id.success||!pid.success)return fail(res,"INVALID_ID","Invalid payment ID.",400);const ctx=await contextFor(id.data,req,res,"payments:read");if(!ctx)return;const refunds=await refundService.list(ctx,pid.data);res.json({data:{refunds,correlationId:ctx.correlationId}});}catch(e){next(e);}
+});
 userPaymentRouter.post("/:tenantId/payments/:paymentId/refunds",requireUserAuth(),async(req,res,next)=>{
  try{const id=uuid.safeParse(req.params["tenantId"]),pid=uuid.safeParse(req.params["paymentId"]),body=createRefundSchema.safeParse(req.body);if(!id.success||!pid.success||!body.success)return fail(res,"INVALID_REFUND","Refund payload is invalid.",400);const ctx=await contextFor(id.data,req,res,"payments:record");if(!ctx)return;const idem=key(req,res);if(!idem)return;const refund=await refundService.request(ctx,pid.data,body.data,idem);res.status(201).json({data:{refund,correlationId:ctx.correlationId}});}catch(e){serviceError(e,res,next,String(res.locals["correlationId"]??""));}
 });
