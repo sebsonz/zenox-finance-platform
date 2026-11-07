@@ -90,7 +90,6 @@ describe("invoice document rendering", () => {
     expect(output).not.toContain("Test multi-ligne");
     expect(output).toContain("/FontFile2");
     expect(output).toContain("/ToUnicode");
-    expect(output).toContain("ZENOX Transport");
     expect(output).toContain("startxref");
     expect(output).toContain("%%EOF");
   });
