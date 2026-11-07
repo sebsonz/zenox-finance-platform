@@ -67,6 +67,9 @@ export function renderInvoicePdfDocument(invoice: FinanceInvoice, documentLabel 
     plainText(documentLabel),
     `Numero: ${invoice.invoiceCode}`,
     `Date emission: ${invoice.issueDate ?? "-"} | Echeance: ${invoice.dueDate ?? "-"}`,
+    ...(invoice.purchaseOrderReference ? [`Commande: ${invoice.purchaseOrderReference}`] : []),
+    ...(invoice.externalReference ? [`Reference externe: ${invoice.externalReference}`] : []),
+    ...(invoice.serviceDate ? [`Prestation / livraison: ${invoice.serviceDate}`] : []),
     `Client: ${String(customer["legalName"] ?? customer["displayName"] ?? "-")}`,
     `Pays: ${String(customer["countryCode"] ?? "-")} | Identifiant fiscal: ${String(customer["taxIdentifier"] ?? "-")}`,
     `Devise: ${invoice.currencyCode} | Revision: ${invoice.documentVersion}`,
@@ -86,7 +89,10 @@ export function renderInvoicePdfDocument(invoice: FinanceInvoice, documentLabel 
     `${documentLabel === "AVOIR" ? "TOTAL A CREDITER" : "TOTAL BRUT"}: ${money(invoice.grandTotal, invoice.currencyCode)}`,
     `${documentLabel === "AVOIR" ? "MONTANT A CREDITER" : "NET A PAYER"}: ${money(invoice.amountDue, invoice.currencyCode)}`,
     "",
+    ...(invoice.paymentTerms ? [`Conditions de paiement: ${invoice.paymentTerms}`] : []),
+    ...(invoice.paymentInstructions ? [`Modalites de paiement: ${invoice.paymentInstructions}`] : []),
     `Notes: ${invoice.notes ?? "-"}`,
+    ...(invoice.footerNote ? [invoice.footerNote] : []),
     "Document genere par ZENOX Finance. Validation legale et fiscale par juridiction requise.",
   ];
   return makePdf(lines);
