@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import Decimal from "decimal.js";
+import { Decimal } from "decimal.js";
 import { withTenantTransaction } from "../../../db/transaction.js";
 import type { FinanceInvoiceOperationContext } from "../types/invoice-operation-context.js";
 import { invoiceActor, isUserInvoiceContext } from "../types/invoice-operation-context.js";
