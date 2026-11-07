@@ -35,7 +35,7 @@ type Invoice = {
   customerSnapshot?: { legalName?: string; displayName?: string };
   lines: Array<{ id: string; description: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string; total: string }>;
 };
-type CreditNote = { id: string; originalInvoiceId: string; creditNoteCode: string; status: "ISSUED"; reason: string; currencyCode: string; grandTotal: string; amountDue: string; issuedAt: string };
+type CreditNote = { id: string; originalInvoiceId: string; creditNoteCode: string; creditKind: "FULL" | "PARTIAL"; status: "ISSUED"; reason: string; currencyCode: string; grandTotal: string; amountDue: string; issuedAt: string };
 type DraftForm = {
   documentType: "STANDARD" | "DEPOSIT" | "BALANCE"; contractTotal: string; relatedInvoiceId: string;
   customerId: string; currencyCode: string; dueDate: string; notes: string;
@@ -384,6 +384,8 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   }
 
   const selectedInvoice = invoices.find((invoice) => invoice.id === selectedInvoiceId) ?? editing;
+  const creditedTotal = creditNotes.reduce((sum, note) => sum + Number(note.grandTotal || 0), 0);
+  const remainingCredit = Math.max(0, Number(selectedInvoice?.grandTotal ?? 0) - creditedTotal);
   const currentRole = activeTenant.role;
   const canIssue = ["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(currentRole);
   const canManageTax = canIssue;
@@ -504,10 +506,10 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
           </div>
           <div className="invoice-form-grid credit-note-form">
             <label>Motif de l’avoir<input value={creditReason} onChange={(event) => setCreditReason(event.target.value)} minLength={3} maxLength={2000}/></label>
-            <label>Montant à créditer ({selectedInvoice.currencyCode})<input inputMode="decimal" value={creditAmount} onChange={(event) => setCreditAmount(event.target.value)} placeholder={`Vide = avoir intégral · reste disponible : ${selectedInvoice.grandTotal}`}/></label>
+            <label>Montant à créditer ({selectedInvoice.currencyCode})<input inputMode="decimal" value={creditAmount} onChange={(event) => setCreditAmount(event.target.value)} placeholder={`Vide = avoir intégral · reste disponible : ${remainingCredit.toFixed(selectedInvoice.currencyMinorUnit)}`}/></label>
             <div className="credit-note-button"><button className="primary-button" disabled={busy || !canCredit || creditReason.trim().length < 3 || (creditAmount.trim().length > 0 && !/^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,8})?$/.test(creditAmount.trim()))} onClick={() => void issueCreditNote(selectedInvoice)}>{creditAmount.trim() ? "Émettre l’avoir partiel" : "Émettre l’avoir intégral"}</button></div>
           </div>
-          {creditNotes.length > 0 && <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Avoir</th><th>Motif</th><th>Montant</th><th>Date</th><th>Documents</th></tr></thead><tbody>{creditNotes.map((note) => <tr key={note.id}><td><strong>{note.creditNoteCode}</strong></td><td>{note.reason}</td><td>{note.currencyCode} {note.grandTotal}</td><td>{new Date(note.issuedAt).toLocaleDateString("fr-FR")}</td><td><div className="invoice-actions"><button className="small-action" title="HTML" onClick={() => void downloadCreditNote(note.id, "document", note.creditNoteCode)}><Download size={14}/></button><button className="small-action" title="PDF" onClick={() => void downloadCreditNote(note.id, "document.pdf", note.creditNoteCode)}><FileText size={14}/></button></div></td></tr>)}</tbody></table></div>}
+          {creditNotes.length > 0 && <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Avoir</th><th>Type</th><th>Motif</th><th>Montant</th><th>Date</th><th>Documents</th></tr></thead><tbody>{creditNotes.map((note) => <tr key={note.id}><td><strong>{note.creditNoteCode}</strong></td><td>{note.creditKind === "PARTIAL" ? "Partiel" : "Intégral"}</td><td>{note.reason}</td><td>{note.currencyCode} {note.grandTotal}</td><td>{new Date(note.issuedAt).toLocaleDateString("fr-FR")}</td><td><div className="invoice-actions"><button className="small-action" title="HTML" onClick={() => void downloadCreditNote(note.id, "document", note.creditNoteCode)}><Download size={14}/></button><button className="small-action" title="PDF" onClick={() => void downloadCreditNote(note.id, "document.pdf", note.creditNoteCode)}><FileText size={14}/></button></div></td></tr>)}</tbody></table></div>}
         </section>}
     {notice && <div className="notice invoice-notice" role="status"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Fermer">×</button></div>}
   </section>;
