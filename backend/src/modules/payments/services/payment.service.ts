@@ -70,7 +70,7 @@ export const paymentService = {
         paymentRepository.reverseAllocationInTransaction(client, context, paymentId, allocationId, input, idempotencyKey));
     } catch (error) {
       if (error instanceof Error && [
-        "IDEMPOTENCY_KEY_REUSED", "ALLOCATION_NOT_FOUND", "INVALID_AMOUNT", "ALLOCATION_REVERSAL_EXCEEDED",
+        "IDEMPOTENCY_KEY_REUSED", "ALLOCATION_NOT_FOUND", "INVALID_AMOUNT", "ALLOCATION_REVERSAL_EXCEEDED", "ADVANCE_ALREADY_APPLIED_CANNOT_REVERSE",
       ].includes(error.message)) {
         throw new PaymentServiceError(error.message, error.message);
       }

@@ -24,7 +24,7 @@ async function contextFor(tenantId:string,req:Request,res:Response,permission:"p
 }
 function key(req:Request,res:Response):string|null{const v=z.string().trim().min(8).max(128).safeParse(req.header("Idempotency-Key"));if(!v.success){fail(res,"INVALID_IDEMPOTENCY_KEY","An Idempotency-Key header is required.",400);return null;}return v.data;}
 function serviceError(error:unknown,res:Response,next:NextFunction,correlationId:string){
- if(error instanceof PaymentServiceError||error instanceof RefundServiceError){const code=error.code;const status=["PAYMENT_NOT_FOUND","REFUND_NOT_FOUND"].includes(code)?404:["IDEMPOTENCY_KEY_REUSED","PAYMENT_NOT_PENDING","PAYMENT_NOT_CONFIRMED","PAYMENT_AMOUNT_EXCEEDED","INVOICE_BALANCE_EXCEEDED","INVOICE_NOT_ISSUED","PAYMENT_CURRENCY_MISMATCH","REFUND_AMOUNT_EXCEEDED","REFUND_NOT_REQUESTED","REFUND_NOT_APPROVED","REFUND_SELF_APPROVAL_FORBIDDEN"].includes(code)?409:422;res.status(status).json({error:{code,message:error.message,correlationId}});return;}next(error);
+ if(error instanceof PaymentServiceError||error instanceof RefundServiceError){const code=error.code;const status=["PAYMENT_NOT_FOUND","REFUND_NOT_FOUND"].includes(code)?404:["IDEMPOTENCY_KEY_REUSED","PAYMENT_NOT_PENDING","PAYMENT_NOT_CONFIRMED","PAYMENT_AMOUNT_EXCEEDED","INVOICE_BALANCE_EXCEEDED","INVOICE_NOT_ISSUED","PAYMENT_CURRENCY_MISMATCH","ADVANCE_ALREADY_APPLIED_CANNOT_REVERSE","REFUND_AMOUNT_EXCEEDED","REFUND_NOT_REQUESTED","REFUND_NOT_APPROVED","REFUND_SELF_APPROVAL_FORBIDDEN"].includes(code)?409:422;res.status(status).json({error:{code,message:error.message,correlationId}});return;}next(error);
 }
 userPaymentRouter.use((_req,res,next)=>{res.setHeader("Cache-Control","no-store");next();});
 
