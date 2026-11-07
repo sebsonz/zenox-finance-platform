@@ -119,6 +119,9 @@ export const invoiceDraftService = {
       );
       await recordInvoiceAudit(client, context, "invoice.draft.created", "INVOICE", invoice.id, {
         status: invoice.status,
+        documentType: invoice.documentType,
+        relatedInvoiceId: invoice.relatedInvoiceId,
+        contractTotal: invoice.contractTotal,
         currencyCode: invoice.currencyCode,
         lineCount: invoice.lines.length,
         documentVersion: invoice.documentVersion,
