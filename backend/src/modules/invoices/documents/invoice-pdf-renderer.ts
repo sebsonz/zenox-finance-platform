@@ -94,7 +94,7 @@ function partyLines(snapshot: Record<string, unknown>): string[] {
 function renderPdf(definition: Record<string, unknown>): Promise<Buffer> {
   const PdfPrinter = require("pdfmake") as new (fonts: FontSet) => PdfPrinterInstance;
   const printer = new PdfPrinter(resolveRobotoFonts());
-  const document = printer.createPdfKitDocument(definition, { compress: false, pdfVersion: "1.4" });
+  const document = printer.createPdfKitDocument(definition, { compress: false });
 
   return new Promise((resolveBuffer, reject) => {
     const chunks: Buffer[] = [];
@@ -262,6 +262,7 @@ export async function renderInvoicePdfDocument(invoice: FinanceInvoice, document
 
   const definition: Record<string, unknown> = {
     pageSize: "A4",
+    version: "1.4",
     pageMargins: [40, 64, 40, 52],
     info: {
       title: `${documentLabel} ${invoice.invoiceCode}`,
