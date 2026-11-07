@@ -27,6 +27,10 @@ function serviceError(error:unknown,res:Response,next:NextFunction,correlationId
  if(error instanceof PaymentServiceError||error instanceof RefundServiceError){const code=error.code;const status=["PAYMENT_NOT_FOUND","REFUND_NOT_FOUND"].includes(code)?404:["IDEMPOTENCY_KEY_REUSED","PAYMENT_NOT_PENDING","PAYMENT_NOT_CONFIRMED","PAYMENT_AMOUNT_EXCEEDED","INVOICE_BALANCE_EXCEEDED","INVOICE_NOT_ISSUED","PAYMENT_CURRENCY_MISMATCH","REFUND_AMOUNT_EXCEEDED","REFUND_NOT_REQUESTED","REFUND_NOT_APPROVED","REFUND_SELF_APPROVAL_FORBIDDEN"].includes(code)?409:422;res.status(status).json({error:{code,message:error.message,correlationId}});return;}next(error);
 }
 userPaymentRouter.use((_req,res,next)=>{res.setHeader("Cache-Control","no-store");next();});
+
+userPaymentRouter.get("/:tenantId/invoices/:invoiceId/balance",requireUserAuth(),async(req,res,next)=>{
+ try{const id=uuid.safeParse(req.params["tenantId"]),iid=uuid.safeParse(req.params["invoiceId"]);if(!id.success||!iid.success)return fail(res,"INVALID_ID","Invalid invoice ID.",400);const ctx=await contextFor(id.data,req,res,"payments:read");if(!ctx)return;const balance=await paymentService.invoiceBalance(ctx,iid.data);res.json({data:{balance,correlationId:ctx.correlationId}});}catch(e){serviceError(e,res,next,String(res.locals["correlationId"]??""));}
+});
 userPaymentRouter.get("/:tenantId/payments",requireUserAuth(),async(req,res,next)=>{
  try{const id=uuid.safeParse(req.params["tenantId"]),query=listPaymentsQuerySchema.safeParse(req.query);if(!id.success||!query.success)return fail(res,"INVALID_QUERY","Payment query is invalid.",400);const ctx=await contextFor(id.data,req,res,"payments:read");if(!ctx)return;const result=await paymentService.list(ctx,query.data);res.json({data:{...result,correlationId:ctx.correlationId}});}catch(e){next(e);}
 });
