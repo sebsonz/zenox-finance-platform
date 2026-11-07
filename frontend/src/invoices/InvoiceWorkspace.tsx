@@ -1,18 +1,17 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 import { InvoiceTypeFields } from "../modules/billing/freight/invoices/types/InvoiceTypeFields.js";
 import { InvoiceLinesEditor } from "../modules/billing/freight/invoices/components/InvoiceLinesEditor.js";
 import { IssuedInvoiceDocumentsPanel } from "../modules/billing/freight/invoices/credit-notes/IssuedInvoiceDocumentsPanel.js";
 import { InvoiceTaxContextPanel } from "../modules/billing/freight/invoices/tax/InvoiceTaxContextPanel.js";
 import { InvoiceListPanel } from "../modules/billing/freight/invoices/list/InvoiceListPanel.js";
+import { useInvoiceResources } from "../modules/billing/freight/invoices/hooks/useInvoiceResources.js";
+import type { Customer, Currency, Jurisdiction } from "../modules/billing/freight/invoices/types/workspace-resources.js";
 import { FileText, RefreshCw, ShieldCheck } from "lucide-react";
 
 type ApiError = { error?: { code?: string; message?: string } };
 type SessionUser = { id: string; email?: string };
 type ActiveTenant = { id: string; tenantCode: string; legalName: string; role: string };
 type InvoiceWorkspaceProps = { sessionUser: SessionUser; activeTenant: ActiveTenant; tenants: ActiveTenant[]; onTenantChange: (tenantId: string) => void };
-type Customer = { id: string; customerCode: string; legalName: string; displayName: string | null; status: "ACTIVE" | "ARCHIVED"; defaultCurrency: string | null };
-type Currency = { code: string; name: string; minorUnit: number };
-type Jurisdiction = { id: string; code: string; countryCode: string; name: string; level: string };
 type TaxFactsForm = {
   transactionType: string;
   supplierIfuStatus: string;
@@ -76,10 +75,7 @@ function downloadBlob(blob: Blob, filename: string) {
 
 export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantChange }: InvoiceWorkspaceProps) {
   const tenantId = activeTenant.id;
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([]);
-  const [jurisdictionId, setJurisdictionId] = useState("");
+
   const [taxDate, setTaxDate] = useState(new Date().toISOString().slice(0, 10));
   const [appliesTo, setAppliesTo] = useState("GOODS");
   const [taxFacts, setTaxFacts] = useState<TaxFactsForm>(emptyTaxFacts);
@@ -97,107 +93,33 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const [checkingResources, setCheckingResources] = useState(false);
-
-  useEffect(() => {
-    if (!sessionUser.id || !tenantId) return;
-    setInvoices([]);
+  const onTenantReset = useCallback(() => {
     setSelectedInvoiceId("");
     setCreditNotes([]);
     setEditing(null);
     setTaxFacts(emptyTaxFacts());
-    let cancelled = false;
-    async function loadResources() {
-      setCheckingResources(true);
-      setNotice("");
-      const role = activeTenant.role;
-      const canCreateInvoices = ["OWNER", "ADMIN", "FINANCE_MANAGER", "FINANCE_OPERATOR"].includes(role);
-
-      // Reference data is deliberately loaded independently. A tax API outage
-      // must never prevent the currency selector (or customer list) from loading.
-      // Customer directory access is governed by customers:read, not by
-      // invoices:create. The API remains the authority and returns 403 when
-      // the active membership cannot read customers.
-      const loadCustomers = async () => readData<{ customers?: Customer[] }>(
-        await fetch(`/api/v1/user/tenants/${tenantId}/customers?status=ACTIVE&limit=100`, { credentials: "same-origin", cache: "no-store" }),
-        "Impossible de charger les clients.",
-      );
-      const loadCurrencies = async () => canCreateInvoices
-        ? readData<{ currencies?: Currency[] }>(
-            await fetch(`/api/v1/user/tenants/${tenantId}/currencies`, { credentials: "same-origin", cache: "no-store" }),
-            "Impossible de charger les devises.",
-          )
-        : { currencies: [] as Currency[] };
-      const loadJurisdictions = async () => readData<{ jurisdictions?: Jurisdiction[] }>(
-        await fetch(`/api/v1/user/tenants/${tenantId}/tax-jurisdictions`, { credentials: "same-origin", cache: "no-store" }),
-        "Impossible de charger les juridictions fiscales.",
-      );
-
-      const [customerResult, currencyResult, jurisdictionResult] = await Promise.allSettled([
-        loadCustomers(),
-        loadCurrencies(),
-        loadJurisdictions(),
-      ]);
-
-      if (cancelled) return;
-
-      const errors: string[] = [];
-      if (customerResult.status === "fulfilled") {
-        const loadedCustomers = customerResult.value.customers ?? [];
-        setCustomers(loadedCustomers);
-        setForm((current) => ({
-          ...current,
-          customerId: current.customerId || loadedCustomers[0]?.id || "",
-        }));
-      } else {
-        errors.push(customerResult.reason instanceof Error ? customerResult.reason.message : "Impossible de charger les clients.");
-      }
-
-      if (currencyResult.status === "fulfilled") {
-        const loadedCurrencies = currencyResult.value.currencies ?? [];
-        setCurrencies(loadedCurrencies);
-        setForm((current) => ({
-          ...current,
-          currencyCode: loadedCurrencies.some((currency) => currency.code === current.currencyCode)
-            ? current.currencyCode
-            : (loadedCurrencies[0]?.code ?? "XOF"),
-        }));
-      } else {
-        errors.push(currencyResult.reason instanceof Error ? currencyResult.reason.message : "Impossible de charger les devises.");
-      }
-
-      if (jurisdictionResult.status === "fulfilled") {
-        const loadedJurisdictions = jurisdictionResult.value.jurisdictions ?? [];
-        setJurisdictions(loadedJurisdictions);
-        setJurisdictionId((current) => loadedJurisdictions.some((item) => item.id === current)
-          ? current
-          : (loadedJurisdictions[0]?.id ?? ""));
-      } else {
-        errors.push(jurisdictionResult.reason instanceof Error ? jurisdictionResult.reason.message : "Impossible de charger les juridictions fiscales.");
-      }
-
-      if (errors.length > 0) setNotice(errors.join(" "));
-      setCheckingResources(false);
-    }
-    void loadResources().catch((error: unknown) => {
-      if (cancelled) return;
-      setNotice(error instanceof Error ? error.message : "Impossible de charger les référentiels de facturation.");
-      setCheckingResources(false);
-    });
-    // Load invoices independently of customer/currency/tax reference APIs.
-    void (async () => {
-      try {
-        const invoiceData = await readData<{ invoices?: Invoice[] }>(
-          await fetch(`/api/v1/user/tenants/${tenantId}/invoices?limit=100`, { credentials: "same-origin", cache: "no-store" }),
-          "Impossible de charger les factures.",
-        );
-        if (!cancelled) setInvoices(invoiceData.invoices ?? []);
-      } catch (invoiceError) {
-        if (!cancelled) setNotice(invoiceError instanceof Error ? invoiceError.message : "Impossible de charger les factures.");
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [sessionUser.id, tenantId, activeTenant.role]);
+  }, []);
+  const onCustomersLoaded = useCallback((loadedCustomers: Customer[]) => {
+    setForm((current) => ({ ...current, customerId: current.customerId || loadedCustomers[0]?.id || "" }));
+  }, []);
+  const onCurrenciesLoaded = useCallback((loadedCurrencies: Currency[]) => {
+    setForm((current) => ({
+      ...current,
+      currencyCode: loadedCurrencies.some((currency) => currency.code === current.currencyCode)
+        ? current.currencyCode
+        : (loadedCurrencies[0]?.code ?? "XOF"),
+    }));
+  }, []);
+  const { customers, currencies, jurisdictions, jurisdictionId, setJurisdictionId, checkingResources } = useInvoiceResources<Invoice>({
+    sessionUserId: sessionUser.id,
+    tenantId,
+    role: activeTenant.role,
+    setInvoices,
+    onTenantReset,
+    setNotice,
+    onCustomersLoaded,
+    onCurrenciesLoaded,
+  });
 
   async function loadInvoices(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault(); if (!tenantId) { setNotice("Aucune organisation active n’est disponible."); return; }
