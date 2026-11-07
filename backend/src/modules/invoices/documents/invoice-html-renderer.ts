@@ -53,6 +53,8 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
       <td class="numeric total-cell">${money(line.total, invoice.currencyCode)}</td>
     </tr>`).join("");
   const metaRows = [
+    ["Type de facture", metadata["invoiceKind"] === "ADVANCE" ? "Facture d’acompte" : metadata["invoiceKind"] === "BALANCE" ? "Facture de solde" : "Facture standard"],
+    ["Référence source", metadata["sourceReference"]],
     ["Référence", metadata["reference"]],
     ["Bon de commande", metadata["purchaseOrderNumber"]],
     ["Contrat", metadata["contractReference"]],

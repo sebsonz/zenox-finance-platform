@@ -24,7 +24,7 @@ const emptyTaxFacts = (): TaxFactsForm => ({
   customerCountryCode: "", supplierCountryCode: "", isImport: "", isExport: "", goodsCategory: "",
 });
 type InvoiceLine = { id?: string; description: string; itemCode: string; unit: string; lineNote: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string };
-type InvoiceDocumentForm = { title: string; reference: string; purchaseOrderNumber: string; contractReference: string; paymentTerms: string; paymentMethod: string; deliveryDate: string; servicePeriodStart: string; servicePeriodEnd: string; footer: string; language: string; globalDiscountPercent: string; globalDiscountAmount: string };
+type InvoiceDocumentForm = { title: string; invoiceKind: "STANDARD"|"ADVANCE"|"BALANCE"; sourceReference: string; reference: string; purchaseOrderNumber: string; contractReference: string; paymentTerms: string; paymentMethod: string; deliveryDate: string; servicePeriodStart: string; servicePeriodEnd: string; footer: string; language: string; globalDiscountPercent: string; globalDiscountAmount: string };
 type Invoice = {
   id: string; customerId: string; invoiceCode: string | null; status: "DRAFT" | "ISSUED" | "CANCELLED";
   currencyCode: string; currencyMinorUnit: number; grandTotal: string; amountDue: string; subtotal: string;
@@ -40,7 +40,7 @@ type InvoiceRelationship = {id:string;relationship_type:string;source_reference:
 type DraftForm = { customerId: string; currencyCode: string; dueDate: string; notes: string; document: InvoiceDocumentForm; lines: InvoiceLine[] };
 type ApiPayload<T> = { data?: T } & ApiError;
 const emptyLine = (): InvoiceLine => ({ description: "", itemCode: "", unit: "unité", lineNote: "", quantity: "1", unitPrice: "0", discountPercent: "0", taxRatePercent: "0" });
-const emptyDocument = (): InvoiceDocumentForm => ({ title: "FACTURE", reference: "", purchaseOrderNumber: "", contractReference: "", paymentTerms: "", paymentMethod: "", deliveryDate: "", servicePeriodStart: "", servicePeriodEnd: "", footer: "", language: "fr", globalDiscountPercent: "0", globalDiscountAmount: "0" });
+const emptyDocument = (): InvoiceDocumentForm => ({ title: "FACTURE", invoiceKind: "STANDARD", sourceReference: "", reference: "", purchaseOrderNumber: "", contractReference: "", paymentTerms: "", paymentMethod: "", deliveryDate: "", servicePeriodStart: "", servicePeriodEnd: "", footer: "", language: "fr", globalDiscountPercent: "0", globalDiscountAmount: "0" });
 const emptyForm = (): DraftForm => ({ customerId: "", currencyCode: "XOF", dueDate: "", notes: "", document: emptyDocument(), lines: [emptyLine()] });
 
 async function responseError(response: Response, fallback: string): Promise<string> {
@@ -368,6 +368,8 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
             <details className="tax-facts-details" open>
               <summary>Informations commerciales et conditions de facturation</summary>
               <div className="invoice-form-grid">
+                <label>Type de facture<select value={form.document.invoiceKind} onChange={(event) => setForm({ ...form, document: { ...form.document, invoiceKind: event.target.value as InvoiceDocumentForm["invoiceKind"] } })}><option value="STANDARD">Facture standard</option><option value="ADVANCE">Facture d’acompte</option><option value="BALANCE">Facture de solde</option></select></label>
+                <label>Référence commande / contrat source<input value={form.document.sourceReference} maxLength={160} onChange={(event) => setForm({ ...form, document: { ...form.document, sourceReference: event.target.value } })}/></label>
                 <label>Titre du document<input value={form.document.title} maxLength={120} onChange={(event) => setForm({ ...form, document: { ...form.document, title: event.target.value } })}/></label>
                 <label>Référence interne<input value={form.document.reference} maxLength={120} onChange={(event) => setForm({ ...form, document: { ...form.document, reference: event.target.value } })} placeholder="REF-2026-001"/></label>
                 <label>Bon de commande<input value={form.document.purchaseOrderNumber} maxLength={120} onChange={(event) => setForm({ ...form, document: { ...form.document, purchaseOrderNumber: event.target.value } })}/></label>

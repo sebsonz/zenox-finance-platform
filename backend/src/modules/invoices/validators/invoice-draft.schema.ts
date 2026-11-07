@@ -21,6 +21,8 @@ export const createInvoiceDraftSchema = z.object({
   notes: z.string().trim().max(5000).optional(),
   document: z.object({
     title: z.string().trim().min(1).max(120).optional(),
+    invoiceKind: z.enum(["STANDARD","ADVANCE","BALANCE"]).optional().default("STANDARD"),
+    sourceReference: z.string().trim().max(160).optional(),
     reference: z.string().trim().max(120).optional(),
     purchaseOrderNumber: z.string().trim().max(120).optional(),
     contractReference: z.string().trim().max(120).optional(),
