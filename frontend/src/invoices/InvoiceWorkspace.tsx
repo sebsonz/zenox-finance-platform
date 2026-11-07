@@ -13,7 +13,7 @@ import { useInvoiceDocuments } from "../modules/billing/freight/invoices/hooks/u
 import { useInvoiceList } from "../modules/billing/freight/invoices/hooks/useInvoiceList.js";
 import type { DraftForm, InvoiceDraftRecord } from "../modules/billing/freight/invoices/types/invoice-draft.js";
 import type { Customer, Currency } from "../modules/billing/freight/invoices/types/workspace-resources.js";
-import { FileText, RefreshCw, ShieldCheck, Eye, Send, X } from "lucide-react";
+import { FileText, RefreshCw, ShieldCheck, Eye, Send, X, Building2, UserRound, Search, Plus, CalendarDays, StickyNote, SlidersHorizontal, Paperclip, Save } from "lucide-react";
 
 type Invoice = InvoiceDraftRecord;
 type SessionUser = { id: string; email?: string };
@@ -48,6 +48,10 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
+  const [customerSaving, setCustomerSaving] = useState(false);
+  const [customerDraft, setCustomerDraft] = useState({ customerCode: "", customerType: "BUSINESS" as "BUSINESS" | "INDIVIDUAL", legalName: "", displayName: "", email: "", phone: "", addressLine1: "", addressCity: "", countryCode: "BJ", taxIdentifier: "" });
+  const [invoiceTab, setInvoiceTab] = useState<"NOTES" | "TERMS" | "ATTACHMENTS">("NOTES");
   const { loading, loadInvoices } = useInvoiceList({
     tenantId, search: invoiceSearch, status: invoiceStatus, setInvoices, setSelectedInvoiceId, setNotice,
   });
@@ -73,7 +77,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
         : (loadedCurrencies[0]?.code ?? "XOF"),
     }));
   }, []);
-  const { customers, currencies, jurisdictions, jurisdictionId, setJurisdictionId, checkingResources } = useInvoiceResources<Invoice>({
+  const { customers, setCustomers, currencies, jurisdictions, jurisdictionId, setJurisdictionId, checkingResources } = useInvoiceResources<Invoice>({
     sessionUserId: sessionUser.id,
     tenantId,
     role: activeTenant.role,
@@ -133,6 +137,45 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     await saveStandardDraft();
   }
 
+  const selectedCustomer = customers.find((customer) => customer.id === form.customerId);
+  async function createCustomerFromInvoice(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!tenantId || customerSaving) return;
+    setCustomerSaving(true);
+    setNotice("");
+    try {
+      const response = await fetch(`/api/v1/user/tenants/${tenantId}/customers`, {
+        method: "POST", credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...customerDraft,
+          customerCode: customerDraft.customerCode.trim().toUpperCase(),
+          legalName: customerDraft.legalName.trim(),
+          ...(customerDraft.displayName.trim() ? { displayName: customerDraft.displayName.trim() } : {}),
+          ...(customerDraft.email.trim() ? { email: customerDraft.email.trim() } : {}),
+          ...(customerDraft.phone.trim() ? { phone: customerDraft.phone.trim() } : {}),
+          ...(customerDraft.addressLine1.trim() ? { addressLine1: customerDraft.addressLine1.trim() } : {}),
+          ...(customerDraft.addressCity.trim() ? { addressCity: customerDraft.addressCity.trim() } : {}),
+          countryCode: customerDraft.countryCode.trim().toUpperCase(),
+          ...(customerDraft.taxIdentifier.trim() ? { taxIdentifier: customerDraft.taxIdentifier.trim() } : {}),
+          ...(form.currencyCode ? { defaultCurrency: form.currencyCode } : {}),
+          metadata: {},
+        }),
+      });
+      const payload = await response.json() as { data?: { customer?: Customer }; error?: { message?: string } };
+      if (!response.ok || !payload.data?.customer) throw new Error(payload.error?.message ?? "Impossible de créer le client.");
+      const created = payload.data.customer;
+      setCustomers((current) => [created, ...current.filter((item) => item.id !== created.id)]);
+      setForm((current) => ({ ...current, customerId: created.id }));
+      setCustomerModalOpen(false);
+      setCustomerDraft({ customerCode: "", customerType: "BUSINESS", legalName: "", displayName: "", email: "", phone: "", addressLine1: "", addressCity: "", countryCode: "BJ", taxIdentifier: "" });
+      setNotice("Client créé et sélectionné pour cette facture.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Impossible de créer le client.");
+    } finally {
+      setCustomerSaving(false);
+    }
+  }
   const selectedInvoice = invoices.find((invoice) => invoice.id === selectedInvoiceId) ?? editing;
   const creditedTotal = creditNotes.reduce((sum, note) => sum + Number(note.grandTotal || 0), 0);
   const remainingCredit = Math.max(0, Number(selectedInvoice?.grandTotal ?? 0) - creditedTotal);
