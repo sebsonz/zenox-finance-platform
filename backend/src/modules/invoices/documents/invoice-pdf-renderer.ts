@@ -109,7 +109,9 @@ function renderPdf(definition: Record<string, unknown>): Promise<Buffer> {
   });
 }
 
-export async function renderInvoicePdfDocument(invoice: FinanceInvoice, documentLabel = "FACTURE"): Promise<Buffer> {
+export async function renderInvoicePdfDocument(invoice: FinanceInvoice, documentLabel?: string): Promise<Buffer> {
+  documentLabel ??= invoice.documentType === "DEPOSIT" ? "FACTURE D’ACOMPTE"
+    : invoice.documentType === "BALANCE" ? "FACTURE DE SOLDE" : "FACTURE";
   if (invoice.status !== "ISSUED" || !invoice.invoiceCode || invoice.taxStatus !== "CALCULATED" || !invoice.taxSnapshotId) {
     throw new Error("INVOICE_PDF_REQUIRES_ISSUED_TAX_SNAPSHOTTED_INVOICE");
   }
@@ -167,6 +169,8 @@ export async function renderInvoicePdfDocument(invoice: FinanceInvoice, document
             { text: `Échéance : ${text(invoice.dueDate)}`, style: "muted" },
             ...(invoice.purchaseOrderReference ? [{ text: `Commande : ${invoice.purchaseOrderReference}`, style: "muted" }] : []),
             ...(invoice.externalReference ? [{ text: `Référence : ${invoice.externalReference}`, style: "muted" }] : []),
+            ...(invoice.documentType === "DEPOSIT" && invoice.contractTotal ? [{ text: `Montant total du contrat : ${money(invoice.contractTotal, invoice.currencyCode)}`, style: "muted" }] : []),
+            ...(invoice.documentType === "BALANCE" && invoice.relatedInvoiceId ? [{ text: `Facture d’acompte source : ${invoice.relatedInvoiceId}`, style: "muted" }] : []),
             ...(invoice.serviceDate ? [{ text: `Prestation / livraison : ${invoice.serviceDate}`, style: "muted" }] : []),
           ],
         },
