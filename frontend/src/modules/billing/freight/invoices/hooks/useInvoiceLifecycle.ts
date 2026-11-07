@@ -22,7 +22,8 @@ type Options = {
   taxFacts: InvoiceTaxFacts;
   setBusy: (busy: boolean) => void;
   setNotice: (message: string) => void;
-  loadInvoices: () => Promise<void>;
+  loadInvoices: () => Promise<InvoiceDraftRecord[]>;
+  setEditing: (invoice: InvoiceDraftRecord | null) => void;
 };
 
 async function responseError(response: Response, fallback: string): Promise<string> {
@@ -42,7 +43,7 @@ async function readData<T>(response: Response, fallback: string): Promise<T> {
 }
 
 export function useInvoiceLifecycle({
-  tenantId, jurisdictionId, taxDate, appliesTo, taxFacts, setBusy, setNotice, loadInvoices,
+  tenantId, jurisdictionId, taxDate, appliesTo, taxFacts, setBusy, setNotice, loadInvoices, setEditing,
 }: Options) {
   const calculateTax = useCallback(async (invoice: InvoiceDraftRecord) => {
     if (!jurisdictionId) {
@@ -75,14 +76,19 @@ export function useInvoiceLifecycle({
         }),
       });
       await readData(response, "Le calcul fiscal a échoué.");
-      setNotice("Snapshot fiscal calculé et attaché. Le brouillon peut être émis.");
-      await loadInvoices();
+      const refreshedInvoices = await loadInvoices();
+      const refreshedInvoice = refreshedInvoices.find((item) => item.id === invoice.id);
+      if (!refreshedInvoice) throw new Error("Le calcul fiscal a réussi, mais le brouillon actualisé est introuvable. Rechargez la liste avant l’émission.");
+      setEditing(refreshedInvoice);
+      setNotice(refreshedInvoice.taxStatus === "CALCULATED"
+        ? "Snapshot fiscal calculé et attaché. Vous pouvez maintenant émettre la facture."
+        : "Le moteur fiscal a demandé une revue. Consultez le statut fiscal avant toute émission.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Le calcul fiscal a échoué.");
     } finally {
       setBusy(false);
     }
-  }, [tenantId, jurisdictionId, taxDate, appliesTo, taxFacts, setBusy, setNotice, loadInvoices]);
+  }, [tenantId, jurisdictionId, taxDate, appliesTo, taxFacts, setBusy, setNotice, loadInvoices, setEditing]);
 
   const issueInvoice = useCallback(async (invoice: InvoiceDraftRecord) => {
     if (!window.confirm(`Émettre définitivement la facture ${invoice.invoiceCode ?? "brouillon"} ? Cette opération est irréversible.`)) return;
@@ -99,14 +105,16 @@ export function useInvoiceLifecycle({
         body: JSON.stringify({ expectedUpdatedAt: invoice.updatedAt }),
       });
       await readData(response, "L’émission de la facture a échoué.");
+      const refreshedInvoices = await loadInvoices();
+      const issuedInvoice = refreshedInvoices.find((item) => item.id === invoice.id);
+      if (issuedInvoice) setEditing(issuedInvoice);
       setNotice("Facture émise. Les documents HTML et PDF immuables sont disponibles.");
-      await loadInvoices();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "L’émission a échoué.");
     } finally {
       setBusy(false);
     }
-  }, [tenantId, setBusy, setNotice, loadInvoices]);
+  }, [tenantId, setBusy, setNotice, loadInvoices, setEditing]);
 
   return { calculateTax, issueInvoice };
 }
