@@ -161,6 +161,12 @@ async function prepare(): Promise<void> {
     await client.query("GRANT SELECT, INSERT, UPDATE ON public.finance_payment_invoice_balances TO finance_runtime_test");
     await client.query("REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.finance_payment_events, public.finance_payment_allocations, public.finance_payment_allocation_reversals FROM finance_runtime_test");
     await client.query("REVOKE DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.finance_payment_refunds, public.finance_payment_reconciliation_items, public.finance_payment_invoice_balances FROM finance_runtime_test");
+    await client.query("GRANT SELECT, INSERT, UPDATE ON public.finance_quotes, public.finance_quote_lines, public.finance_quote_sequences, public.finance_proformas, public.finance_proforma_lines, public.finance_proforma_sequences TO finance_runtime_test");
+    await client.query("GRANT SELECT, INSERT ON public.finance_invoice_relationships, public.finance_invoice_adjustments, public.finance_invoice_adjustment_sequences TO finance_runtime_test");
+    await client.query("GRANT SELECT, INSERT, UPDATE ON public.finance_recurring_invoice_schedules, public.finance_recurring_invoice_lines TO finance_runtime_test");
+    await client.query("GRANT SELECT, INSERT ON public.finance_recurring_invoice_runs TO finance_runtime_test");
+    await client.query("REVOKE UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.finance_invoice_relationships, public.finance_invoice_adjustments, public.finance_recurring_invoice_runs FROM finance_runtime_test");
+
 
     await client.query("GRANT EXECUTE ON FUNCTION public.finance_list_my_active_tenants() TO finance_runtime_test");
     await client.query("GRANT EXECUTE ON FUNCTION public.finance_submit_organization_registration(text, text, text, text, text, text, text) TO finance_runtime_test");
