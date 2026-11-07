@@ -54,7 +54,14 @@ platformTaxAdminRouter.get("/tax/rules", requireUserAuth(), async (req, res, nex
     return;
   }
   try {
-    const data = await listPlatformTaxRules.execute(parsed.data);
+    const query = {
+      page: parsed.data.page,
+      pageSize: parsed.data.pageSize,
+      ...(parsed.data.taxType !== undefined ? { taxType: parsed.data.taxType } : {}),
+      ...(parsed.data.status !== undefined ? { status: parsed.data.status } : {}),
+      ...(parsed.data.search !== undefined ? { search: parsed.data.search } : {}),
+    };
+    const data = await listPlatformTaxRules.execute(query);
     res.status(200).json({ data });
   } catch (error) {
     next(error);
