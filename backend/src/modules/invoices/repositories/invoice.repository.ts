@@ -244,9 +244,9 @@ export const invoiceRepository = {
       const calculated = calculatedLines[i]!;
       await client.query(
         `INSERT INTO public.finance_invoice_lines (
-          tenant_id, invoice_id, line_number, description, quantity, unit_price, discount_percent,
+          tenant_id, invoice_id, line_number, description, item_code, unit_label, line_note, quantity, unit_price, discount_percent,
           tax_rate_percent, subtotal, discount_amount, taxable_amount, tax_amount, total
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
         [context.tenantId, invoiceId, i + 1, source.description, source.itemCode ?? null, source.unit ?? null, source.lineNote ?? null, calculated.quantity, calculated.unitPrice,
           calculated.discountPercent, calculated.taxRatePercent, calculated.subtotal,
           calculated.discountAmount, calculated.taxableAmount, calculated.taxAmount, calculated.total],
