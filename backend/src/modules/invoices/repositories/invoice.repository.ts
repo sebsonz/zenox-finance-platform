@@ -195,7 +195,7 @@ export const invoiceRepository = {
         WHERE tenant_id = $1
           AND id = $2
           AND status = 'DRAFT'
-          AND updated_at = $23::timestamptz
+          AND updated_at = $24::timestamptz
       RETURNING ${invoiceColumns}`,
       [context.tenantId, invoiceId, customer.id, totals.currency, currencyMinorUnit,
         input.dueDate ?? null, input.purchaseOrderReference ?? null, input.serviceDate ?? null,
