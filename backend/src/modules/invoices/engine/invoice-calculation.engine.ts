@@ -112,14 +112,50 @@ export function calculateInvoiceTotals(input: InvoiceCalculationInput): Calculat
   if (input.lines.length === 0) throw new Error("INVOICE_REQUIRES_AT_LEAST_ONE_LINE");
   if (input.lines.length > 500) throw new Error("TOO_MANY_INVOICE_LINES");
 
-  const lines = input.lines.map((line) => calculateLine(line, input.currencyDecimalPlaces));
+  const initialLines = input.lines.map((line) => calculateLine(line, input.currencyDecimalPlaces));
+  const places = input.currencyDecimalPlaces;
+  const globalPercent = decimal(input.globalDiscountPercent ?? "0", "global_discount_percent", MAX_PERCENT_INTEGER_DIGITS, MAX_PERCENT_SCALE);
+  const globalAmount = decimal(input.globalDiscountAmount ?? "0", "global_discount_amount", MAX_MONEY_INTEGER_DIGITS, MAX_MONEY_SCALE);
+  if (globalPercent.lt(0) || globalPercent.gt(100)) throw new Error("GLOBAL_DISCOUNT_PERCENT_OUT_OF_RANGE");
+  if (globalAmount.lt(0)) throw new Error("GLOBAL_DISCOUNT_AMOUNT_OUT_OF_RANGE");
+  if (globalPercent.gt(0) && globalAmount.gt(0)) throw new Error("GLOBAL_DISCOUNT_PERCENT_AND_AMOUNT_MUTUALLY_EXCLUSIVE");
+  const initialSubtotal = initialLines.reduce((sum, line) => sum.plus(line.subtotal), new CalculationDecimal(0));
+  const initialDiscount = initialLines.reduce((sum, line) => sum.plus(line.discountAmount), new CalculationDecimal(0));
+  const initialTaxable = initialLines.reduce((sum, line) => sum.plus(line.taxableAmount), new CalculationDecimal(0));
+  const requestedGlobalDiscount = globalPercent.gt(0)
+    ? initialTaxable.times(globalPercent).div(100).toDecimalPlaces(places, CalculationDecimal.ROUND_HALF_UP)
+    : globalAmount.toDecimalPlaces(places, CalculationDecimal.ROUND_HALF_UP);
+  if (requestedGlobalDiscount.gt(initialTaxable)) throw new Error("GLOBAL_DISCOUNT_EXCEEDS_TAXABLE_SUBTOTAL");
+  let remainingGlobalDiscount = requestedGlobalDiscount;
+  const lines = initialLines.map((line, index) => {
+    const base = new CalculationDecimal(line.taxableAmount);
+    const allocation = index === initialLines.length - 1
+      ? remainingGlobalDiscount
+      : initialTaxable.isZero()
+        ? new CalculationDecimal(0)
+        : requestedGlobalDiscount.times(base).div(initialTaxable).toDecimalPlaces(places, CalculationDecimal.ROUND_HALF_UP).min(remainingGlobalDiscount);
+    remainingGlobalDiscount = remainingGlobalDiscount.minus(allocation);
+    const taxableAmount = base.minus(allocation);
+    const discountAmount = new CalculationDecimal(line.discountAmount).plus(allocation);
+    const taxAmount = taxableAmount.times(line.taxRatePercent).div(100).toDecimalPlaces(places, CalculationDecimal.ROUND_HALF_UP);
+    const total = taxableAmount.plus(taxAmount);
+    assertFitsMoneyStorage(taxableAmount, "taxable_amount");
+    assertFitsMoneyStorage(discountAmount, "discount_amount");
+    assertFitsMoneyStorage(taxAmount, "tax_amount");
+    assertFitsMoneyStorage(total, "line_total");
+    return {
+      ...line,
+      discountAmount: money(discountAmount, places),
+      taxableAmount: money(taxableAmount, places),
+      taxAmount: money(taxAmount, places),
+      total: money(total, places),
+    };
+  });
   const subtotal = lines.reduce((sum, line) => sum.plus(line.subtotal), new CalculationDecimal(0));
   const discountTotal = lines.reduce((sum, line) => sum.plus(line.discountAmount), new CalculationDecimal(0));
   const taxableTotal = lines.reduce((sum, line) => sum.plus(line.taxableAmount), new CalculationDecimal(0));
   const taxTotal = lines.reduce((sum, line) => sum.plus(line.taxAmount), new CalculationDecimal(0));
   const grandTotal = lines.reduce((sum, line) => sum.plus(line.total), new CalculationDecimal(0));
-  const places = input.currencyDecimalPlaces;
-
   assertFitsMoneyStorage(subtotal, "invoice_subtotal");
   assertFitsMoneyStorage(discountTotal, "invoice_discount_total");
   assertFitsMoneyStorage(taxableTotal, "invoice_taxable_total");
@@ -134,6 +170,6 @@ export function calculateInvoiceTotals(input: InvoiceCalculationInput): Calculat
     taxTotal: money(taxTotal, places),
     grandTotal: money(grandTotal, places),
     lines,
-    calculationPolicy: "LINE_HALF_UP_TAX_EXCLUSIVE_V1",
+    calculationPolicy: "LINE_AND_DOCUMENT_DISCOUNT_HALF_UP_TAX_EXCLUSIVE_V2",
   };
 }

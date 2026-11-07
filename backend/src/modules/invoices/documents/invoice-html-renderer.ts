@@ -58,6 +58,7 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
     ["Contrat", metadata["contractReference"]],
     ["Date de livraison", metadata["deliveryDate"]],
     ["Période de service", [metadata["servicePeriodStart"], metadata["servicePeriodEnd"]].filter(Boolean).join(" au ")],
+    ["Remise globale", metadata["globalDiscountPercent"] && metadata["globalDiscountPercent"] !== "0" ? `${metadata["globalDiscountPercent"]}%` : metadata["globalDiscountAmount"] && metadata["globalDiscountAmount"] !== "0" ? metadata["globalDiscountAmount"] : ""],
   ].filter((row) => row[1]);
   const paymentTerms = String(metadata["paymentTerms"] ?? "");
   const paymentMethod = String(metadata["paymentMethod"] ?? "");

@@ -24,7 +24,7 @@ const emptyTaxFacts = (): TaxFactsForm => ({
   customerCountryCode: "", supplierCountryCode: "", isImport: "", isExport: "", goodsCategory: "",
 });
 type InvoiceLine = { id?: string; description: string; itemCode: string; unit: string; lineNote: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string };
-type InvoiceDocumentForm = { title: string; reference: string; purchaseOrderNumber: string; contractReference: string; paymentTerms: string; paymentMethod: string; deliveryDate: string; servicePeriodStart: string; servicePeriodEnd: string; footer: string; language: string };
+type InvoiceDocumentForm = { title: string; reference: string; purchaseOrderNumber: string; contractReference: string; paymentTerms: string; paymentMethod: string; deliveryDate: string; servicePeriodStart: string; servicePeriodEnd: string; footer: string; language: string; globalDiscountPercent: string; globalDiscountAmount: string };
 type Invoice = {
   id: string; customerId: string; invoiceCode: string | null; status: "DRAFT" | "ISSUED" | "CANCELLED";
   currencyCode: string; currencyMinorUnit: number; grandTotal: string; amountDue: string; subtotal: string;
@@ -38,7 +38,7 @@ type CreditNote = { id: string; originalInvoiceId: string; creditNoteCode: strin
 type DraftForm = { customerId: string; currencyCode: string; dueDate: string; notes: string; document: InvoiceDocumentForm; lines: InvoiceLine[] };
 type ApiPayload<T> = { data?: T } & ApiError;
 const emptyLine = (): InvoiceLine => ({ description: "", itemCode: "", unit: "unité", lineNote: "", quantity: "1", unitPrice: "0", discountPercent: "0", taxRatePercent: "0" });
-const emptyDocument = (): InvoiceDocumentForm => ({ title: "FACTURE", reference: "", purchaseOrderNumber: "", contractReference: "", paymentTerms: "", paymentMethod: "", deliveryDate: "", servicePeriodStart: "", servicePeriodEnd: "", footer: "", language: "fr" });
+const emptyDocument = (): InvoiceDocumentForm => ({ title: "FACTURE", reference: "", purchaseOrderNumber: "", contractReference: "", paymentTerms: "", paymentMethod: "", deliveryDate: "", servicePeriodStart: "", servicePeriodEnd: "", footer: "", language: "fr", globalDiscountPercent: "0", globalDiscountAmount: "0" });
 const emptyForm = (): DraftForm => ({ customerId: "", currencyCode: "XOF", dueDate: "", notes: "", document: emptyDocument(), lines: [emptyLine()] });
 
 async function responseError(response: Response, fallback: string): Promise<string> {
@@ -320,6 +320,8 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
                 <label>Moyen de paiement<input value={form.document.paymentMethod} maxLength={120} onChange={(event) => setForm({ ...form, document: { ...form.document, paymentMethod: event.target.value } })} placeholder="Virement, Mobile Money…"/></label>
                 <label className="line-description">Conditions de règlement<textarea value={form.document.paymentTerms} maxLength={2000} onChange={(event) => setForm({ ...form, document: { ...form.document, paymentTerms: event.target.value } })} rows={2}/></label>
                 <label className="line-description">Pied de page<input value={form.document.footer} maxLength={2000} onChange={(event) => setForm({ ...form, document: { ...form.document, footer: event.target.value } })} placeholder="Coordonnées bancaires et mentions commerciales"/></label>
+                <label>Remise globale (%)<input inputMode="decimal" value={form.document.globalDiscountPercent} onChange={(event) => setForm({ ...form, document: { ...form.document, globalDiscountPercent: event.target.value, globalDiscountAmount: "0" } })}/></label>
+                <label>Remise globale (montant)<input inputMode="decimal" value={form.document.globalDiscountAmount} onChange={(event) => setForm({ ...form, document: { ...form.document, globalDiscountAmount: event.target.value, globalDiscountPercent: "0" } })}/></label>
                 <label>Langue du document<input value={form.document.language} maxLength={12} onChange={(event) => setForm({ ...form, document: { ...form.document, language: event.target.value } })}/></label>
               </div>
             </details>

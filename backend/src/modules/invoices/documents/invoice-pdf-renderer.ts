@@ -105,6 +105,8 @@ export function renderInvoicePdfDocument(invoice: FinanceInvoice, documentLabel 
     ...(metadata["reference"] ? [`Référence : ${metadata["reference"]}`] : []),
     ...(metadata["purchaseOrderNumber"] ? [`Bon de commande : ${metadata["purchaseOrderNumber"]}`] : []),
     ...(metadata["contractReference"] ? [`Contrat : ${metadata["contractReference"]}`] : []),
+    ...(metadata["globalDiscountPercent"] && metadata["globalDiscountPercent"] !== "0" ? [`Remise globale : ${metadata["globalDiscountPercent"]}%`] : []),
+    ...(metadata["globalDiscountAmount"] && metadata["globalDiscountAmount"] !== "0" ? [`Remise globale : ${metadata["globalDiscountAmount"]} ${invoice.currencyCode}`] : []),
     "",
     "FACTURÉ À",
     customerName,

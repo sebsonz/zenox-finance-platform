@@ -11,6 +11,8 @@ export interface InvoiceCalculationInput {
   readonly currency: string;
   readonly currencyDecimalPlaces: number;
   readonly lines: readonly InvoiceCalculationLineInput[];
+  readonly globalDiscountPercent?: DecimalString;
+  readonly globalDiscountAmount?: DecimalString;
 }
 
 export interface CalculatedInvoiceLine {
@@ -33,5 +35,5 @@ export interface CalculatedInvoiceTotals {
   readonly taxTotal: DecimalString;
   readonly grandTotal: DecimalString;
   readonly lines: readonly CalculatedInvoiceLine[];
-  readonly calculationPolicy: "LINE_HALF_UP_TAX_EXCLUSIVE_V1";
+  readonly calculationPolicy: "LINE_AND_DOCUMENT_DISCOUNT_HALF_UP_TAX_EXCLUSIVE_V2";
 }
