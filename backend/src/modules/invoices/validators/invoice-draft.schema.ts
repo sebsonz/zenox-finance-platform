@@ -31,7 +31,7 @@ export const createInvoiceDraftSchema = z.object({
     servicePeriodEnd: z.iso.date().optional(),
     footer: z.string().trim().max(2000).optional(),
     language: z.string().trim().min(2).max(12).optional(),
-  }).strict().optional(),
+  }).strict().refine((document) => !document.servicePeriodStart || !document.servicePeriodEnd || document.servicePeriodEnd >= document.servicePeriodStart, { message: "Service period end must be on or after its start.", path: ["servicePeriodEnd"] }).optional(),
   lines: z.array(z.object({
     description: z.string().trim().min(1).max(500),
     itemCode: z.string().trim().max(100).optional(),

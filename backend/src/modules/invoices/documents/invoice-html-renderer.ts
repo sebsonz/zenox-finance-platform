@@ -39,7 +39,6 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
   const metadata = invoice.document ?? {};
   const sellerName = String(seller["tradeName"] || seller["legalName"] || "Émetteur");
   const customerName = String(customer["displayName"] || customer["legalName"] || "Client");
-  const rules = appliedRules.map((rule) => `<li>${escapeHtml(rule["ruleCode"])} — ${escapeHtml(rule["treatment"])} — ${escapeHtml(rule["ratePercent"])}%</li>`).join("");
   const lines = invoice.lines.map((line) => `
     <tr>
       <td class="index">${escapeHtml(line.lineNumber)}</td>
