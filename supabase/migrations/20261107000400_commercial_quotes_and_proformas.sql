@@ -140,3 +140,24 @@ REVOKE ALL ON TABLE public.finance_quotes, public.finance_quote_lines, public.fi
 
 COMMENT ON TABLE public.finance_quotes IS 'Commercial quote aggregate; distinct from issued tax invoices.';
 COMMENT ON TABLE public.finance_proformas IS 'Commercial pro forma aggregate; explicitly non-fiscal and distinct from issued tax invoices.';
+
+CREATE TABLE public.finance_commercial_document_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES public.finance_tenants(id) ON DELETE RESTRICT,
+  document_kind text NOT NULL CHECK (document_kind IN ('QUOTE','PROFORMA')),
+  document_id uuid NOT NULL,
+  event_type text NOT NULL CHECK (event_type IN ('CREATED','UPDATED','SENT','ACCEPTED','REJECTED','PUBLISHED','EXPIRED','CANCELLED')),
+  actor_type text NOT NULL CHECK (actor_type IN ('USER','SERVICE')),
+  actor_ref text NOT NULL,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(metadata) = 'object'),
+  occurred_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX finance_commercial_document_events_tenant_document_idx
+  ON public.finance_commercial_document_events(tenant_id, document_kind, document_id, occurred_at DESC);
+ALTER TABLE public.finance_commercial_document_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.finance_commercial_document_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY finance_commercial_document_events_tenant_isolation ON public.finance_commercial_document_events
+  FOR ALL
+  USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+  WITH CHECK (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+REVOKE ALL ON TABLE public.finance_commercial_document_events FROM PUBLIC;
