@@ -78,7 +78,7 @@ export const invoiceIssuanceService = {
         tax_snapshot_id: string | null;
         updated_at: string;
       }>(
-        `SELECT id, status, document_type, tax_status,
+        `SELECT id, status, customer_id, currency_code, grand_total::text, contract_total::text, related_invoice_id, document_type, tax_status, tax_snapshot_id,
                 to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at
            FROM public.finance_invoices
           WHERE tenant_id = $1 AND id = $2 AND status = 'DRAFT'
