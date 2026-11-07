@@ -83,7 +83,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     onCurrenciesLoaded,
   });
   const {
-    form, setForm, editing, setEditing, resetDraft, startEdit, updateLine, addLine, removeLine, duplicateLine,
+    form, setForm, editing, setEditing, resetDraft, startEdit, updateLine, addLine, removeLine, duplicateLine, reorderLines,
   } = useInvoiceDraft({ customers, currencies, setSelectedInvoiceId, setNotice });
   useEffect(() => { setEditing(null); }, [tenantId, setEditing]);
   const { saveStandardDraft } = useInvoiceDraftPersistence({
@@ -203,6 +203,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
               onUpdate={updateLine}
               onRemove={removeLine}
               onDuplicate={duplicateLine}
+              onReorder={reorderLines}
             />
 
             <div className="invoice-editor-submit-row"><button className="primary-button" type="submit" disabled={busy || (form.documentType === "CREDIT_NOTE" ? !form.relatedInvoiceId || !canCredit : checkingResources || customers.length === 0 || currencies.length === 0)}>{busy ? "Traitement…" : form.documentType === "CREDIT_NOTE" ? "Émettre la facture d’avoir" : editing ? "Enregistrer les modifications" : "Enregistrer la facture"} <FileText size={15}/></button></div>
