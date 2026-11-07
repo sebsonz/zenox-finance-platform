@@ -98,6 +98,18 @@ export function useInvoiceDraft({ customers, currencies, setSelectedInvoiceId, s
     });
   }, []);
 
+  const reorderLines = useCallback((fromIndex: number, toIndex: number) => {
+    setForm((current) => {
+      if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 ||
+          fromIndex >= current.lines.length || toIndex >= current.lines.length) return current;
+      const lines = [...current.lines];
+      const [moved] = lines.splice(fromIndex, 1);
+      if (!moved) return current;
+      lines.splice(toIndex, 0, moved);
+      return { ...current, lines };
+    });
+  }, []);
+
   return {
     form,
     setForm,
@@ -109,5 +121,6 @@ export function useInvoiceDraft({ customers, currencies, setSelectedInvoiceId, s
     addLine,
     removeLine,
     duplicateLine,
+    reorderLines,
   };
 }
