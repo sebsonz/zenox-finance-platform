@@ -31,6 +31,40 @@ describe("invoice draft request schema", () => {
     expect(parsed.lines[1]?.discountPercent).toBe("10");
   });
 
+  it("accepts professional invoice references, service date and payment instructions", () => {
+    const parsed = createInvoiceDraftSchema.parse({
+      customerId,
+      currencyCode: "XOF",
+      purchaseOrderReference: "BC-2026-0042",
+      serviceDate: "2026-11-05",
+      paymentTerms: "Paiement à 14 jours",
+      paymentInstructions: "Virement bancaire ou Mobile Money",
+      externalReference: "CLIENT-REF-88",
+      footerNote: "Merci de votre confiance.",
+      lines: [{ description: "Transport maritime", quantity: "1", unitPrice: "15000", taxRatePercent: "18" }],
+    });
+    expect(parsed).toMatchObject({
+      purchaseOrderReference: "BC-2026-0042",
+      serviceDate: "2026-11-05",
+      paymentTerms: "Paiement à 14 jours",
+      paymentInstructions: "Virement bancaire ou Mobile Money",
+      externalReference: "CLIENT-REF-88",
+      footerNote: "Merci de votre confiance.",
+    });
+  });
+
+  it("rejects professional invoice metadata beyond database limits", () => {
+    const base = {
+      customerId,
+      currencyCode: "XOF",
+      lines: [{ description: "Service", quantity: "1", unitPrice: "10", taxRatePercent: "0" }],
+    };
+    expect(createInvoiceDraftSchema.safeParse({ ...base, purchaseOrderReference: "x".repeat(121) }).success).toBe(false);
+    expect(createInvoiceDraftSchema.safeParse({ ...base, paymentTerms: "x".repeat(501) }).success).toBe(false);
+    expect(createInvoiceDraftSchema.safeParse({ ...base, paymentInstructions: "x".repeat(2001) }).success).toBe(false);
+    expect(createInvoiceDraftSchema.safeParse({ ...base, footerNote: "x".repeat(1001) }).success).toBe(false);
+  });
+
   it("rejects client-supplied totals or unknown fields", () => {
     const result = createInvoiceDraftSchema.safeParse({
       customerId,
