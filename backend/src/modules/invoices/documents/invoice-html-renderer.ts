@@ -124,7 +124,9 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
     <div class="muted">Date d'émission : ${escapeHtml(invoice.issueDate ?? "—")}</div>
     <div class="muted">Échéance : ${escapeHtml(invoice.dueDate ?? "—")}</div>
     ${invoice.purchaseOrderReference ? `<div class="muted">Commande : ${escapeHtml(invoice.purchaseOrderReference)}</div>` : ""}
-    ${invoice.externalReference ? `<div class="muted">Référence : ${escapeHtml(invoice.externalReference)}</div>` : ""}\n    ${invoice.documentType === "DEPOSIT" && invoice.contractTotal ? `<div class="muted">Montant total du contrat : ${escapeHtml(invoice.contractTotal)} ${escapeHtml(invoice.currencyCode)}</div>` : ""}\n    ${invoice.documentType === "BALANCE" && invoice.relatedInvoiceId ? `<div class="muted">Facture d’acompte source : ${escapeHtml(invoice.relatedInvoiceId)}</div>` : ""}
+    ${invoice.externalReference ? `<div class="muted">Référence : ${escapeHtml(invoice.externalReference)}</div>` : ""}
+    ${invoice.documentType === "DEPOSIT" && invoice.contractTotal ? `<div class="muted">Montant total du contrat : ${escapeHtml(invoice.contractTotal)} ${escapeHtml(invoice.currencyCode)}</div>` : ""}
+    ${invoice.documentType === "BALANCE" && invoice.relatedInvoiceId ? `<div class="muted">Facture d’acompte source : ${escapeHtml(invoice.relatedInvoiceId)}</div>` : ""}
     ${invoice.serviceDate ? `<div class="muted">Prestation / livraison : ${escapeHtml(invoice.serviceDate)}</div>` : ""}
   </div>
 </header>
