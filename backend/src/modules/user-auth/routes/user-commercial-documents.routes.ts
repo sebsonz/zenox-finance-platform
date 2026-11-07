@@ -160,6 +160,25 @@ userCommercialDocumentsRouter.post("/:tenantId/proformas/:proformaId/issue",requ
 
 
 
+
+const invoiceRelationshipSchema=z.object({advanceInvoiceId:uuid,relationshipType:z.enum(["ADVANCE_FOR","BALANCE_OF"]),appliedAmount:decimal,sourceReference:z.string().trim().max(160).optional()}).strict();
+userCommercialDocumentsRouter.get("/:tenantId/invoices/:invoiceId/relationships",requireUserAuth(),async(req,res,next)=>{
+ try{const id=uuid.safeParse(req.params["tenantId"]),iid=uuid.safeParse(req.params["invoiceId"]);if(!id.success||!iid.success)return fail(res,"INVALID_ID","Invalid resource ID.",400);const ctx=await contextFor(id.data,req,res,"invoices:read");if(!ctx)return;const rows=await withTenantTransaction(id.data,c=>c.query("SELECT r.id,r.relationship_type,r.source_reference,r.applied_amount,r.created_at,r.source_invoice_id,r.related_invoice_id,a.invoice_code AS advance_invoice_code,b.invoice_code AS related_invoice_code FROM public.finance_invoice_relationships r JOIN public.finance_invoices a ON a.tenant_id=r.tenant_id AND a.id=r.source_invoice_id JOIN public.finance_invoices b ON b.tenant_id=r.tenant_id AND b.id=r.related_invoice_id WHERE r.tenant_id=$1 AND (r.source_invoice_id=$2 OR r.related_invoice_id=$2) ORDER BY r.created_at",[id.data,iid.data]));res.json({data:{relationships:rows.rows,correlationId:ctx.correlationId}});
+ }catch(e){next(e);}
+});
+userCommercialDocumentsRouter.post("/:tenantId/invoices/:invoiceId/relationships",requireUserAuth(),async(req,res,next)=>{
+ try{const id=uuid.safeParse(req.params["tenantId"]),balanceId=uuid.safeParse(req.params["invoiceId"]),body=invoiceRelationshipSchema.safeParse(req.body);if(!id.success||!balanceId.success||!body.success)return fail(res,"INVALID_RELATIONSHIP","Relationship payload is invalid.",400);const ctx=await contextFor(id.data,req,res,"invoices:issue");if(!ctx)return;
+ const result=await withTenantTransaction(id.data,async c=>{
+ const advance=await c.query("SELECT id,customer_id,currency_code,grand_total,status FROM public.finance_invoices WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,body.data.advanceInvoiceId]);const balance=await c.query("SELECT id,customer_id,currency_code,grand_total,status FROM public.finance_invoices WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,balanceId.data]);
+ const a=advance.rows[0],b=balance.rows[0];if(!a||!b||a.status!=="ISSUED"||b.status!=="ISSUED")throw new Error("RELATIONSHIP_REQUIRES_ISSUED_INVOICES");if(a.customer_id!==b.customer_id||a.currency_code!==b.currency_code)throw new Error("RELATIONSHIP_PARTY_CURRENCY_MISMATCH");
+ const allocated=await c.query("SELECT COALESCE(sum(pa.amount-COALESCE(rv.amount,0)),0)::text AS amount FROM public.finance_payment_allocations pa LEFT JOIN (SELECT tenant_id,allocation_id,sum(amount) amount FROM public.finance_payment_allocation_reversals GROUP BY tenant_id,allocation_id) rv ON rv.tenant_id=pa.tenant_id AND rv.allocation_id=pa.id WHERE pa.tenant_id=$1 AND pa.invoice_id=$2",[id.data,body.data.advanceInvoiceId]);
+ const amount=new Decimal(body.data.appliedAmount);if(amount.lte(0)||amount.gt(new Decimal(allocated.rows[0]?.amount??"0"))||amount.gt(new Decimal(a.grand_total)))throw new Error("ADVANCE_APPLICATION_EXCEEDS_PAID_AMOUNT");
+ const inserted=await c.query("INSERT INTO public.finance_invoice_relationships(tenant_id,source_invoice_id,related_invoice_id,relationship_type,source_reference,applied_amount,created_by_actor_type,created_by_actor_ref) VALUES($1,$2,$3,$4,$5,$6,'USER',$7) RETURNING *",[id.data,body.data.advanceInvoiceId,balanceId.data,body.data.relationshipType,body.data.sourceReference??null,body.data.appliedAmount,ctx.actor.ref]);
+ await recordInvoiceAudit(c,ctx,"invoice.advance_applied","INVOICE_RELATIONSHIP",inserted.rows[0].id,{advanceInvoiceId:body.data.advanceInvoiceId,balanceInvoiceId:balanceId.data,appliedAmount:body.data.appliedAmount});return inserted.rows[0];
+ });res.status(201).json({data:{relationship:result,correlationId:ctx.correlationId}});
+ }catch(e){if(e instanceof Error&&["RELATIONSHIP_REQUIRES_ISSUED_INVOICES","RELATIONSHIP_PARTY_CURRENCY_MISMATCH","ADVANCE_APPLICATION_EXCEEDS_PAID_AMOUNT"].includes(e.message))return fail(res,e.message,"The advance cannot be applied to this invoice.",409);next(e);}
+});
+
 const adjustmentSchema=z.object({
  type:z.enum(["CREDIT_NOTE","DEBIT_NOTE"]),reason:z.string().trim().min(3).max(2000),
  lines:z.array(z.object({sourceInvoiceLineId:uuid,quantity:decimal}).strict()).min(1).max(500),
