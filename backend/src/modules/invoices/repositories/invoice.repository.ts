@@ -19,6 +19,7 @@ export interface FinanceInvoice {
   paymentInstructions: string | null;
   externalReference: string | null;
   footerNote: string | null;
+  issuerSnapshot: Record<string, unknown>;
   customerSnapshot: Record<string, unknown>;
   subtotal: string;
   discountTotal: string;
@@ -46,7 +47,7 @@ interface InvoiceRow {
   currency_code: string; currency_minor_unit: number; issue_date: string | null; due_date: string | null;
   purchase_order_reference: string | null; service_date: string | null; payment_terms: string | null;
   payment_instructions: string | null; external_reference: string | null; footer_note: string | null;
-  customer_snapshot: Record<string, unknown>; subtotal: string; discount_total: string; taxable_total: string;
+  issuer_snapshot: Record<string, unknown>; customer_snapshot: Record<string, unknown>; subtotal: string; discount_total: string; taxable_total: string;
   tax_total: string; grand_total: string; amount_due: string; calculation_policy: string; notes: string | null;
   created_at: string; updated_at: string; document_version: number;
   tax_snapshot_id: string | null; tax_snapshot_version: number | null;
@@ -59,7 +60,7 @@ interface LineRow {
 }
 const invoiceColumns = `id, customer_id, invoice_code, status, currency_code, currency_minor_unit,
   issue_date, due_date, purchase_order_reference, service_date, payment_terms, payment_instructions,
-  external_reference, footer_note, customer_snapshot, subtotal::text, discount_total::text, taxable_total::text,
+  external_reference, footer_note, issuer_snapshot, customer_snapshot, subtotal::text, discount_total::text, taxable_total::text,
   tax_total::text, grand_total::text, amount_due::text, calculation_policy, notes,
   to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at,
   to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at,
@@ -84,7 +85,7 @@ async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow
     paymentInstructions: row.payment_instructions,
     externalReference: row.external_reference,
     footerNote: row.footer_note,
-    customerSnapshot: row.customer_snapshot, subtotal: row.subtotal, discountTotal: row.discount_total,
+    issuerSnapshot: row.issuer_snapshot, customerSnapshot: row.customer_snapshot, subtotal: row.subtotal, discountTotal: row.discount_total,
     taxableTotal: row.taxable_total, taxTotal: row.tax_total, grandTotal: row.grand_total, amountDue: row.amount_due,
     calculationPolicy: row.calculation_policy, notes: row.notes,
     createdAt: row.created_at, updatedAt: row.updated_at,
@@ -104,7 +105,8 @@ export const invoiceRepository = {
     client: PoolClient, context: FinanceInvoiceOperationContext, input: CreateInvoiceDraftInput,
     currencyMinorUnit: number, totals: CalculatedInvoiceTotals,
     calculatedLines: readonly { subtotal: string; discountAmount: string; taxableAmount: string; taxAmount: string; total: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string }[],
-    customer: { id: string; legalName: string; displayName: string | null; email: string | null; phone: string | null; countryCode: string; taxIdentifier: string | null; registrationIdentifier: string | null },
+    customer: { id: string; legalName: string; displayName: string | null; email: string | null; phone: string | null; countryCode: string; taxIdentifier: string | null; registrationIdentifier: string | null; addressLine1: string | null; addressLine2: string | null; addressRegion: string | null; addressCity: string | null; addressPostalCode: string | null },
+    issuerSnapshot: Record<string, unknown>,
   ): Promise<FinanceInvoice> {
     const actor = invoiceActor(context);
     const legacyPrincipalId = isUserInvoiceContext(context) ? null : context.principal.id;
@@ -112,15 +114,18 @@ export const invoiceRepository = {
       `INSERT INTO public.finance_invoices (
         tenant_id, customer_id, currency_code, currency_minor_unit, due_date,
         purchase_order_reference, service_date, payment_terms, payment_instructions, external_reference, footer_note,
-        customer_snapshot, subtotal, discount_total, taxable_total, tax_total, grand_total, amount_due, calculation_policy, notes,
+        issuer_snapshot, customer_snapshot, subtotal, discount_total, taxable_total, tax_total, grand_total, amount_due, calculation_policy, notes,
         created_by_principal_id, created_by_actor_type, created_by_actor_ref,
         updated_by_actor_type, updated_by_actor_ref
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
       RETURNING ${invoiceColumns}`,
       [context.tenantId, customer.id, totals.currency, currencyMinorUnit, input.dueDate ?? null,
         input.purchaseOrderReference ?? null, input.serviceDate ?? null, input.paymentTerms ?? null,
         input.paymentInstructions ?? null, input.externalReference ?? null, input.footerNote ?? null,
-        JSON.stringify({ id: customer.id, legalName: customer.legalName, displayName: customer.displayName,
+        JSON.stringify(issuerSnapshot),
+        JSON.stringify({ id: customer.id, customerType: customer.customerType, legalName: customer.legalName, displayName: customer.displayName,
+          address: customer.addressLine1, addressLine2: customer.addressLine2, region: customer.addressRegion,
+          city: customer.addressCity, postalCode: customer.addressPostalCode,
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
           taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
         totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
@@ -154,7 +159,8 @@ export const invoiceRepository = {
     currencyMinorUnit: number,
     totals: CalculatedInvoiceTotals,
     calculatedLines: readonly { subtotal: string; discountAmount: string; taxableAmount: string; taxAmount: string; total: string; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string }[],
-    customer: { id: string; legalName: string; displayName: string | null; email: string | null; phone: string | null; countryCode: string; taxIdentifier: string | null; registrationIdentifier: string | null },
+    customer: { id: string; legalName: string; displayName: string | null; email: string | null; phone: string | null; countryCode: string; taxIdentifier: string | null; registrationIdentifier: string | null; addressLine1: string | null; addressLine2: string | null; addressRegion: string | null; addressCity: string | null; addressPostalCode: string | null },
+    issuerSnapshot: Record<string, unknown>,
   ): Promise<FinanceInvoice | null> {
     const actor = invoiceActor(context);
     const updated = await client.query<InvoiceRow>(
@@ -169,21 +175,22 @@ export const invoiceRepository = {
               payment_instructions = $10,
               external_reference = $11,
               footer_note = $12,
-              customer_snapshot = $13::jsonb,
-              subtotal = $14,
-              discount_total = $15,
-              taxable_total = $16,
-              tax_total = $17,
-              grand_total = $18,
-              amount_due = $18,
-              calculation_policy = $19,
-              notes = $20,
+              issuer_snapshot = $13::jsonb,
+              customer_snapshot = $14::jsonb,
+              subtotal = $15,
+              discount_total = $16,
+              taxable_total = $17,
+              tax_total = $18,
+              grand_total = $19,
+              amount_due = $19,
+              calculation_policy = $20,
+              notes = $21,
               document_version = document_version + 1,
               tax_snapshot_id = NULL,
               tax_snapshot_version = NULL,
               tax_status = 'PROVISIONAL',
-              updated_by_actor_type = $21,
-              updated_by_actor_ref = $22,
+              updated_by_actor_type = $22,
+              updated_by_actor_ref = $23,
               updated_at = clock_timestamp()
         WHERE tenant_id = $1
           AND id = $2
@@ -194,7 +201,10 @@ export const invoiceRepository = {
         input.dueDate ?? null, input.purchaseOrderReference ?? null, input.serviceDate ?? null,
         input.paymentTerms ?? null, input.paymentInstructions ?? null, input.externalReference ?? null,
         input.footerNote ?? null,
-        JSON.stringify({ id: customer.id, legalName: customer.legalName, displayName: customer.displayName,
+        JSON.stringify(issuerSnapshot),
+        JSON.stringify({ id: customer.id, customerType: customer.customerType, legalName: customer.legalName, displayName: customer.displayName,
+          address: customer.addressLine1, addressLine2: customer.addressLine2, region: customer.addressRegion,
+          city: customer.addressCity, postalCode: customer.addressPostalCode,
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
           taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
         totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
