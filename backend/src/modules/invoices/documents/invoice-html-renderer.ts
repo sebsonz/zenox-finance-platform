@@ -25,7 +25,7 @@ function customerValue(snapshot: Record<string, unknown>, key: string): string {
 }
 
 export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): string {
-  const { invoice, appliedRules, taxResult, documentLabel = "FACTURE" } = input;
+  const { invoice, documentLabel = "FACTURE" } = input;
   if (invoice.status !== "ISSUED" || !invoice.invoiceCode || invoice.taxStatus !== "CALCULATED" || !invoice.taxSnapshotId) {
     throw new Error("INVOICE_DOCUMENT_REQUIRES_ISSUED_TAX_SNAPSHOTTED_INVOICE");
   }
@@ -33,7 +33,7 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
   const lines = invoice.lines.map((line) => `
     <tr>
       <td>${escapeHtml(line.lineNumber)}</td>
-      <td>${escapeHtml(line.description)}</td>
+      <td class="description">${escapeHtml(line.description)}</td>
       <td class="number">${escapeHtml(line.quantity)}</td>
       <td class="number">${escapeHtml(line.unitPrice)}</td>
       <td class="number">${escapeHtml(line.discountAmount)}</td>
@@ -41,62 +41,92 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
       <td class="number">${escapeHtml(line.total)}</td>
     </tr>`).join("");
 
-  const rules = appliedRules.map((rule) => `
-    <li>${escapeHtml(rule["ruleCode"])} — ${escapeHtml(rule["treatment"])} — ${escapeHtml(rule["ratePercent"])}%</li>`).join("");
-
   const customer = invoice.customerSnapshot;
-  const taxResultText = JSON.stringify(taxResult);
+  const customerName = customerValue(customer, "legalName") || customerValue(customer, "displayName");
   return `<!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Facture ${escapeHtml(invoice.invoiceCode)}</title>
+<title>${escapeHtml(documentLabel)} ${escapeHtml(invoice.invoiceCode)}</title>
 <style>
-  :root { color-scheme: light; font-family: Arial, Helvetica, sans-serif; color: #172033; }
-  body { margin: 0; padding: 32px; background: #fff; font-size: 14px; }
+  :root { color-scheme: light; font-family: Arial, Helvetica, sans-serif; color: #172033; background: #fff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 32px; background: #fff; font-size: 14px; line-height: 1.45; }
   main { max-width: 1000px; margin: 0 auto; }
-  header { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #172033; padding-bottom: 20px; }
-  h1 { font-size: 28px; margin: 0 0 8px; }
-  h2 { font-size: 16px; margin: 24px 0 10px; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; border-bottom: 2px solid #172033; padding-bottom: 20px; }
+  h1 { font-size: 28px; line-height: 1.15; margin: 0 0 8px; letter-spacing: .02em; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
   .muted { color: #5a6475; }
+  .document-meta { text-align: right; min-width: 220px; }
+  .document-number { font-size: 18px; font-weight: 700; }
   .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
-  .panel { border: 1px solid #d7dce4; border-radius: 8px; padding: 16px; }
+  .panel { border: 1px solid #d7dce4; border-radius: 8px; padding: 16px; min-width: 0; overflow-wrap: anywhere; }
+  .party-name { font-weight: 700; margin-bottom: 6px; }
+  .party-details { color: #5a6475; line-height: 1.6; }
+  .section-title { margin-top: 28px; }
   table { width: 100%; border-collapse: collapse; margin-top: 12px; }
   th, td { border-bottom: 1px solid #d7dce4; padding: 10px 8px; text-align: left; vertical-align: top; }
-  th { background: #f3f5f8; font-size: 12px; }
+  th { background: #f3f5f8; font-size: 12px; font-weight: 700; }
   .number { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .description { min-width: 180px; overflow-wrap: anywhere; }
   .totals { width: min(100%, 420px); margin: 20px 0 0 auto; }
   .totals td { border: 0; padding: 7px 0; }
   .grand { font-weight: 700; font-size: 18px; border-top: 2px solid #172033 !important; }
-  .evidence { margin-top: 28px; padding: 12px; background: #f7f8fa; overflow-wrap: anywhere; }
-  footer { margin-top: 28px; border-top: 1px solid #d7dce4; padding-top: 12px; font-size: 11px; color: #5a6475; }
-  @media print { body { padding: 0; } .panel { break-inside: avoid; } tr { break-inside: avoid; } }
-  @media (max-width: 640px) { body { padding: 14px; } header, .columns { display: block; } .panel { margin-top: 12px; } table { font-size: 11px; } th, td { padding: 6px 4px; } }
+  .payment { margin-top: 28px; padding: 16px; border: 1px solid #d7dce4; border-radius: 8px; }
+  .payment p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  footer { margin-top: 28px; border-top: 1px solid #d7dce4; padding-top: 12px; font-size: 11px; color: #5a6475; white-space: pre-wrap; overflow-wrap: anywhere; }
+  @page { size: A4; margin: 16mm 14mm; }
+  @media print {
+    body { padding: 0; font-size: 10pt; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    main { max-width: none; }
+    header, .panel, .payment, .totals { break-inside: avoid; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { break-inside: avoid; }
+    h2 { break-after: avoid; }
+    footer { break-inside: avoid; }
+  }
+  @media (max-width: 640px) {
+    body { padding: 14px; }
+    header, .columns { display: block; }
+    .document-meta { text-align: left; margin-top: 16px; }
+    .panel { margin-top: 12px; }
+    table { font-size: 11px; }
+    th, td { padding: 6px 4px; }
+    .description { min-width: 120px; }
+  }
 </style>
 </head>
 <body>
 <main>
 <header>
-  <div><h1>${escapeHtml(documentLabel)}</h1><div class="muted">Document fiscal émis par ZENOX Finance</div></div>
-  <div><strong>${escapeHtml(invoice.invoiceCode)}</strong><br><span class="muted">Date d'émission : ${escapeHtml(invoice.issueDate)}</span><br><span class="muted">Échéance : ${escapeHtml(invoice.dueDate ?? "—")}</span>
-    ${invoice.purchaseOrderReference ? `<br><span class="muted">Commande : ${escapeHtml(invoice.purchaseOrderReference)}</span>` : ""}
-    ${invoice.externalReference ? `<br><span class="muted">Référence : ${escapeHtml(invoice.externalReference)}</span>` : ""}
-    ${invoice.serviceDate ? `<br><span class="muted">Prestation / livraison : ${escapeHtml(invoice.serviceDate)}</span>` : ""}
+  <div><h1>${escapeHtml(documentLabel)}</h1><div class="muted">ZENOX Finance</div></div>
+  <div class="document-meta"><div class="document-number">${escapeHtml(invoice.invoiceCode)}</div>
+    <div class="muted">Date d'émission : ${escapeHtml(invoice.issueDate ?? "—")}</div>
+    <div class="muted">Échéance : ${escapeHtml(invoice.dueDate ?? "—")}</div>
+    ${invoice.purchaseOrderReference ? `<div class="muted">Commande : ${escapeHtml(invoice.purchaseOrderReference)}</div>` : ""}
+    ${invoice.externalReference ? `<div class="muted">Référence : ${escapeHtml(invoice.externalReference)}</div>` : ""}
+    ${invoice.serviceDate ? `<div class="muted">Prestation / livraison : ${escapeHtml(invoice.serviceDate)}</div>` : ""}
   </div>
 </header>
 <section class="columns">
-  <div class="panel"><h2>Client</h2><strong>${escapeHtml(customerValue(customer, "legalName") || customerValue(customer, "displayName"))}</strong><br>
-    ${escapeHtml(customerValue(customer, "email"))}<br>${escapeHtml(customerValue(customer, "phone"))}<br>
-    ${escapeHtml(customerValue(customer, "countryCode"))}<br>
-    ${escapeHtml(customerValue(customer, "taxIdentifier"))}
+  <div class="panel"><h2>Facturé à</h2><div class="party-name">${escapeHtml(customerName)}</div>
+    <div class="party-details">
+      ${escapeHtml(customerValue(customer, "address"))}<br>
+      ${escapeHtml(customerValue(customer, "postalCode"))} ${escapeHtml(customerValue(customer, "city"))}<br>
+      ${escapeHtml(customerValue(customer, "countryCode"))}<br>
+      ${escapeHtml(customerValue(customer, "email"))}<br>
+      ${escapeHtml(customerValue(customer, "phone"))}<br>
+      ${escapeHtml(customerValue(customer, "taxIdentifier"))}
+    </div>
   </div>
-  <div class="panel"><h2>Référence du document</h2><div>Identifiant : ${escapeHtml(invoice.id)}</div>
-    <div>Révision : ${escapeHtml(invoice.documentVersion)}</div><div>Devise : ${escapeHtml(invoice.currencyCode)}</div>
-    <div>Référence du snapshot fiscal : ${escapeHtml(invoice.taxSnapshotId)}</div>
+  <div class="panel"><h2>Informations de facturation</h2>
+    <div>Devise : <strong>${escapeHtml(invoice.currencyCode)}</strong></div>
+    ${invoice.paymentTerms ? `<div>Conditions : ${escapeHtml(invoice.paymentTerms)}</div>` : ""}
   </div>
 </section>
-<h2>Détail des prestations</h2>
+<h2 class="section-title">Détail des prestations</h2>
 <table><thead><tr><th>#</th><th>Description</th><th class="number">Qté</th><th class="number">Prix unitaire</th><th class="number">Remise</th><th class="number">Taxe</th><th class="number">Total</th></tr></thead>
 <tbody>${lines}</tbody></table>
 <table class="totals">
@@ -105,15 +135,10 @@ export function renderInvoiceHtmlDocument(input: InvoiceHtmlDocumentInput): stri
 <tr><td>Base taxable</td><td class="number">${escapeHtml(invoice.taxableTotal)} ${escapeHtml(invoice.currencyCode)}</td></tr>
 <tr><td>Taxes</td><td class="number">${escapeHtml(invoice.taxTotal)} ${escapeHtml(invoice.currencyCode)}</td></tr>
 <tr class="grand"><td>${escapeHtml(documentLabel === "AVOIR" ? "Total de l’avoir" : "Total brut")}</td><td class="number">${escapeHtml(invoice.grandTotal)} ${escapeHtml(invoice.currencyCode)}</td></tr>
-<tr><td>${escapeHtml(documentLabel === "AVOIR" ? "Montant à créditer" : "Net à payer (après retenues)")}</td><td class="number"><strong>${escapeHtml(invoice.amountDue)} ${escapeHtml(invoice.currencyCode)}</strong></td></tr>
+<tr><td><strong>${escapeHtml(documentLabel === "AVOIR" ? "Montant à créditer" : "Net à payer")}</strong></td><td class="number"><strong>${escapeHtml(invoice.amountDue)} ${escapeHtml(invoice.currencyCode)}</strong></td></tr>
 </table>
-<section class="evidence"><h2>Règles fiscales appliquées</h2><ul>${rules}</ul>
-<div class="muted">Le document conserve la référence d'un snapshot fiscal immuable. Hash du snapshot : ${escapeHtml(invoice.taxSnapshotId)}.</div>
-<details><summary>Données de calcul (JSON)</summary><pre>${escapeHtml(taxResultText)}</pre></details></section>
-${invoice.paymentTerms || invoice.paymentInstructions ? `<section><h2>Conditions et modalités de paiement</h2>${invoice.paymentTerms ? `<p><strong>Conditions :</strong> ${escapeHtml(invoice.paymentTerms)}</p>` : ""}${invoice.paymentInstructions ? `<p><strong>Modalités :</strong> ${escapeHtml(invoice.paymentInstructions)}</p>` : ""}</section>` : ""}
-${invoice.notes ? `<section><h2>Notes</h2><p>${escapeHtml(invoice.notes)}</p></section>` : ""}
-${invoice.footerNote ? `<footer><strong>${escapeHtml(invoice.footerNote)}</strong></footer>` : ""}
-<footer>Copie rendue par ZENOX Finance. Le contenu et son empreinte SHA-256 sont conservés comme artefact immuable. La conformité fiscale/légale et les obligations d'archivage doivent être validées pour chaque juridiction.</footer>
+${invoice.paymentInstructions ? `<section class="payment"><h2>Modalités de paiement</h2><p>${escapeHtml(invoice.paymentInstructions)}</p></section>` : ""}
+${invoice.footerNote ? `<footer>${escapeHtml(invoice.footerNote)}</footer>` : ""}
 </main>
 </body>
 </html>`;
