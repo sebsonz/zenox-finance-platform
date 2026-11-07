@@ -12,7 +12,7 @@ BEGIN
  IF a.status<>'ISSUED' OR b.status<>'ISSUED' THEN
   RAISE EXCEPTION 'INVOICE_RELATIONSHIP_REQUIRES_ISSUED_DOCUMENTS' USING ERRCODE='23514';
  END IF;
- IF a.document_metadata->>'invoiceKind'<>'ADVANCE' OR b.document_metadata->>'invoiceKind'<>'BALANCE' THEN
+ IF a.document_metadata->>'invoiceKind' IS DISTINCT FROM 'ADVANCE' OR b.document_metadata->>'invoiceKind' IS DISTINCT FROM 'BALANCE' THEN
   RAISE EXCEPTION 'INVOICE_TYPES_NOT_COMPATIBLE' USING ERRCODE='23514';
  END IF;
  SELECT COALESCE(sum(pa.amount-COALESCE(rv.amount,0)),0) INTO allocated
