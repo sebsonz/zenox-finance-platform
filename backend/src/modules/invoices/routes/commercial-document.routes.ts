@@ -219,6 +219,7 @@ function registerRoutes(kind: Kind) {
       const tenant = idSchema.safeParse(req.params["tenantId"]); const id = idSchema.safeParse(req.params["documentId"]);
       const body = updateSchema.safeParse(req.body);
       if (!tenant.success || !id.success || !body.success) { res.status(400).json({ error: { code: "INVALID_COMMERCIAL_DOCUMENT", message: "Valid IDs and document data are required." } }); return; }
+      if (body.data.validUntil && body.data.validUntil < new Date().toISOString().slice(0, 10)) { res.status(422).json({ error: { code: "INVALID_VALIDITY_DATE", message: "The validity date cannot be before today." } }); return; }
       try {
         const context = await contextFor(req, res, tenant.data, writePermission); if (!context) return;
         const totals = calculate(body.data.lines);
@@ -227,6 +228,8 @@ function registerRoutes(kind: Kind) {
           if (!locked.rows[0] || locked.rows[0].status !== "DRAFT" || new Date(locked.rows[0].updated_at).toISOString() !== body.data.expectedUpdatedAt) return null;
           const customer = await client.query("SELECT id, legal_name, display_name, email, phone, country_code, tax_identifier, registration_identifier, address_line1, address_line2, address_region, address_city, address_postal_code FROM public.finance_customers WHERE tenant_id=$1 AND id=$2 AND status='ACTIVE'", [tenant.data,body.data.customerId]);
           if (!customer.rows[0]) throw Object.assign(new Error("CUSTOMER_NOT_FOUND"), { code: "CUSTOMER_NOT_FOUND" });
+          const currency = await client.query("SELECT code FROM public.finance_currencies WHERE code=$1 AND is_active=true", [body.data.currencyCode]);
+          if (!currency.rows[0]) throw Object.assign(new Error("CURRENCY_NOT_AVAILABLE"), { code: "CURRENCY_NOT_AVAILABLE" });
           const c=customer.rows[0];
           const snapshot={id:c.id,legalName:c.legal_name,displayName:c.display_name,email:c.email,phone:c.phone,countryCode:c.country_code,taxIdentifier:c.tax_identifier,registrationIdentifier:c.registration_identifier,address:c.address_line1,addressLine2:c.address_line2,region:c.address_region,city:c.address_city,postalCode:c.address_postal_code};
           const result=await client.query(`UPDATE public.${names.docs} SET customer_id=$3,currency_code=$4,valid_until=$5,customer_snapshot=$6::jsonb,subtotal=$7,discount_total=$8,tax_total=$9,grand_total=$10,notes=$11,terms=$12,updated_by_actor_type='USER',updated_by_actor_ref=$13,updated_at=now() WHERE tenant_id=$1 AND id=$2 RETURNING id,status,updated_at,subtotal::text,discount_total::text,tax_total::text,grand_total::text`,
@@ -242,7 +245,7 @@ function registerRoutes(kind: Kind) {
         });
         if (!updated) { res.status(409).json({ error: { code: "DOCUMENT_NOT_DRAFT_OR_CHANGED", message: "Only an unchanged draft can be modified." } }); return; }
         res.status(200).json({data:{[label]:updated,correlationId:context.correlationId}});
-      } catch(error){if(error instanceof Error&&error.message==="CUSTOMER_NOT_FOUND"){res.status(404).json({error:{code:"CUSTOMER_NOT_FOUND"}});return;}next(error);}
+      } catch(error){if(error instanceof Error&&error.message==="CUSTOMER_NOT_FOUND"){res.status(404).json({error:{code:"CUSTOMER_NOT_FOUND"}});return;}if(error instanceof Error&&error.message==="CURRENCY_NOT_AVAILABLE"){res.status(422).json({error:{code:"CURRENCY_NOT_AVAILABLE"}});return;}next(error);}
     },
   );
 
