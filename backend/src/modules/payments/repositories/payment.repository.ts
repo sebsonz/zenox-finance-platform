@@ -239,7 +239,9 @@ export const paymentRepository = {
            WHERE a.tenant_id=$1 AND a.invoice_id=$2),0)
          - COALESCE((SELECT SUM(r.amount) FROM public.finance_payment_allocation_reversals r
            JOIN public.finance_payment_allocations a ON a.tenant_id=r.tenant_id AND a.id=r.allocation_id
-           WHERE r.tenant_id=$1 AND a.invoice_id=$2),0))::text AS total`,
+           WHERE r.tenant_id=$1 AND a.invoice_id=$2),0)
+         + COALESCE((SELECT SUM(ir.applied_amount) FROM public.finance_invoice_relationships ir
+           WHERE ir.tenant_id=$1 AND ir.related_invoice_id=$2),0))::text AS total`,
       [context.tenantId,input.invoiceId],
     );
     const refundReservations = await client.query<{ total: string }>(
@@ -355,6 +357,7 @@ export const paymentRepository = {
           JOIN public.finance_payment_allocations a ON a.tenant_id=r.tenant_id AND a.id=r.allocation_id
           WHERE r.tenant_id=i.tenant_id AND a.invoice_id=i.id),0))::text AS allocated_amount,
         (i.grand_total
+         - COALESCE((SELECT SUM(ir.applied_amount) FROM public.finance_invoice_relationships ir WHERE ir.tenant_id=i.tenant_id AND ir.related_invoice_id=i.id),0)
          - COALESCE((SELECT SUM(a.amount) FROM public.finance_payment_allocations a
           WHERE a.tenant_id=i.tenant_id AND a.invoice_id=i.id),0)
          + COALESCE((SELECT SUM(r.amount) FROM public.finance_payment_allocation_reversals r
