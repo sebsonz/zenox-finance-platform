@@ -6,7 +6,6 @@ import { pool } from "../../../db/pool.js";
 export const platformTaxAdminRouter = Router();
 
 const querySchema = z.object({
-  countryCode: z.string().trim().toUpperCase().length(2).optional(),
   taxType: z.enum(["VAT", "GST", "SALES_TAX", "EXCISE", "WITHHOLDING", "CUSTOMS_DUTY", "IMPORT_TAX", "ENVIRONMENTAL", "STAMP_DUTY", "OTHER"]).optional(),
   status: z.enum(["DRAFT", "ACTIVE", "RETIRED"]).optional(),
   search: z.string().trim().max(100).optional(),
@@ -41,13 +40,9 @@ platformTaxAdminRouter.get("/tax/rules", requireUserAuth(), async (req, res, nex
       res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Les filtres fiscaux sont invalides." } });
       return;
     }
-    const { countryCode, taxType, status, search, page, pageSize } = parsed.data;
+    const { taxType, status, search, page, pageSize } = parsed.data;
     const values: (string | number)[] = [];
     const conditions = ["r.tenant_id IS NULL"];
-    if (countryCode) {
-      values.push(countryCode);
-      conditions.push(`EXISTS (SELECT 1 FROM public.finance_tax_jurisdictions j WHERE j.id = r.jurisdiction_id AND j.country_code = $${values.length})`);
-    }
     if (taxType) {
       values.push(taxType);
       conditions.push(`r.tax_type = $${values.length}`);
