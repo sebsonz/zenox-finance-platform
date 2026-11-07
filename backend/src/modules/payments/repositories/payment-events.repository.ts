@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinancePaymentContext } from "../types/payment-operation-context.js";
 
 interface PaymentEventRow {
   id: string;
@@ -34,7 +34,7 @@ function mapEvent(row: PaymentEventRow) {
 }
 
 export const paymentEventsRepository = {
-  async listPaymentEvents(client: PoolClient, context: FinanceRequestContext, paymentId: string, limit: number, cursor?: string) {
+  async listPaymentEvents(client: PoolClient, context: FinancePaymentContext, paymentId: string, limit: number, cursor?: string) {
     const result = await client.query<PaymentEventRow>(
       `SELECT ${columns}
          FROM public.finance_payment_events e
@@ -52,7 +52,7 @@ export const paymentEventsRepository = {
     };
   },
 
-  async listRefundEvents(client: PoolClient, context: FinanceRequestContext, paymentId: string, refundId: string, limit: number, cursor?: string) {
+  async listRefundEvents(client: PoolClient, context: FinancePaymentContext, paymentId: string, refundId: string, limit: number, cursor?: string) {
     const result = await client.query<PaymentEventRow>(
       `SELECT ${columns}
          FROM public.finance_payment_events e

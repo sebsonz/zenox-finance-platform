@@ -1,5 +1,5 @@
 import { withTenantTransaction } from "../../../db/transaction.js";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinancePaymentContext } from "../types/payment-operation-context.js";
 import { reconciliationRepository } from "../repositories/reconciliation.repository.js";
 import type {
   ReconciliationImportInput,
@@ -33,17 +33,17 @@ async function translate<T>(work: () => Promise<T>): Promise<T> {
 }
 
 export const reconciliationService = {
-  import(context: FinanceRequestContext, input: ReconciliationImportInput) {
+  import(context: FinancePaymentContext, input: ReconciliationImportInput) {
     return translate(() => withTenantTransaction(context.tenantId, (client) =>
       reconciliationRepository.importRows(client, context, input)));
   },
 
-  list(context: FinanceRequestContext, query: ReconciliationListQuery) {
+  list(context: FinancePaymentContext, query: ReconciliationListQuery) {
     return translate(() => withTenantTransaction(context.tenantId, (client) =>
       reconciliationRepository.list(client, context, query)));
   },
 
-  match(context: FinanceRequestContext, itemId: string, input: ReconciliationMatchInput) {
+  match(context: FinancePaymentContext, itemId: string, input: ReconciliationMatchInput) {
     return translate(() => withTenantTransaction(context.tenantId, (client) =>
       reconciliationRepository.match(client, context, itemId, input)));
   },

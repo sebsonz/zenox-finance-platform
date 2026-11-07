@@ -1,5 +1,5 @@
 import { withTenantTransaction } from "../../../db/transaction.js";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinancePaymentContext } from "../types/payment-operation-context.js";
 import { paymentRepository } from "../repositories/payment.repository.js";
 import type { AllocatePaymentInput, CreatePaymentInput, ListPaymentsQuery, ReverseAllocationInput } from "../validators/payment.schema.js";
 
@@ -11,7 +11,7 @@ export class PaymentServiceError extends Error {
 }
 
 export const paymentService = {
-  async create(context: FinanceRequestContext, input: CreatePaymentInput, idempotencyKey: string) {
+  async create(context: FinancePaymentContext, input: CreatePaymentInput, idempotencyKey: string) {
     // A provider payment must not be created as if an adapter/checkout had run.
     // Provider adapter initiation is a separate, explicitly configured step.
     if (input.source === "PROVIDER") {
@@ -32,7 +32,7 @@ export const paymentService = {
     }
   },
 
-  async confirmManual(context: FinanceRequestContext, paymentId: string, idempotencyKey: string) {
+  async confirmManual(context: FinancePaymentContext, paymentId: string, idempotencyKey: string) {
     try {
       return await withTenantTransaction(context.tenantId, (client) =>
         paymentRepository.confirmManualInTransaction(client, context, paymentId, idempotencyKey));
@@ -46,7 +46,7 @@ export const paymentService = {
     }
   },
 
-  async allocate(context: FinanceRequestContext, paymentId: string, input: AllocatePaymentInput, idempotencyKey: string) {
+  async allocate(context: FinancePaymentContext, paymentId: string, input: AllocatePaymentInput, idempotencyKey: string) {
     try {
       return await withTenantTransaction(context.tenantId, (client) =>
         paymentRepository.allocateInTransaction(client, context, paymentId, input, idempotencyKey));
@@ -63,7 +63,7 @@ export const paymentService = {
   },
 
   async reverseAllocation(
-    context: FinanceRequestContext, paymentId: string, allocationId: string, input: ReverseAllocationInput, idempotencyKey: string,
+    context: FinancePaymentContext, paymentId: string, allocationId: string, input: ReverseAllocationInput, idempotencyKey: string,
   ) {
     try {
       return await withTenantTransaction(context.tenantId, (client) =>
@@ -78,7 +78,7 @@ export const paymentService = {
     }
   },
 
-  async get(context: FinanceRequestContext, paymentId: string) {
+  async get(context: FinancePaymentContext, paymentId: string) {
     return withTenantTransaction(context.tenantId, async (client) => {
       const payment = await paymentRepository.findById(client, context.tenantId, paymentId);
       if (!payment) throw new PaymentServiceError("PAYMENT_NOT_FOUND", "The payment was not found.");
@@ -86,7 +86,7 @@ export const paymentService = {
     });
   },
 
-  async list(context: FinanceRequestContext, query: ListPaymentsQuery) {
+  async list(context: FinancePaymentContext, query: ListPaymentsQuery) {
     return withTenantTransaction(context.tenantId, (client) =>
       paymentRepository.list(client, context.tenantId, query.status, query.cursor, query.limit + 1)
         .then((rows) => ({
@@ -96,7 +96,7 @@ export const paymentService = {
         })));
   },
 
-  async invoiceBalance(context: FinanceRequestContext, invoiceId: string) {
+  async invoiceBalance(context: FinancePaymentContext, invoiceId: string) {
     return withTenantTransaction(context.tenantId, async (client) => {
       const balance = await paymentRepository.balance(client, context.tenantId, invoiceId);
       if (!balance) throw new PaymentServiceError("INVOICE_NOT_FOUND", "The invoice was not found.");

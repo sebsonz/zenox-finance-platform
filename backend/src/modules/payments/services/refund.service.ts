@@ -1,5 +1,5 @@
 import { withTenantTransaction } from "../../../db/transaction.js";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinancePaymentContext } from "../types/payment-operation-context.js";
 import { refundRepository } from "../repositories/refund.repository.js";
 import type { CreateRefundInput, RecordManualRefundSuccessInput } from "../validators/refund.schema.js";
 
@@ -27,21 +27,21 @@ async function translate<T>(work: () => Promise<T>): Promise<T> {
 }
 
 export const refundService = {
-  request(context: FinanceRequestContext,paymentId: string,input: CreateRefundInput,key: string) {
+  request(context: FinancePaymentContext,paymentId: string,input: CreateRefundInput,key: string) {
     return translate(() => withTenantTransaction(context.tenantId,client =>
       refundRepository.request(client,context,paymentId,input,key)));
   },
-  approve(context: FinanceRequestContext,paymentId: string,refundId: string,key: string) {
+  approve(context: FinancePaymentContext,paymentId: string,refundId: string,key: string) {
     return translate(() => withTenantTransaction(context.tenantId,client =>
       refundRepository.approve(client,context,paymentId,refundId,key)));
   },
   recordManualSuccess(
-    context: FinanceRequestContext,paymentId: string,refundId: string,input: RecordManualRefundSuccessInput,key: string,
+    context: FinancePaymentContext,paymentId: string,refundId: string,input: RecordManualRefundSuccessInput,key: string,
   ) {
     return translate(() => withTenantTransaction(context.tenantId,client =>
       refundRepository.recordManualSuccess(client,context,paymentId,refundId,input,key)));
   },
-  cancel(context: FinanceRequestContext,paymentId: string,refundId: string,key: string) {
+  cancel(context: FinancePaymentContext,paymentId: string,refundId: string,key: string) {
     return translate(() => withTenantTransaction(context.tenantId,client =>
       refundRepository.cancel(client,context,paymentId,refundId,key)));
   },

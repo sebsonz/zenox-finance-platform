@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg";
-import type { FinanceRequestContext } from "../../integration-auth/types/authenticated-principal.js";
+import type { FinancePaymentContext } from "../types/payment-operation-context.js";
 import { recordPaymentAudit } from "./payment-audit.repository.js";
 import type {
   ReconciliationImportInput,
@@ -52,7 +52,7 @@ function normalizeAmount(value: string): string {
 }
 
 export const reconciliationRepository = {
-  async importRows(client: PoolClient, context: FinanceRequestContext, input: ReconciliationImportInput) {
+  async importRows(client: PoolClient, context: FinancePaymentContext, input: ReconciliationImportInput) {
     const batchIdResult = await client.query<{ id: string }>("SELECT gen_random_uuid()::text AS id");
     const batchId = batchIdResult.rows[0]?.id;
     if (!batchId) throw new Error("RECONCILIATION_BATCH_ID_FAILED");
@@ -151,7 +151,7 @@ export const reconciliationRepository = {
     return { batchId, received: input.rows.length, inserted, duplicates, conflicts, items: imported.map(mapRow) };
   },
 
-  async list(client: PoolClient, context: FinanceRequestContext, query: ReconciliationListQuery) {
+  async list(client: PoolClient, context: FinancePaymentContext, query: ReconciliationListQuery) {
     const result = await client.query<ReconciliationRow>(
       `SELECT ${columns} FROM public.finance_payment_reconciliation_items
         WHERE tenant_id = $1
@@ -164,7 +164,7 @@ export const reconciliationRepository = {
     return { items: result.rows.map(mapRow), nextCursor: result.rows.length === query.limit ? result.rows[result.rows.length - 1]?.id ?? null : null };
   },
 
-  async match(client: PoolClient, context: FinanceRequestContext, itemId: string, input: ReconciliationMatchInput) {
+  async match(client: PoolClient, context: FinancePaymentContext, itemId: string, input: ReconciliationMatchInput) {
     const itemResult = await client.query<ReconciliationRow>(
       `SELECT ${columns} FROM public.finance_payment_reconciliation_items
         WHERE tenant_id = $1 AND id = $2 FOR UPDATE`,
