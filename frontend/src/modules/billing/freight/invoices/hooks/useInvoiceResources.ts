@@ -136,5 +136,5 @@ export function useInvoiceResources<TInvoice extends InvoiceRecord>({
     return () => { cancelled = true; };
   }, [sessionUserId, tenantId, role, setInvoices, onTenantReset, setNotice, onCustomersLoaded, onCurrenciesLoaded]);
 
-  return { customers, currencies, jurisdictions, jurisdictionId, setJurisdictionId, checkingResources };
+  return { customers, setCustomers, currencies, jurisdictions, jurisdictionId, setJurisdictionId, checkingResources };
 }
