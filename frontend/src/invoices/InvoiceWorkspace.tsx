@@ -185,6 +185,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const canIssue = ["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(currentRole);
   const canManageTax = canIssue;
   const canCredit = canIssue;
+  const canManageCustomers = ["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(currentRole);
   return <section className="invoice-workspace">
     <div className="invoice-heading">
       <div><div className="eyebrow"><FileText size={14}/> GESTION FINANCIÈRE</div><h1>Factures</h1><p className="subtitle">Brouillons, calcul fiscal, émission et documents immuables.</p></div>
@@ -228,7 +229,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
                 <div className="invoice-customer-select"><select value={form.customerId} onChange={(event) => setForm((current) => ({ ...current, customerId: event.target.value }))} required><option value="">Sélectionner un client…</option>{customers.filter((customer) => !customerSearch || customer.legalName.toLocaleLowerCase().includes(customerSearch.toLocaleLowerCase()) || (customer.displayName ?? "").toLocaleLowerCase().includes(customerSearch.toLocaleLowerCase()) || customer.customerCode.toLocaleLowerCase().includes(customerSearch.toLocaleLowerCase())).map((customer) => <option key={customer.id} value={customer.id}>{customer.displayName || customer.legalName} · {customer.customerCode}</option>)}</select><button type="button" className="small-action" aria-label="Rechercher un client" title="Filtrer la liste des clients" onClick={() => document.getElementById("invoice-customer-search")?.focus()}><Search size={16}/></button></div>
                 <input id="invoice-customer-search" className="invoice-customer-search" placeholder="Rechercher par nom ou code client…" value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} aria-label="Rechercher un client"/>
                 {selectedCustomer && <div className="invoice-selected-customer"><strong>{selectedCustomer.displayName || selectedCustomer.legalName}</strong><span>{selectedCustomer.email || "E-mail non renseigné"} · {selectedCustomer.phone || "Téléphone non renseigné"}</span><span>{selectedCustomer.addressLine1 || "Adresse non renseignée"}{selectedCustomer.addressCity ? `, ${selectedCustomer.addressCity}` : ""}</span>{selectedCustomer.taxIdentifier && <span>Identifiant fiscal : {selectedCustomer.taxIdentifier}</span>}</div>}
-                <button type="button" className="invoice-create-customer" onClick={() => setCustomerModalOpen(true)}><Plus size={15}/> Créer un nouveau client</button>
+                <button type="button" className="invoice-create-customer" disabled={!canManageCustomers} title={!canManageCustomers ? "Votre rôle ne permet pas de créer un client." : undefined} onClick={() => setCustomerModalOpen(true)}><Plus size={15}/> Créer un nouveau client</button>
               </article>
             </section>}
             {form.documentType !== "STANDARD" && <div className="invoice-form-grid"><InvoiceTypeFields
