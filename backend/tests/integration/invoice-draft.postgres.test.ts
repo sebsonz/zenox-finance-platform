@@ -252,6 +252,7 @@ integrationDescribe("PostgreSQL invoice draft tenant isolation", () => {
       },
     };
     const created = await invoiceDraftService.create(context, {
+      documentType: "STANDARD",
       customerId,
       currencyCode: "XOF",
       notes: "User-created draft",
@@ -276,6 +277,7 @@ integrationDescribe("PostgreSQL invoice draft tenant isolation", () => {
     });
 
     const updated = await invoiceDraftService.updateDraft(context, created.id, {
+      documentType: "STANDARD",
       customerId,
       currencyCode: "XOF",
       expectedUpdatedAt: created.updatedAt,
