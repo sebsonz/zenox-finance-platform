@@ -4,7 +4,10 @@ import { requireIntegrationAuth } from "../../../middleware/require-integration-
 import { CreditNoteServiceError, creditNoteService } from "../services/credit-note.service.js";
 
 export const creditNoteRouter = Router();
-const requestSchema = z.object({\n  reason: z.string().trim().min(3).max(2000),\n  amount: z.string().regex(/^(?:0|[1-9][0-9]{0,15})(?:[.][0-9]{1,8})?$/).optional(),\n}).strict();
+const requestSchema = z.object({
+  reason: z.string().trim().min(3).max(2000),
+  amount: z.string().regex(/^(?:0|[1-9][0-9]{0,15})(?:[.][0-9]{1,8})?$/).optional(),
+}).strict();
 
 creditNoteRouter.post(
   "/:invoiceId/credit-notes",
@@ -17,7 +20,9 @@ creditNoteRouter.post(
     const body = requestSchema.safeParse(req.body);
     if (!body.success) { res.status(400).json({ error: { code: "INVALID_REQUEST", issues: body.error.issues } }); return; }
     try {
-      const creditNote = body.data.amount\n        ? await creditNoteService.issuePartial(context, invoiceId.data, body.data.reason, body.data.amount)\n        : await creditNoteService.issueFullReversal(context, invoiceId.data, body.data.reason);
+      const creditNote = body.data.amount
+        ? await creditNoteService.issuePartial(context, invoiceId.data, body.data.reason, body.data.amount)
+        : await creditNoteService.issueFullReversal(context, invoiceId.data, body.data.reason);
       res.status(201).json({ data: { creditNote, correlationId: context.correlationId } });
     } catch (error) {
       if (error instanceof CreditNoteServiceError) {
