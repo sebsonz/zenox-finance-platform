@@ -35,6 +35,7 @@ type Invoice = {
   lines: Array<{ id: string; description: string; itemCode?: string | null; unit?: string | null; lineNote?: string | null; quantity: string; unitPrice: string; discountPercent: string; taxRatePercent: string; total: string }>;
 };
 type CreditNote = { id: string; originalInvoiceId: string; creditNoteCode: string; status: "ISSUED"; reason: string; currencyCode: string; grandTotal: string; amountDue: string; issuedAt: string };
+type InvoiceAdjustment = { id:string; adjustment_code:string; adjustment_type:"CREDIT_NOTE"|"DEBIT_NOTE"; reason:string; currency_code:string; grand_total:string; amount_due:string; issued_at:string };
 type DraftForm = { customerId: string; currencyCode: string; dueDate: string; notes: string; document: InvoiceDocumentForm; lines: InvoiceLine[] };
 type ApiPayload<T> = { data?: T } & ApiError;
 const emptyLine = (): InvoiceLine => ({ description: "", itemCode: "", unit: "unité", lineNote: "", quantity: "1", unitPrice: "0", discountPercent: "0", taxRatePercent: "0" });
@@ -70,6 +71,10 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
+  const [adjustments, setAdjustments] = useState<InvoiceAdjustment[]>([]);
+  const [adjustmentType, setAdjustmentType] = useState<"CREDIT_NOTE"|"DEBIT_NOTE">("CREDIT_NOTE");
+  const [adjustmentReason, setAdjustmentReason] = useState("Correction partielle de la facture");
+  const [adjustmentQuantities, setAdjustmentQuantities] = useState<Record<string,string>>({});
   const [creditReason, setCreditReason] = useState("Annulation de la facture d’origine");
   const [form, setForm] = useState<DraftForm>(emptyForm());
   const [editing, setEditing] = useState<Invoice | null>(null);
@@ -83,6 +88,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     setInvoices([]);
     setSelectedInvoiceId("");
     setCreditNotes([]);
+    setAdjustments([]);
     setEditing(null);
     setTaxFacts(emptyTaxFacts());
     let cancelled = false;
@@ -245,6 +251,34 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
       setCreditNotes(data.creditNotes ?? []);
     } catch (error) { setCreditNotes([]); setNotice(error instanceof Error ? error.message : "Impossible de charger les avoirs."); }
   }
+
+  async function loadAdjustments(invoice: Invoice) {
+    setSelectedInvoiceId(invoice.id);
+    try {
+      const data = await readData<{adjustments?:InvoiceAdjustment[]}>(await fetch("/api/v1/user/tenants/"+tenantId+"/invoices/"+invoice.id+"/adjustments",{credentials:"same-origin",cache:"no-store"}),"Impossible de charger les corrections.");
+      setAdjustments(data.adjustments??[]);
+      setAdjustmentQuantities(Object.fromEntries(invoice.lines.map(line=>[line.id,line.quantity])));
+    } catch(error) { setAdjustments([]); setNotice(error instanceof Error?error.message:"Impossible de charger les corrections."); }
+  }
+  async function issueAdjustment(invoice:Invoice) {
+    const lines=invoice.lines.filter(line=>Number(adjustmentQuantities[line.id]??"0")>0).map(line=>({sourceInvoiceLineId:line.id,quantity:adjustmentQuantities[line.id]??"0"}));
+    if(!lines.length||adjustmentReason.trim().length<3){setNotice("Sélectionnez au moins une ligne et renseignez un motif.");return;}
+    const label=adjustmentType==="CREDIT_NOTE"?"note de crédit":"note de débit";
+    if(!window.confirm("Confirmer l’émission irréversible de cette "+label+" ?"))return;
+    setBusy(true);
+    try {
+      await readData(await fetch("/api/v1/user/tenants/"+tenantId+"/invoices/"+invoice.id+"/adjustments",{method:"POST",credentials:"same-origin",headers:{"content-type":"application/json"},body:JSON.stringify({type:adjustmentType,reason:adjustmentReason,lines})}),"La correction n’a pas pu être émise.");
+      setNotice(adjustmentType==="CREDIT_NOTE"?"Avoir partiel émis.":"Note de débit émise.");
+      await loadAdjustments(invoice);
+    } catch(error){setNotice(error instanceof Error?error.message:"Émission impossible.");}
+    finally{setBusy(false);}
+  }
+  async function downloadAdjustment(adjustment:InvoiceAdjustment) {
+    setBusy(true);
+    try{const response=await fetch("/api/v1/user/tenants/"+tenantId+"/invoice-adjustments/"+adjustment.id+"/document",{credentials:"same-origin",cache:"no-store"});if(!response.ok)throw new Error(await responseError(response,"Téléchargement impossible."));downloadBlob(await response.blob(),adjustment.adjustment_code+".html");}
+    catch(error){setNotice(error instanceof Error?error.message:"Téléchargement impossible.");}
+    finally{setBusy(false);}
+  }
   async function issueCreditNote(invoice: Invoice) {
     if (!window.confirm("Créer un avoir intégral irréversible pour cette facture ?")) return;
     setBusy(true);
@@ -388,8 +422,12 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
           <div className="invoice-action-bar">
             <button className="outline-button" disabled={busy} onClick={() => void downloadDocument(selectedInvoice, "document")}><Download size={15}/> HTML</button>
             <button className="outline-button" disabled={busy} onClick={() => void downloadDocument(selectedInvoice, "document.pdf")}><Download size={15}/> PDF</button>
-            <button className="outline-button" disabled={busy} onClick={() => void loadCreditNotes(selectedInvoice)}><ReceiptText size={15}/> Charger les avoirs</button>
+            <button className="outline-button" disabled={busy} onClick={() => void loadCreditNotes(selectedInvoice)}><ReceiptText size={15}/> Charger les avoirs intégraux</button><button className="outline-button" disabled={busy} onClick={() => void loadAdjustments(selectedInvoice)}><ReceiptText size={15}/> Corrections partielles</button>
           </div>
+          <div className="invoice-form-grid credit-note-form"><label>Type de correction<select value={adjustmentType} onChange={event=>setAdjustmentType(event.target.value as "CREDIT_NOTE"|"DEBIT_NOTE")}><option value="CREDIT_NOTE">Avoir partiel</option><option value="DEBIT_NOTE">Note de débit</option></select></label><label>Motif<input value={adjustmentReason} onChange={event=>setAdjustmentReason(event.target.value)} minLength={3} maxLength={2000}/></label></div>
+          <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Ligne source</th><th>Qté initiale</th><th>Qté corrigée</th></tr></thead><tbody>{selectedInvoice.lines.map(line=><tr key={line.id}><td>{line.description}</td><td>{line.quantity}</td><td><input aria-label={"Quantité corrigée pour "+line.description} inputMode="decimal" value={adjustmentQuantities[line.id]??"0"} onChange={event=>setAdjustmentQuantities(v=>({...v,[line.id]:event.target.value}))}/></td></tr>)}</tbody></table></div>
+          <div className="credit-note-button"><button className="primary-button" disabled={busy||!canCredit||adjustmentReason.trim().length<3} onClick={()=>void issueAdjustment(selectedInvoice)}>Émettre la correction</button></div>
+          {adjustments.length>0&&<div className="table-scroll"><table className="invoice-table"><thead><tr><th>Référence</th><th>Type</th><th>Motif</th><th>Montant</th><th>Document</th></tr></thead><tbody>{adjustments.map(a=><tr key={a.id}><td><strong>{a.adjustment_code}</strong></td><td>{a.adjustment_type==="CREDIT_NOTE"?"Avoir":"Note de débit"}</td><td>{a.reason}</td><td>{a.currency_code} {a.grand_total}</td><td><button className="small-action" onClick={()=>void downloadAdjustment(a)} title="Télécharger HTML"><Download size={14}/></button></td></tr>)}</tbody></table></div>}
           <div className="invoice-form-grid credit-note-form"><label>Motif de l’avoir intégral<input value={creditReason} onChange={(event) => setCreditReason(event.target.value)} minLength={3} maxLength={2000}/></label><div className="credit-note-button"><button className="primary-button" disabled={busy || !canCredit || creditReason.trim().length < 3} onClick={() => void issueCreditNote(selectedInvoice)}>Créer un avoir intégral</button></div></div>
           {creditNotes.length > 0 && <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Avoir</th><th>Motif</th><th>Montant</th><th>Date</th><th>Documents</th></tr></thead><tbody>{creditNotes.map((note) => <tr key={note.id}><td><strong>{note.creditNoteCode}</strong></td><td>{note.reason}</td><td>{note.currencyCode} {note.grandTotal}</td><td>{new Date(note.issuedAt).toLocaleDateString("fr-FR")}</td><td><div className="invoice-actions"><button className="small-action" title="HTML" onClick={() => void downloadCreditNote(note.id, "document", note.creditNoteCode)}><Download size={14}/></button><button className="small-action" title="PDF" onClick={() => void downloadCreditNote(note.id, "document.pdf", note.creditNoteCode)}><FileText size={14}/></button></div></td></tr>)}</tbody></table></div>}
         </section>}

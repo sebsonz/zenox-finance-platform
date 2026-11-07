@@ -179,6 +179,11 @@ userCommercialDocumentsRouter.post("/:tenantId/invoices/:invoiceId/relationships
  }catch(e){if(e instanceof Error&&["RELATIONSHIP_REQUIRES_ISSUED_INVOICES","RELATIONSHIP_PARTY_CURRENCY_MISMATCH","ADVANCE_APPLICATION_EXCEEDS_PAID_AMOUNT"].includes(e.message))return fail(res,e.message,"The advance cannot be applied to this invoice.",409);next(e);}
 });
 
+
+userCommercialDocumentsRouter.get("/:tenantId/invoice-adjustments/:adjustmentId/document",requireUserAuth(),async(req,res,next)=>{
+ try{const id=uuid.safeParse(req.params["tenantId"]),aid=uuid.safeParse(req.params["adjustmentId"]);if(!id.success||!aid.success)return fail(res,"INVALID_ID","Invalid resource ID.",400);const ctx=await contextFor(id.data,req,res,"invoices:read");if(!ctx)return;const row=await withTenantTransaction(id.data,c=>c.query("SELECT adjustment_code,html_content,html_sha256 FROM public.finance_invoice_adjustments WHERE tenant_id=$1 AND id=$2",[id.data,aid.data]));if(!row.rows[0])return fail(res,"ADJUSTMENT_NOT_FOUND","Adjustment not found.",404);res.setHeader("Content-Type","text/html; charset=utf-8");res.setHeader("Content-Disposition",`inline; filename="${row.rows[0].adjustment_code}.html"`);res.setHeader("ETag",`"sha256-${row.rows[0].html_sha256}"`);res.setHeader("Cache-Control","private, no-store");res.send(row.rows[0].html_content);
+ }catch(e){next(e);}
+});
 const adjustmentSchema=z.object({
  type:z.enum(["CREDIT_NOTE","DEBIT_NOTE"]),reason:z.string().trim().min(3).max(2000),
  lines:z.array(z.object({sourceInvoiceLineId:uuid,quantity:decimal}).strict()).min(1).max(500),
