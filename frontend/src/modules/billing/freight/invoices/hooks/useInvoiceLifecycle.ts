@@ -22,7 +22,7 @@ type Options = {
   taxFacts: InvoiceTaxFacts;
   setBusy: (busy: boolean) => void;
   setNotice: (message: string) => void;
-  loadInvoices: () => Promise<InvoiceDraftRecord[]>;
+  loadInvoices: (options?: { ignoreFilters?: boolean }) => Promise<InvoiceDraftRecord[]>;
   setEditing: (invoice: InvoiceDraftRecord | null) => void;
 };
 
@@ -76,7 +76,7 @@ export function useInvoiceLifecycle({
         }),
       });
       await readData(response, "Le calcul fiscal a échoué.");
-      const refreshedInvoices = await loadInvoices();
+      const refreshedInvoices = await loadInvoices({ ignoreFilters: true });
       const refreshedInvoice = refreshedInvoices.find((item) => item.id === invoice.id);
       if (!refreshedInvoice) throw new Error("Le calcul fiscal a réussi, mais le brouillon actualisé est introuvable. Rechargez la liste avant l’émission.");
       setEditing(refreshedInvoice);
