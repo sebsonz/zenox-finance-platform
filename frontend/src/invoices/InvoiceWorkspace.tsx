@@ -3,7 +3,8 @@ import { InvoiceTypeFields } from "../modules/billing/freight/invoices/types/Inv
 import { InvoiceLinesEditor } from "../modules/billing/freight/invoices/components/InvoiceLinesEditor.js";
 import { IssuedInvoiceDocumentsPanel } from "../modules/billing/freight/invoices/credit-notes/IssuedInvoiceDocumentsPanel.js";
 import { InvoiceTaxContextPanel } from "../modules/billing/freight/invoices/tax/InvoiceTaxContextPanel.js";
-import { FileText, RefreshCw, ShieldCheck, Download, Pencil, Send, ReceiptText } from "lucide-react";
+import { InvoiceListPanel } from "../modules/billing/freight/invoices/list/InvoiceListPanel.js";
+import { FileText, RefreshCw, ShieldCheck } from "lucide-react";
 
 type ApiError = { error?: { code?: string; message?: string } };
 type SessionUser = { id: string; email?: string };
@@ -497,26 +498,25 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
           </form>
         </section>
 
-        <section className="panel invoice-list-panel">
-          <div className="panel-heading"><div><h2>Factures de l’organisation</h2><p>{invoices.length} résultat(s) · recherche et filtres appliqués côté serveur.</p></div></div>
-          <form className="tenant-lookup-form" onSubmit={(event) => void loadInvoices(event)}>
-            <label>Recherche<input value={invoiceSearch} maxLength={120} onChange={(event) => setInvoiceSearch(event.target.value)} placeholder="N° facture, client, référence externe ou commande"/></label>
-            <label>Statut<select value={invoiceStatus} onChange={(event) => setInvoiceStatus(event.target.value)}><option value="">Tous les statuts</option><option value="DRAFT">Brouillons</option><option value="ISSUED">Émises</option><option value="CANCELLED">Annulées</option></select></label>
-            <button className="primary-button" type="submit" disabled={loading}>{loading ? "Recherche…" : "Rechercher"} <RefreshCw size={15}/></button>
-          </form>
-          <div className="table-scroll"><table className="invoice-table"><thead><tr><th>Référence</th><th>Type</th><th>Client</th><th>Statut</th><th>Taxe</th><th>Devise</th><th>Total</th><th>Actions</th></tr></thead>
-            <tbody>{invoices.length ? invoices.map((invoice) => <tr key={invoice.id} className={selectedInvoiceId === invoice.id ? "selected-invoice-row" : ""}>
-              <td><strong>{invoice.invoiceCode ?? "Brouillon"}</strong><small>{invoice.id.slice(0, 8)}…</small></td><td>{invoice.documentType === "DEPOSIT" ? "Acompte" : invoice.documentType === "BALANCE" ? "Solde" : "Standard"}</td><td>{invoice.customerSnapshot?.displayName ?? invoice.customerSnapshot?.legalName ?? "—"}</td>
-              <td><span className={`invoice-status ${invoice.status.toLowerCase()}`}>{invoice.status}</span></td><td>{invoice.taxStatus === "CALCULATED" ? "Calculée" : invoice.taxStatus === "REVIEW_REQUIRED" ? "À revoir" : "Provisoire"}</td>
-              <td>{invoice.currencyCode}</td><td>{invoice.grandTotal}</td><td><div className="invoice-actions">
-                {invoice.status === "DRAFT" && <button title="Modifier" className="small-action" onClick={() => startEdit(invoice)}><Pencil size={14}/></button>}
-                {invoice.status === "DRAFT" && <button title="Calculer la taxe" className="small-action" disabled={busy || !jurisdictionId || !canManageTax || invoice.taxStatus === "CALCULATED"} onClick={() => void calculateTax(invoice)}><ShieldCheck size={14}/></button>}
-                {invoice.status === "DRAFT" && invoice.taxStatus === "CALCULATED" && <button title="Émettre" className="small-action" disabled={busy || !canIssue} onClick={() => void issueInvoice(invoice)}><Send size={14}/></button>}
-                {invoice.status === "ISSUED" && <button title="Télécharger PDF" className="small-action" disabled={busy} onClick={() => void downloadDocument(invoice, "document.pdf")}><Download size={14}/></button>}
-                {invoice.status === "ISSUED" && <button title="Historique des avoirs" className="small-action" onClick={() => void loadCreditNotes(invoice)}><ReceiptText size={14}/></button>}
-              </div></td></tr>) : <tr><td colSpan={8} className="invoice-empty">{loading ? "Chargement…" : "Aucune facture enregistrée pour cette organisation."}</td></tr>}</tbody>
-          </table></div>
-        </section>
+        <InvoiceListPanel
+          invoices={invoices}
+          selectedInvoiceId={selectedInvoiceId}
+          search={invoiceSearch}
+          status={invoiceStatus}
+          loading={loading}
+          busy={busy}
+          canManageTax={canManageTax}
+          canIssue={canIssue}
+          hasJurisdiction={Boolean(jurisdictionId)}
+          onSearchChange={setInvoiceSearch}
+          onStatusChange={setInvoiceStatus}
+          onSubmit={() => void loadInvoices()}
+          onEdit={(item) => { const invoice = invoices.find((candidate) => candidate.id === item.id); if (invoice) startEdit(invoice); }}
+          onCalculateTax={(item) => { const invoice = invoices.find((candidate) => candidate.id === item.id); if (invoice) void calculateTax(invoice); }}
+          onIssue={(item) => { const invoice = invoices.find((candidate) => candidate.id === item.id); if (invoice) void issueInvoice(invoice); }}
+          onDownload={(item, format) => { const invoice = invoices.find((candidate) => candidate.id === item.id); if (invoice) void downloadDocument(invoice, format); }}
+          onLoadCreditNotes={(item) => { const invoice = invoices.find((candidate) => candidate.id === item.id); if (invoice) void loadCreditNotes(invoice); }}
+        />
 
         <InvoiceTaxContextPanel
           jurisdictionId={jurisdictionId}
