@@ -13,7 +13,7 @@ import { useInvoiceDocuments } from "../modules/billing/freight/invoices/hooks/u
 import { useInvoiceList } from "../modules/billing/freight/invoices/hooks/useInvoiceList.js";
 import type { DraftForm, InvoiceDraftRecord } from "../modules/billing/freight/invoices/types/invoice-draft.js";
 import type { Customer, Currency } from "../modules/billing/freight/invoices/types/workspace-resources.js";
-import { FileText, RefreshCw, ShieldCheck, Eye, Send, X, Building2, UserRound, Search, Plus, CalendarDays, StickyNote, SlidersHorizontal, Paperclip, Save } from "lucide-react";
+import { FileText, RefreshCw, ShieldCheck, Eye, Send, X, Building2, UserRound, Search, Plus, StickyNote, SlidersHorizontal, Paperclip } from "lucide-react";
 
 type Invoice = InvoiceDraftRecord;
 type SessionUser = { id: string; email?: string };
