@@ -208,35 +208,40 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
           <div className="invoice-editor-shell">
           <div className="invoice-editor-main">
           <form id="invoice-draft-form" className="invoice-editor" onSubmit={(event) => void saveDraft(event)}>
-            <div className="invoice-form-grid">
-              <InvoiceTypeFields
-                documentType={form.documentType}
-                contractTotal={form.contractTotal}
-                relatedInvoiceId={form.relatedInvoiceId}
-                customerId={form.customerId}
-                currencyCode={form.currencyCode}
-                dueDate={form.dueDate}
-                serviceDate={form.serviceDate}
-                purchaseOrderReference={form.purchaseOrderReference}
-                externalReference={form.externalReference}
-                paymentTerms={form.paymentTerms}
-                paymentInstructions={form.paymentInstructions}
-                footerNote={form.footerNote}
-                notes={form.notes}
-                creditNoteReason={creditNoteReason}
-                creditNoteAmount={creditNoteAmount}
-                invoices={invoices}
-                customers={customers}
-                currencies={currencies}
-                onContractTotalChange={(value) => setForm({ ...form, contractTotal: value })}
-                onRelatedInvoiceChange={(source, id) => setForm({ ...form, relatedInvoiceId: id, customerId: source?.customerId ?? form.customerId, currencyCode: source?.currencyCode ?? form.currencyCode })}
-                onCustomerChange={(value) => setForm({ ...form, customerId: value })}
-                onCurrencyChange={(value) => setForm({ ...form, currencyCode: value })}
-                onFieldChange={(field, value) => setForm({ ...form, [field]: value })}
-                onCreditReasonChange={setCreditNoteReason}
-                onCreditAmountChange={setCreditNoteAmount}
-              />
-            </div>
+            <section className="invoice-editor-meta">
+              <label>Numéro<input value={editing?.invoiceCode ?? "Attribué à l’émission"} readOnly aria-label="Numéro de facture"/></label>
+              <label>Date d’émission<input type="date" value={taxDate} onChange={(event) => setTaxDate(event.target.value)} required/></label>
+              <label>Date d’échéance<input type="date" value={form.dueDate} onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))}/></label>
+              <label>Devise<select value={form.currencyCode} onChange={(event) => setForm((current) => ({ ...current, currencyCode: event.target.value }))} required>{currencies.map((currency) => <option key={currency.code} value={currency.code}>{currency.code} – {currency.name}</option>)}</select></label>
+            </section>
+            {form.documentType === "STANDARD" && <section className="invoice-parties-grid">
+              <article className="invoice-party-card">
+                <header><span className="invoice-party-icon"><Building2 size={19}/></span><div><h3>Émetteur</h3><small>Organisation facturante</small></div></header>
+                <strong>{activeTenant.legalName}</strong>
+                <p>Code organisation : {activeTenant.tenantCode}</p>
+                <small className="invoice-party-note">Les coordonnées légales détaillées seront affichées dès qu’elles seront exposées par le profil organisation.</small>
+              </article>
+              <article className="invoice-party-card">
+                <header><span className="invoice-party-icon"><UserRound size={19}/></span><div><h3>Client <em>*</em></h3><small>Destinataire de la facture</small></div></header>
+                <div className="invoice-customer-select"><select value={form.customerId} onChange={(event) => setForm((current) => ({ ...current, customerId: event.target.value }))} required><option value="">Sélectionner un client…</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.displayName || customer.legalName} · {customer.customerCode}</option>)}</select><button type="button" className="small-action" aria-label="Rechercher un client" title="Filtrer la liste des clients" onClick={() => document.getElementById("invoice-customer-search")?.focus()}><Search size={16}/></button></div>
+                <input id="invoice-customer-search" className="invoice-customer-search" placeholder="Rechercher par nom ou code client…" onChange={(event) => { const query = event.target.value.toLocaleLowerCase(); const match = customers.find((customer) => customer.legalName.toLocaleLowerCase().includes(query) || customer.customerCode.toLocaleLowerCase().includes(query)); if (query && match) setForm((current) => ({ ...current, customerId: match.id })); }} aria-label="Rechercher un client"/>
+                {selectedCustomer && <div className="invoice-selected-customer"><strong>{selectedCustomer.displayName || selectedCustomer.legalName}</strong><span>{selectedCustomer.email || "E-mail non renseigné"} · {selectedCustomer.phone || "Téléphone non renseigné"}</span><span>{selectedCustomer.addressLine1 || "Adresse non renseignée"}{selectedCustomer.addressCity ? `, ${selectedCustomer.addressCity}` : ""}</span>{selectedCustomer.taxIdentifier && <span>Identifiant fiscal : {selectedCustomer.taxIdentifier}</span>}</div>}
+                <button type="button" className="invoice-create-customer" onClick={() => setCustomerModalOpen(true)}><Plus size={15}/> Créer un nouveau client</button>
+              </article>
+            </section>}
+            {form.documentType !== "STANDARD" && <div className="invoice-form-grid"><InvoiceTypeFields
+              documentType={form.documentType} contractTotal={form.contractTotal} relatedInvoiceId={form.relatedInvoiceId}
+              customerId={form.customerId} currencyCode={form.currencyCode} dueDate={form.dueDate} serviceDate={form.serviceDate}
+              purchaseOrderReference={form.purchaseOrderReference} externalReference={form.externalReference}
+              paymentTerms={form.paymentTerms} paymentInstructions={form.paymentInstructions} footerNote={form.footerNote} notes={form.notes}
+              creditNoteReason={creditNoteReason} creditNoteAmount={creditNoteAmount} invoices={invoices} customers={customers} currencies={currencies}
+              onContractTotalChange={(value) => setForm((current) => ({ ...current, contractTotal: value }))}
+              onRelatedInvoiceChange={(source, id) => setForm((current) => ({ ...current, relatedInvoiceId: id, customerId: source?.customerId ?? current.customerId, currencyCode: source?.currencyCode ?? current.currencyCode }))}
+              onCustomerChange={(value) => setForm((current) => ({ ...current, customerId: value }))}
+              onCurrencyChange={(value) => setForm((current) => ({ ...current, currencyCode: value }))}
+              onFieldChange={(field, value) => setForm((current) => ({ ...current, [field]: value }))}
+              onCreditReasonChange={setCreditNoteReason} onCreditAmountChange={setCreditNoteAmount}
+            /></div>}
             <InvoiceLinesEditor
               documentType={form.documentType}
               lines={form.lines}
