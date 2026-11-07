@@ -17,6 +17,7 @@ import { recordInvoiceAudit } from "../../invoices/repositories/invoice-audit.re
 export const userCommercialDocumentsRouter = Router();
 const uuid = z.string().uuid();
 const decimal = z.string().regex(/^(?:0|[1-9]\\d*)(?:\\.\\d+)?$/);
+const FinanceDecimal = Decimal.clone({precision:40,rounding:Decimal.ROUND_HALF_UP});
 const lineSchema = z.object({
  description:z.string().trim().min(1).max(500), itemCode:z.string().trim().max(100).optional(),
  unit:z.string().trim().max(40).optional(), lineNote:z.string().trim().max(1000).optional(),
@@ -120,12 +121,12 @@ userCommercialDocumentsRouter.post("/:tenantId/quotes/:quoteId/convert",requireU
   const invoice=await withTenantTransaction(id.data,async c=>{
    const found=await c.query("SELECT * FROM public.finance_quotes WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,qid.data]);
    const q=found.rows[0];if(!q||q.status!=="ACCEPTED")throw new Error("QUOTE_NOT_ACCEPTED");
-   const lineResult=await c.query("SELECT description,item_code,unit_label,line_note,quantity::text,unit_price::text,discount_percent::text,indicative_tax_rate::text FROM public.finance_quote_lines WHERE tenant_id=$1 AND quote_id=$2 ORDER BY line_number",[id.data,qid.data]);
+   const lineResult=await c.query<{description:string;item_code:string|null;unit_label:string|null;line_note:string|null;quantity:string;unit_price:string;discount_percent:string;indicative_tax_rate:string}>("SELECT description,item_code,unit_label,line_note,quantity::text,unit_price::text,discount_percent::text,indicative_tax_rate::text FROM public.finance_quote_lines WHERE tenant_id=$1 AND quote_id=$2 ORDER BY line_number",[id.data,qid.data]);
    const customer=await customerRepository.findById(c,q.customer_id);
    if(!customer||customer.status!=="ACTIVE")throw new Error("CUSTOMER_NOT_ACTIVE");
    const currency=await currencyRepository.findActiveByCode(String(q.currency_code).trim());
    if(!currency)throw new Error("CURRENCY_NOT_SUPPORTED");
-   const lines=lineResult.rows.map((l:any)=>({lineType:"ITEM" as const,description:l.description,...(l.item_code?{itemCode:l.item_code}:{}),...(l.unit_label?{unit:l.unit_label}:{}),...(l.line_note?{lineNote:l.line_note}:{}),quantity:l.quantity,unitPrice:l.unit_price,discountPercent:l.discount_percent,taxRatePercent:l.indicative_tax_rate}));
+   const lines=lineResult.rows.map((l)=>({lineType:"ITEM" as const,description:l.description,...(l.item_code?{itemCode:l.item_code}:{}),...(l.unit_label?{unit:l.unit_label}:{}),...(l.line_note?{lineNote:l.line_note}:{}),quantity:l.quantity,unitPrice:l.unit_price,discountPercent:l.discount_percent,taxRatePercent:l.indicative_tax_rate}));
    const totals=calculateInvoiceTotals({currency:currency.code,currencyDecimalPlaces:currency.minorUnit,lines:lines.map(l=>({quantity:l.quantity,unitPrice:l.unitPrice,discountPercent:l.discountPercent,taxRatePercent:l.taxRatePercent}))});
    const draft=await invoiceRepository.createDraft(c,ctx,{customerId:q.customer_id,currencyCode:currency.code,...(q.notes?{notes:q.notes}:{}),document:q.quote_code?{reference:q.quote_code}:{},lines},currency.minorUnit,totals,totals.lines,customer);
    const updated=await c.query("UPDATE public.finance_quotes SET status='CONVERTED',converted_invoice_id=$3,updated_at=now(),updated_by_actor_type='USER',updated_by_actor_ref=$4 WHERE tenant_id=$1 AND id=$2 AND status='ACCEPTED'",[id.data,qid.data,draft.id,ctx.actor.ref]);
@@ -172,7 +173,7 @@ userCommercialDocumentsRouter.post("/:tenantId/invoices/:invoiceId/relationships
  const advance=await c.query("SELECT id,customer_id,currency_code,grand_total,status FROM public.finance_invoices WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,body.data.advanceInvoiceId]);const balance=await c.query("SELECT id,customer_id,currency_code,grand_total,status FROM public.finance_invoices WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,balanceId.data]);
  const a=advance.rows[0],b=balance.rows[0];if(!a||!b||a.status!=="ISSUED"||b.status!=="ISSUED")throw new Error("RELATIONSHIP_REQUIRES_ISSUED_INVOICES");if(a.customer_id!==b.customer_id||a.currency_code!==b.currency_code)throw new Error("RELATIONSHIP_PARTY_CURRENCY_MISMATCH");
  const allocated=await c.query("SELECT COALESCE(sum(pa.amount-COALESCE(rv.amount,0)),0)::text AS amount FROM public.finance_payment_allocations pa LEFT JOIN (SELECT tenant_id,allocation_id,sum(amount) amount FROM public.finance_payment_allocation_reversals GROUP BY tenant_id,allocation_id) rv ON rv.tenant_id=pa.tenant_id AND rv.allocation_id=pa.id WHERE pa.tenant_id=$1 AND pa.invoice_id=$2",[id.data,body.data.advanceInvoiceId]);
- const amount=new Decimal(body.data.appliedAmount);if(amount.lte(0)||amount.gt(new Decimal(allocated.rows[0]?.amount??"0"))||amount.gt(new Decimal(a.grand_total)))throw new Error("ADVANCE_APPLICATION_EXCEEDS_PAID_AMOUNT");
+ const amount=new FinanceDecimal(body.data.appliedAmount);if(amount.lte(0)||amount.gt(new Decimal(allocated.rows[0]?.amount??"0"))||amount.gt(new Decimal(a.grand_total)))throw new Error("ADVANCE_APPLICATION_EXCEEDS_PAID_AMOUNT");
  const inserted=await c.query("INSERT INTO public.finance_invoice_relationships(tenant_id,source_invoice_id,related_invoice_id,relationship_type,source_reference,applied_amount,created_by_actor_type,created_by_actor_ref) VALUES($1,$2,$3,$4,$5,$6,'USER',$7) RETURNING *",[id.data,body.data.advanceInvoiceId,balanceId.data,body.data.relationshipType,body.data.sourceReference??null,body.data.appliedAmount,ctx.actor.ref]);
  await recordInvoiceAudit(c,ctx,"invoice.advance_applied","INVOICE_RELATIONSHIP",inserted.rows[0].id,{advanceInvoiceId:body.data.advanceInvoiceId,balanceInvoiceId:balanceId.data,appliedAmount:body.data.appliedAmount});return inserted.rows[0];
  });res.status(201).json({data:{relationship:result,correlationId:ctx.correlationId}});
@@ -201,10 +202,10 @@ userCommercialDocumentsRouter.post("/:tenantId/invoices/:invoiceId/adjustments",
   const result=await withTenantTransaction(id.data,async c=>{
    const sourceResult=await c.query("SELECT id,invoice_code,status,currency_code,currency_minor_unit,customer_snapshot,grand_total,tax_snapshot_id,tax_snapshot_version FROM public.finance_invoices WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,iid.data]);
    const source=sourceResult.rows[0];if(!source||source.status!=="ISSUED"||!source.tax_snapshot_id)throw new Error("SOURCE_INVOICE_NOT_ISSUED");
-   const sourceLines=await c.query("SELECT id,line_number,description,item_code,unit_label,quantity::text,unit_price::text,discount_percent::text,subtotal::text,discount_amount::text,taxable_amount::text,tax_amount::text,total::text FROM public.finance_invoice_lines WHERE tenant_id=$1 AND invoice_id=$2 ORDER BY line_number",[id.data,iid.data]);
-   const byId=new Map(sourceLines.rows.map((l:any)=>[l.id,l]));const snapshots:any[]=[];
+   const sourceLines=await c.query<{id:string;line_number:number;description:string;item_code:string|null;unit_label:string|null;quantity:string;unit_price:string;discount_percent:string;subtotal:string;discount_amount:string;taxable_amount:string;tax_amount:string;total:string}>("SELECT id,line_number,description,item_code,unit_label,quantity::text,unit_price::text,discount_percent::text,subtotal::text,discount_amount::text,taxable_amount::text,tax_amount::text,total::text FROM public.finance_invoice_lines WHERE tenant_id=$1 AND invoice_id=$2 ORDER BY line_number",[id.data,iid.data]);
+   const byId=new Map(sourceLines.rows.map((l)=>[l.id,l]));const snapshots:any[]=[];
    const sum=(key:string)=>snapshots.reduce((n,l)=>n.plus(l[key]),new Decimal(0));
-   for(const requested of body.data.lines){const original:any=byId.get(requested.sourceInvoiceLineId);if(!original)throw new Error("SOURCE_INVOICE_LINE_NOT_FOUND");
+   for(const requested of body.data.lines){const original=byId.get(requested.sourceInvoiceLineId);if(!original)throw new Error("SOURCE_INVOICE_LINE_NOT_FOUND");
     const quantity=new Decimal(requested.quantity),baseQty=new Decimal(original.quantity);if(quantity.lte(0)||quantity.gt(baseQty))throw new Error("ADJUSTMENT_QUANTITY_INVALID");
     const ratio=quantity.div(baseQty);const money=(key:string)=>new Decimal(original[key]).times(ratio).toDecimalPlaces(Number(source.currency_minor_unit),Decimal.ROUND_HALF_UP).toFixed(Number(source.currency_minor_unit));
     snapshots.push({sourceInvoiceLineId:original.id,lineNumber:original.line_number,description:original.description,itemCode:original.item_code,unit:original.unit_label,quantity:quantity.toString(),unitPrice:original.unit_price,subtotal:money("subtotal"),discountAmount:money("discount_amount"),taxableAmount:money("taxable_amount"),taxAmount:money("tax_amount"),total:money("total")});
@@ -281,8 +282,8 @@ userCommercialDocumentsRouter.post("/:tenantId/recurring-invoices/:scheduleId/ge
   if(existing.rows[0]?.status==="GENERATED")return {invoiceId:existing.rows[0].invoice_id,alreadyGenerated:true};
   const customer=await customerRepository.findById(c,schedule.customer_id);if(!customer||customer.status!=="ACTIVE")throw new Error("CUSTOMER_NOT_ACTIVE");
   const currency=await currencyRepository.findActiveByCode(String(schedule.currency_code).trim());if(!currency)throw new Error("CURRENCY_NOT_SUPPORTED");
-  const lineRows=await c.query("SELECT description,item_code,unit_label,quantity::text,unit_price::text,discount_percent::text,tax_rate_percent::text FROM public.finance_recurring_invoice_lines WHERE tenant_id=$1 AND schedule_id=$2 ORDER BY line_number",[id.data,sid.data]);
-  const lines=lineRows.rows.map((l:any)=>({lineType:"ITEM" as const,description:l.description,...(l.item_code?{itemCode:l.item_code}:{}),...(l.unit_label?{unit:l.unit_label}:{}),quantity:l.quantity,unitPrice:l.unit_price,discountPercent:l.discount_percent,taxRatePercent:l.tax_rate_percent}));
+  const lineRows=await c.query<{description:string;item_code:string|null;unit_label:string|null;quantity:string;unit_price:string;discount_percent:string;tax_rate_percent:string}>("SELECT description,item_code,unit_label,quantity::text,unit_price::text,discount_percent::text,tax_rate_percent::text FROM public.finance_recurring_invoice_lines WHERE tenant_id=$1 AND schedule_id=$2 ORDER BY line_number",[id.data,sid.data]);
+  const lines=lineRows.rows.map((l)=>({lineType:"ITEM" as const,description:l.description,...(l.item_code?{itemCode:l.item_code}:{}),...(l.unit_label?{unit:l.unit_label}:{}),quantity:l.quantity,unitPrice:l.unit_price,discountPercent:l.discount_percent,taxRatePercent:l.tax_rate_percent}));
   const totals=calculateInvoiceTotals({currency:currency.code,currencyDecimalPlaces:currency.minorUnit,lines:lines.map(l=>({quantity:l.quantity,unitPrice:l.unitPrice,discountPercent:l.discountPercent,taxRatePercent:l.taxRatePercent}))});
   const due=new Date(scheduledFor+"T12:00:00.000Z");due.setUTCDate(due.getUTCDate()+Number(schedule.due_days));const dueDate=due.toISOString().slice(0,10);
   const invoice=await invoiceRepository.createDraft(c,ctx,{customerId:schedule.customer_id,currencyCode:currency.code,dueDate,notes:schedule.notes??undefined,document:schedule.document_metadata??{},...(schedule.notes?{notes:schedule.notes}:{}),lines},currency.minorUnit,totals,totals.lines,customer);
