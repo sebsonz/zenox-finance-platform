@@ -37,7 +37,7 @@ type Invoice = {
 };
 type CreditNote = { id: string; originalInvoiceId: string; creditNoteCode: string; creditKind: "FULL" | "PARTIAL"; status: "ISSUED"; reason: string; currencyCode: string; grandTotal: string; amountDue: string; issuedAt: string };
 type DraftForm = {
-  documentType: "STANDARD" | "DEPOSIT" | "BALANCE"; contractTotal: string; relatedInvoiceId: string;
+  documentType: "STANDARD" | "DEPOSIT" | "BALANCE" | "CREDIT_NOTE"; contractTotal: string; relatedInvoiceId: string;
   customerId: string; currencyCode: string; dueDate: string; notes: string;
   purchaseOrderReference: string; serviceDate: string; paymentTerms: string;
   paymentInstructions: string; externalReference: string; footerNote: string;
@@ -85,6 +85,8 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [creditReason, setCreditReason] = useState("Correction commerciale / retour / annulation");
   const [creditAmount, setCreditAmount] = useState("");
+  const [creditNoteReason, setCreditNoteReason] = useState("Correction commerciale / retour / annulation");
+  const [creditNoteAmount, setCreditNoteAmount] = useState("");
   const [form, setForm] = useState<DraftForm>(emptyForm());
   const [editing, setEditing] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(false);
@@ -231,6 +233,29 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
 
   async function saveDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (form.documentType === "CREDIT_NOTE") {
+      const source = invoices.find((item) => item.id === form.relatedInvoiceId && item.status === "ISSUED");
+      if (!tenantId || !source || creditNoteReason.trim().length < 3) {
+        setNotice("Sélectionnez une facture d’origine émise et renseignez le motif de l’avoir."); return;
+      }
+      if (creditNoteAmount.trim() && !/^(?:0|[1-9][0-9]{0,15})(?:[.][0-9]{1,8})?$/.test(creditNoteAmount.trim())) {
+        setNotice("Le montant de l’avoir doit être un montant positif valide."); return;
+      }
+      setBusy(true); setNotice("");
+      try {
+        const response = await fetch(`/api/v1/user/tenants/${tenantId}/invoices/${source.id}/credit-notes`, {
+          method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ reason: creditNoteReason.trim(), ...(creditNoteAmount.trim() ? { amount: creditNoteAmount.trim() } : {}) }),
+        });
+        await readData(response, "La création de l’avoir a échoué.");
+        setSelectedInvoiceId(source.id);
+        await loadCreditNotes(source);
+        setCreditNoteAmount("");
+        setNotice(creditNoteAmount.trim() ? "Avoir partiel émis et enregistré." : "Avoir intégral émis et enregistré.");
+      } catch (error) { setNotice(error instanceof Error ? error.message : "La création de l’avoir a échoué."); }
+      finally { setBusy(false); }
+      return;
+    }
     if (!tenantId || !form.customerId || !form.currencyCode || form.lines.some((line) => !line.description.trim())) {
       setNotice("Renseignez le client, la devise et la description de chaque ligne."); return;
     }
@@ -415,12 +440,14 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
           <form id="invoice-draft-form" className="invoice-editor" onSubmit={(event) => void saveDraft(event)}>
             <div className="invoice-form-grid">
               <label>Type de facture<select value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value as DraftForm["documentType"], contractTotal: "", relatedInvoiceId: "" })}>
-                <option value="STANDARD">Facture standard</option><option value="DEPOSIT">Facture d’acompte</option><option value="BALANCE">Facture de solde</option>
+                <option value="STANDARD">Facture standard</option><option value="DEPOSIT">Facture d’acompte</option><option value="BALANCE">Facture de solde</option><option value="CREDIT_NOTE">Facture d’avoir</option>
               </select></label>
               {form.documentType === "DEPOSIT" && <label>Montant total du contrat<input inputMode="decimal" value={form.contractTotal} onChange={(event) => setForm({ ...form, contractTotal: event.target.value })} placeholder="Montant total avant acompte" required/></label>}
-              {form.documentType === "BALANCE" && <label>Facture d’acompte source<select value={form.relatedInvoiceId} onChange={(event) => { const source = invoices.find((item) => item.id === event.target.value); setForm({ ...form, relatedInvoiceId: event.target.value, customerId: source?.customerId ?? form.customerId, currencyCode: source?.currencyCode ?? form.currencyCode }); }} required>
-                <option value="">Sélectionner une facture d’acompte émise</option>{invoices.filter((item) => item.documentType === "DEPOSIT" && item.status === "ISSUED").map((item) => <option key={item.id} value={item.id}>{item.invoiceCode} · {item.grandTotal} {item.currencyCode} · {item.customerSnapshot?.legalName ?? "Client"}</option>)}
+              {(form.documentType === "BALANCE" || form.documentType === "CREDIT_NOTE") && <label>{form.documentType === "CREDIT_NOTE" ? "Facture d’origine à créditer" : "Facture d’acompte source"}<select value={form.relatedInvoiceId} onChange={(event) => { const source = invoices.find((item) => item.id === event.target.value); setForm({ ...form, relatedInvoiceId: event.target.value, customerId: source?.customerId ?? form.customerId, currencyCode: source?.currencyCode ?? form.currencyCode }); }} required>
+                <option value="">{form.documentType === "CREDIT_NOTE" ? "Sélectionner une facture émise" : "Sélectionner une facture d’acompte émise"}</option>{invoices.filter((item) => item.status === "ISSUED" && (form.documentType === "CREDIT_NOTE" || item.documentType === "DEPOSIT")).map((item) => <option key={item.id} value={item.id}>{item.invoiceCode} · {item.grandTotal} {item.currencyCode} · {item.customerSnapshot?.legalName ?? "Client"}</option>)}
               </select></label>}
+              {form.documentType === "CREDIT_NOTE" && <><label>Motif de l’avoir<input value={creditNoteReason} onChange={(event) => setCreditNoteReason(event.target.value)} minLength={3} maxLength={2000} required placeholder="Motif commercial, retour, correction…"/></label><label>Montant à créditer<input inputMode="decimal" value={creditNoteAmount} onChange={(event) => setCreditNoteAmount(event.target.value)} placeholder="Vide = avoir intégral"/></label></>}
+              {form.documentType !== "CREDIT_NOTE" && <>
               <label>Client<select value={form.customerId} onChange={(event) => setForm({ ...form, customerId: event.target.value })} required>
                 <option value="">Choisir un client actif</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.displayName || customer.legalName} · {customer.customerCode}</option>)}
               </select></label>
@@ -436,7 +463,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
               <label>Note de bas de facture<input value={form.footerNote} maxLength={1000} onChange={(event) => setForm({ ...form, footerNote: event.target.value })} placeholder="Mentions complémentaires"/></label>
               <label>Notes / commentaires<input value={form.notes} maxLength={5000} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Informations complémentaires"/></label>
             </div>
-            <div className="invoice-lines-heading"><h3>Lignes de facture</h3><button className="outline-button" type="button" onClick={() => setForm({ ...form, lines: [...form.lines, emptyLine()] })} disabled={form.lines.length >= 500}><Plus size={14}/> Ajouter une ligne</button></div>
+            {form.documentType !== "CREDIT_NOTE" && <><div className="invoice-lines-heading"><h3>Lignes de facture</h3><button className="outline-button" type="button" onClick={() => setForm({ ...form, lines: [...form.lines, emptyLine()] })} disabled={form.lines.length >= 500}><Plus size={14}/> Ajouter une ligne</button></div>
             {form.lines.map((line, index) => <div className="invoice-line-editor" key={index}>
               <label className="line-description">Description<input value={line.description} maxLength={500} onChange={(event) => updateLine(index, "description", event.target.value)} required/></label>
               <label>Qté<input inputMode="decimal" value={line.quantity} onChange={(event) => updateLine(index, "quantity", event.target.value)} required/></label>
@@ -445,7 +472,8 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
               <label>Taxe provisoire %<input inputMode="decimal" value={line.taxRatePercent} onChange={(event) => updateLine(index, "taxRatePercent", event.target.value)} required/></label>
               <button className="icon-danger" type="button" title="Supprimer la ligne" disabled={form.lines.length === 1} onClick={() => setForm({ ...form, lines: form.lines.filter((_, i) => i !== index) })}><Trash2 size={15}/></button>
             </div>)}
-            <div className="invoice-editor-submit-row"><button className="primary-button" type="submit" disabled={busy || checkingResources || customers.length === 0 || currencies.length === 0}>{busy ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Enregistrer la facture"} <FileText size={15}/></button></div>
+            </>}
+            <div className="invoice-editor-submit-row"><button className="primary-button" type="submit" disabled={busy || (form.documentType === "CREDIT_NOTE" ? !form.relatedInvoiceId || !canCredit : checkingResources || customers.length === 0 || currencies.length === 0)}>{busy ? "Traitement…" : form.documentType === "CREDIT_NOTE" ? "Émettre la facture d’avoir" : editing ? "Enregistrer les modifications" : "Enregistrer la facture"} <FileText size={15}/></button></div>
             {customers.length === 0 && <p className="muted-note">Aucun client actif : ajoutez d’abord un client via le module Clients.</p>}
           </form>
         </section>
