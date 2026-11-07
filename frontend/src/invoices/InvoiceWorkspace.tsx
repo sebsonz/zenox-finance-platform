@@ -52,6 +52,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const [customerSaving, setCustomerSaving] = useState(false);
   const [customerDraft, setCustomerDraft] = useState({ customerCode: "", customerType: "BUSINESS" as "BUSINESS" | "INDIVIDUAL", legalName: "", displayName: "", email: "", phone: "", addressLine1: "", addressCity: "", countryCode: "BJ", taxIdentifier: "" });
   const [invoiceTab, setInvoiceTab] = useState<"NOTES" | "TERMS" | "ATTACHMENTS">("NOTES");
+  const [customerSearch, setCustomerSearch] = useState("");
   const { loading, loadInvoices } = useInvoiceList({
     tenantId, search: invoiceSearch, status: invoiceStatus, setInvoices, setSelectedInvoiceId, setNotice,
   });
@@ -168,6 +169,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
       setCustomers((current) => [created, ...current.filter((item) => item.id !== created.id)]);
       setForm((current) => ({ ...current, customerId: created.id }));
       setCustomerModalOpen(false);
+      setCustomerSearch("");
       setCustomerDraft({ customerCode: "", customerType: "BUSINESS", legalName: "", displayName: "", email: "", phone: "", addressLine1: "", addressCity: "", countryCode: "BJ", taxIdentifier: "" });
       setNotice("Client créé et sélectionné pour cette facture.");
     } catch (error) {
@@ -223,8 +225,8 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
               </article>
               <article className="invoice-party-card">
                 <header><span className="invoice-party-icon"><UserRound size={19}/></span><div><h3>Client <em>*</em></h3><small>Destinataire de la facture</small></div></header>
-                <div className="invoice-customer-select"><select value={form.customerId} onChange={(event) => setForm((current) => ({ ...current, customerId: event.target.value }))} required><option value="">Sélectionner un client…</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.displayName || customer.legalName} · {customer.customerCode}</option>)}</select><button type="button" className="small-action" aria-label="Rechercher un client" title="Filtrer la liste des clients" onClick={() => document.getElementById("invoice-customer-search")?.focus()}><Search size={16}/></button></div>
-                <input id="invoice-customer-search" className="invoice-customer-search" placeholder="Rechercher par nom ou code client…" onChange={(event) => { const query = event.target.value.toLocaleLowerCase(); const match = customers.find((customer) => customer.legalName.toLocaleLowerCase().includes(query) || customer.customerCode.toLocaleLowerCase().includes(query)); if (query && match) setForm((current) => ({ ...current, customerId: match.id })); }} aria-label="Rechercher un client"/>
+                <div className="invoice-customer-select"><select value={form.customerId} onChange={(event) => setForm((current) => ({ ...current, customerId: event.target.value }))} required><option value="">Sélectionner un client…</option>{customers.filter((customer) => !customerSearch || customer.legalName.toLocaleLowerCase().includes(customerSearch.toLocaleLowerCase()) || (customer.displayName ?? "").toLocaleLowerCase().includes(customerSearch.toLocaleLowerCase()) || customer.customerCode.toLocaleLowerCase().includes(customerSearch.toLocaleLowerCase())).map((customer) => <option key={customer.id} value={customer.id}>{customer.displayName || customer.legalName} · {customer.customerCode}</option>)}</select><button type="button" className="small-action" aria-label="Rechercher un client" title="Filtrer la liste des clients" onClick={() => document.getElementById("invoice-customer-search")?.focus()}><Search size={16}/></button></div>
+                <input id="invoice-customer-search" className="invoice-customer-search" placeholder="Rechercher par nom ou code client…" value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} aria-label="Rechercher un client"/>
                 {selectedCustomer && <div className="invoice-selected-customer"><strong>{selectedCustomer.displayName || selectedCustomer.legalName}</strong><span>{selectedCustomer.email || "E-mail non renseigné"} · {selectedCustomer.phone || "Téléphone non renseigné"}</span><span>{selectedCustomer.addressLine1 || "Adresse non renseignée"}{selectedCustomer.addressCity ? `, ${selectedCustomer.addressCity}` : ""}</span>{selectedCustomer.taxIdentifier && <span>Identifiant fiscal : {selectedCustomer.taxIdentifier}</span>}</div>}
                 <button type="button" className="invoice-create-customer" onClick={() => setCustomerModalOpen(true)}><Plus size={15}/> Créer un nouveau client</button>
               </article>
