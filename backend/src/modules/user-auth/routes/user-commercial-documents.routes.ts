@@ -1,4 +1,6 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
+import { createHash } from "node:crypto";
+import { Decimal } from "decimal.js";
 import { z } from "zod";
 import { requireUserAuth } from "../../../middleware/require-user-auth.js";
 import { withTenantTransaction } from "../../../db/transaction.js";
@@ -156,6 +158,50 @@ userCommercialDocumentsRouter.post("/:tenantId/proformas/:proformaId/issue",requ
  }catch(e){if(e instanceof Error&&e.message==="PROFORMA_NOT_DRAFT")return fail(res,e.message,"Only a draft pro forma can be issued.",409);next(e);}
 });
 
+
+
+const adjustmentSchema=z.object({
+ type:z.enum(["CREDIT_NOTE","DEBIT_NOTE"]),reason:z.string().trim().min(3).max(2000),
+ lines:z.array(z.object({sourceInvoiceLineId:uuid,quantity:decimal}).strict()).min(1).max(500),
+}).strict();
+function esc(value:unknown):string{return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]!));}
+userCommercialDocumentsRouter.get("/:tenantId/invoices/:invoiceId/adjustments",requireUserAuth(),async(req,res,next)=>{
+ try{const id=uuid.safeParse(req.params["tenantId"]),iid=uuid.safeParse(req.params["invoiceId"]);if(!id.success||!iid.success)return fail(res,"INVALID_ID","Invalid resource ID.",400);const ctx=await contextFor(id.data,req,res,"invoices:read");if(!ctx)return;const rows=await withTenantTransaction(id.data,c=>c.query("SELECT id,adjustment_code,adjustment_type,status,reason,currency_code,grand_total,amount_due,issued_at FROM public.finance_invoice_adjustments WHERE tenant_id=$1 AND original_invoice_id=$2 ORDER BY issued_at DESC",[id.data,iid.data]));res.json({data:{adjustments:rows.rows,correlationId:ctx.correlationId}});
+ }catch(e){next(e);}
+});
+userCommercialDocumentsRouter.post("/:tenantId/invoices/:invoiceId/adjustments",requireUserAuth(),async(req,res,next)=>{
+ try{
+  const id=uuid.safeParse(req.params["tenantId"]),iid=uuid.safeParse(req.params["invoiceId"]),body=adjustmentSchema.safeParse(req.body);
+  if(!id.success||!iid.success||!body.success)return fail(res,"INVALID_ADJUSTMENT","Adjustment request is invalid.",400);
+  const ctx=await contextFor(id.data,req,res,body.data.type==="CREDIT_NOTE"?"invoices:credit":"invoices:issue");if(!ctx)return;
+  const result=await withTenantTransaction(id.data,async c=>{
+   const sourceResult=await c.query("SELECT id,invoice_code,status,currency_code,currency_minor_unit,customer_snapshot,grand_total,tax_snapshot_id,tax_snapshot_version FROM public.finance_invoices WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,iid.data]);
+   const source=sourceResult.rows[0];if(!source||source.status!=="ISSUED"||!source.tax_snapshot_id)throw new Error("SOURCE_INVOICE_NOT_ISSUED");
+   const sourceLines=await c.query("SELECT id,line_number,description,item_code,unit_label,quantity::text,unit_price::text,discount_percent::text,subtotal::text,discount_amount::text,taxable_amount::text,tax_amount::text,total::text FROM public.finance_invoice_lines WHERE tenant_id=$1 AND invoice_id=$2 ORDER BY line_number",[id.data,iid.data]);
+   const byId=new Map(sourceLines.rows.map((l:any)=>[l.id,l]));const snapshots:any[]=[];
+   const sum=(key:string)=>snapshots.reduce((n,l)=>n.plus(l[key]),new Decimal(0));
+   for(const requested of body.data.lines){const original:any=byId.get(requested.sourceInvoiceLineId);if(!original)throw new Error("SOURCE_INVOICE_LINE_NOT_FOUND");
+    const quantity=new Decimal(requested.quantity),baseQty=new Decimal(original.quantity);if(quantity.lte(0)||quantity.gt(baseQty))throw new Error("ADJUSTMENT_QUANTITY_INVALID");
+    const ratio=quantity.div(baseQty);const money=(key:string)=>new Decimal(original[key]).times(ratio).toDecimalPlaces(Number(source.currency_minor_unit),Decimal.ROUND_HALF_UP).toFixed(Number(source.currency_minor_unit));
+    snapshots.push({sourceInvoiceLineId:original.id,lineNumber:original.line_number,description:original.description,itemCode:original.item_code,unit:original.unit_label,quantity:quantity.toString(),unitPrice:original.unit_price,subtotal:money("subtotal"),discountAmount:money("discount_amount"),taxableAmount:money("taxable_amount"),taxAmount:money("tax_amount"),total:money("total")});
+   }
+   const subtotal=sum("subtotal").toFixed(8),discountTotal=sum("discountAmount").toFixed(8),taxableTotal=sum("taxableAmount").toFixed(8),taxTotal=sum("taxAmount").toFixed(8),grandTotal=sum("total").toFixed(8);
+   if(new Decimal(grandTotal).lte(0))throw new Error("ADJUSTMENT_AMOUNT_INVALID");
+   const year=new Date().getUTCFullYear();const seq=await c.query("INSERT INTO public.finance_invoice_adjustment_sequences(tenant_id,adjustment_type,fiscal_year,next_number) VALUES($1,$2,$3,2) ON CONFLICT(tenant_id,adjustment_type,fiscal_year) DO UPDATE SET next_number=public.finance_invoice_adjustment_sequences.next_number+1 RETURNING next_number-1 AS allocated",[id.data,body.data.type,year]);
+   const prefix=body.data.type==="CREDIT_NOTE"?"CN":"DN",code=prefix+"-"+year+"-"+String(seq.rows[0].allocated).padStart(6,"0");
+   const html="<!doctype html><html lang='fr'><meta charset='utf-8'><title>"+esc(code)+"</title><body><h1>"+(body.data.type==="CREDIT_NOTE"?"AVOIR":"NOTE DE DÉBIT")+"</h1><p>"+esc(code)+" · Facture source "+esc(source.invoice_code)+"</p><p>"+esc(body.data.reason)+"</p><table><tbody>"+snapshots.map(l=>"<tr><td>"+esc(l.description)+"</td><td>"+esc(l.quantity)+"</td><td>"+esc(l.total)+" "+esc(source.currency_code)+"</td></tr>").join("")+"</tbody></table><strong>"+esc(grandTotal)+" "+esc(source.currency_code)+"</strong></body></html>";
+   const sha=createHash("sha256").update(html,"utf8").digest("hex");
+   const inserted=await c.query("INSERT INTO public.finance_invoice_adjustments(tenant_id,original_invoice_id,adjustment_code,adjustment_type,reason,currency_code,currency_minor_unit,customer_snapshot,source_tax_snapshot_id,source_tax_snapshot_version,lines_snapshot,subtotal,discount_total,taxable_total,tax_total,grand_total,amount_due,html_content,html_sha256,issued_by_actor_type,issued_by_actor_ref) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11::jsonb,$12,$13,$14,$15,$16,$16,$17,$18,'USER',$19) RETURNING id,adjustment_code,adjustment_type,status,reason,currency_code,grand_total,amount_due,issued_at",[id.data,iid.data,code,body.data.type,body.data.reason,String(source.currency_code).trim(),source.currency_minor_unit,JSON.stringify(source.customer_snapshot),source.tax_snapshot_id,source.tax_snapshot_version,JSON.stringify(snapshots),subtotal,discountTotal,taxableTotal,taxTotal,grandTotal,html,sha,ctx.actor.ref]);
+   await recordInvoiceAudit(c,ctx,body.data.type==="CREDIT_NOTE"?"invoice.credit_note.issued":"invoice.debit_note.issued","INVOICE_ADJUSTMENT",inserted.rows[0].id,{sourceInvoiceId:iid.data,adjustmentCode:code,grandTotal});
+   return inserted.rows[0];
+  });
+  res.status(201).json({data:{adjustment:result,correlationId:ctx.correlationId}});
+ }catch(e){
+  if(e instanceof Error&&["SOURCE_INVOICE_NOT_ISSUED","SOURCE_INVOICE_LINE_NOT_FOUND","ADJUSTMENT_QUANTITY_INVALID","ADJUSTMENT_AMOUNT_INVALID"].includes(e.message))return fail(res,e.message,"The source invoice or selected correction lines are not eligible.",422);
+  if(e instanceof Error&&e.message==="CREDIT_NOTE_EXCEEDS_REMAINING_INVOICE_VALUE")return fail(res,e.message,"The credit note exceeds the remaining refundable invoice value.",409);
+  next(e);
+ }
+});
 
 const recurringSchema=z.object({
  customerId:uuid,currencyCode:z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
