@@ -120,6 +120,19 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
         }));
         setJurisdictionId((current) => jurisdictionData.jurisdictions?.some((item) => item.id === current)
           ? current : (jurisdictionData.jurisdictions?.[0]?.id ?? ""));
+
+        // Load the invoice register as soon as the active tenant is ready.
+        // This is deliberately independent from customer/tax reference loading:
+        // a reference-data failure must not hide invoices already saved.
+        try {
+          const invoiceData = await readData<{ invoices?: Invoice[] }>(
+            await fetch(`/api/v1/user/tenants/${tenantId}/invoices?limit=100`, { credentials: "same-origin", cache: "no-store" }),
+            "Impossible de charger les factures.",
+          );
+          if (!cancelled) setInvoices(invoiceData.invoices ?? []);
+        } catch (invoiceError) {
+          if (!cancelled) setNotice(invoiceError instanceof Error ? invoiceError.message : "Impossible de charger les factures.");
+        }
       } catch (error) { if (!cancelled) setNotice(error instanceof Error ? error.message : "Impossible de charger les données de facturation."); }
       finally { if (!cancelled) setCheckingResources(false); }
     }
@@ -187,14 +200,26 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
         headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
       });
       const data = await readData<{ invoice: Invoice }>(response, "Impossible d’enregistrer le brouillon.");
+      const savedInvoice = data.invoice;
       const successMessage = editing ? "Brouillon mis à jour." : "Brouillon créé.";
-      setEditing(data.invoice); setSelectedInvoiceId(data.invoice.id);
-      const refreshed = await fetch(`/api/v1/user/tenants/${tenantId}/invoices?limit=100`, { credentials: "same-origin", cache: "no-store" });
-      const refreshedData = await readData<{ invoices?: Invoice[] }>(refreshed, "Impossible d’actualiser les factures.");
-      setInvoices(refreshedData.invoices ?? []);
-      const saved = (refreshedData.invoices ?? []).find((item) => item.id === data.invoice.id) ?? data.invoice;
-      setEditing(saved);
+
+      // Reflect the successful write immediately. The list refresh below is
+      // only reconciliation and can never undo or mask a successful save.
+      setInvoices((current) => [savedInvoice, ...current.filter((item) => item.id !== savedInvoice.id)]);
+      setEditing(savedInvoice);
+      setSelectedInvoiceId(savedInvoice.id);
       setNotice(successMessage);
+
+      try {
+        const refreshed = await fetch(`/api/v1/user/tenants/${tenantId}/invoices?limit=100`, { credentials: "same-origin", cache: "no-store" });
+        const refreshedData = await readData<{ invoices?: Invoice[] }>(refreshed, "Impossible d’actualiser les factures.");
+        const refreshedInvoices = refreshedData.invoices ?? [];
+        const reconciledInvoice = refreshedInvoices.find((item) => item.id === savedInvoice.id) ?? savedInvoice;
+        setInvoices([reconciledInvoice, ...refreshedInvoices.filter((item) => item.id !== savedInvoice.id)]);
+        setEditing(reconciledInvoice);
+      } catch {
+        // Keep the server-confirmed invoice visible and retain the success notice.
+      }
     } catch (error) { setNotice(error instanceof Error ? error.message : "Erreur d’enregistrement."); }
     finally { setBusy(false); }
   }
@@ -354,7 +379,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
                 {invoice.status === "DRAFT" && invoice.taxStatus === "CALCULATED" && <button title="Émettre" className="small-action" disabled={busy || !canIssue} onClick={() => void issueInvoice(invoice)}><Send size={14}/></button>}
                 {invoice.status === "ISSUED" && <button title="Télécharger PDF" className="small-action" disabled={busy} onClick={() => void downloadDocument(invoice, "document.pdf")}><Download size={14}/></button>}
                 {invoice.status === "ISSUED" && <button title="Historique des avoirs" className="small-action" onClick={() => void loadCreditNotes(invoice)}><ReceiptText size={14}/></button>}
-              </div></td></tr>) : <tr><td colSpan={7} className="invoice-empty">{loading ? "Chargement…" : "Aucune facture chargée. Cliquez sur Actualiser."}</td></tr>}</tbody>
+              </div></td></tr>) : <tr><td colSpan={7} className="invoice-empty">{loading ? "Chargement…" : "Aucune facture enregistrée pour cette organisation."}</td></tr>}</tbody>
           </table></div>
         </section>
 
