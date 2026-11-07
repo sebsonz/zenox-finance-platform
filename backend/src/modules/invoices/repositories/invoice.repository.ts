@@ -9,6 +9,9 @@ export interface FinanceInvoice {
   customerId: string;
   invoiceCode: string | null;
   status: "DRAFT" | "ISSUED" | "CANCELLED";
+  documentType: "STANDARD" | "DEPOSIT" | "BALANCE";
+  contractTotal: string | null;
+  relatedInvoiceId: string | null;
   currencyCode: string;
   currencyMinorUnit: number;
   issueDate: string | null;
@@ -44,6 +47,7 @@ export interface FinanceInvoice {
 
 interface InvoiceRow {
   id: string; customer_id: string; invoice_code: string | null; status: "DRAFT" | "ISSUED" | "CANCELLED";
+  document_type: "STANDARD" | "DEPOSIT" | "BALANCE"; contract_total: string | null; related_invoice_id: string | null;
   currency_code: string; currency_minor_unit: number; issue_date: string | null; due_date: string | null;
   purchase_order_reference: string | null; service_date: string | null; payment_terms: string | null;
   payment_instructions: string | null; external_reference: string | null; footer_note: string | null;
@@ -58,7 +62,7 @@ interface LineRow {
   discount_percent: string; tax_rate_percent: string; subtotal: string; discount_amount: string;
   taxable_amount: string; tax_amount: string; total: string;
 }
-const invoiceColumns = `id, customer_id, invoice_code, status, currency_code, currency_minor_unit,
+const invoiceColumns = `id, customer_id, invoice_code, status, document_type, contract_total::text, related_invoice_id, currency_code,
   issue_date, due_date, purchase_order_reference, service_date, payment_terms, payment_instructions,
   external_reference, footer_note, issuer_snapshot, customer_snapshot, subtotal::text, discount_total::text, taxable_total::text,
   tax_total::text, grand_total::text, amount_due::text, calculation_policy, notes,
@@ -76,6 +80,7 @@ async function attachLines(client: PoolClient, tenantId: string, row: InvoiceRow
   );
   return {
     id: row.id, customerId: row.customer_id, invoiceCode: row.invoice_code, status: row.status,
+    documentType: row.document_type, contractTotal: row.contract_total, relatedInvoiceId: row.related_invoice_id,
     currencyCode: row.currency_code.trim(), currencyMinorUnit: row.currency_minor_unit,
     issueDate: row.issue_date,
     dueDate: row.due_date,
@@ -116,8 +121,8 @@ export const invoiceRepository = {
         purchase_order_reference, service_date, payment_terms, payment_instructions, external_reference, footer_note,
         issuer_snapshot, customer_snapshot, subtotal, discount_total, taxable_total, tax_total, grand_total, amount_due, calculation_policy, notes,
         created_by_principal_id, created_by_actor_type, created_by_actor_ref,
-        updated_by_actor_type, updated_by_actor_ref
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
+        updated_by_actor_type, updated_by_actor_ref, document_type, contract_total, related_invoice_id
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13::jsonb,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
       RETURNING ${invoiceColumns}`,
       [context.tenantId, customer.id, totals.currency, currencyMinorUnit, input.dueDate ?? null,
         input.purchaseOrderReference ?? null, input.serviceDate ?? null, input.paymentTerms ?? null,
@@ -129,7 +134,8 @@ export const invoiceRepository = {
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
           taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
         totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
-        totals.grandTotal, totals.calculationPolicy, input.notes ?? null, legacyPrincipalId, actor.type, actor.ref, actor.type, actor.ref],
+        totals.grandTotal, totals.calculationPolicy, input.notes ?? null, legacyPrincipalId, actor.type, actor.ref, actor.type, actor.ref,
+        input.documentType, input.contractTotal ?? null, input.relatedInvoiceId ?? null],
     );
     const invoice = created.rows[0];
     if (!invoice) throw new Error("INVOICE_INSERT_RETURNED_NO_ROW");
@@ -185,17 +191,20 @@ export const invoiceRepository = {
               amount_due = $19,
               calculation_policy = $20,
               notes = $21,
+              document_type = $22,
+              contract_total = $23,
+              related_invoice_id = $24,
               document_version = document_version + 1,
               tax_snapshot_id = NULL,
               tax_snapshot_version = NULL,
               tax_status = 'PROVISIONAL',
-              updated_by_actor_type = $22,
-              updated_by_actor_ref = $23,
+              updated_by_actor_type = $25,
+              updated_by_actor_ref = $26,
               updated_at = clock_timestamp()
         WHERE tenant_id = $1
           AND id = $2
           AND status = 'DRAFT'
-          AND updated_at = $24::timestamptz
+          AND updated_at = $27::timestamptz
       RETURNING ${invoiceColumns}`,
       [context.tenantId, invoiceId, customer.id, totals.currency, currencyMinorUnit,
         input.dueDate ?? null, input.purchaseOrderReference ?? null, input.serviceDate ?? null,
@@ -208,7 +217,8 @@ export const invoiceRepository = {
           email: customer.email, phone: customer.phone, countryCode: customer.countryCode,
           taxIdentifier: customer.taxIdentifier, registrationIdentifier: customer.registrationIdentifier }),
         totals.subtotal, totals.discountTotal, totals.taxableTotal, totals.taxTotal, totals.grandTotal,
-        totals.calculationPolicy, input.notes ?? null, actor.type, actor.ref, expectedUpdatedAt],
+        totals.calculationPolicy, input.notes ?? null, input.documentType, input.contractTotal ?? null,
+        input.relatedInvoiceId ?? null, actor.type, actor.ref, expectedUpdatedAt],
     );
     const invoice = updated.rows[0];
     if (!invoice) return null;
