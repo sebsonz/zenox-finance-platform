@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
-import { existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import type { FinanceInvoice } from "../repositories/invoice.repository.js";
 
 const require = createRequire(import.meta.url);
@@ -18,33 +19,56 @@ interface PdfPrinterInstance {
 
 type FontSet = Record<string, { normal: string; bold: string; italics: string; bolditalics: string }>;
 
+let cachedRobotoFonts: FontSet | undefined;
+
 function resolveRobotoFonts(): FontSet {
+  if (cachedRobotoFonts) return cachedRobotoFonts;
+
   const packageEntry = require.resolve("pdfmake");
   const packageRoot = resolve(dirname(packageEntry), "..");
+  const fontNames = ["Roboto-Regular.ttf", "Roboto-Medium.ttf", "Roboto-Italic.ttf", "Roboto-MediumItalic.ttf"];
   const fontDirectories = [
     resolve(packageRoot, "build/fonts/Roboto"),
     resolve(packageRoot, "fonts/Roboto"),
     resolve(packageRoot, "examples/fonts/Roboto"),
   ];
-  const fontDirectory = fontDirectories.find((directory) =>
-    existsSync(resolve(directory, "Roboto-Regular.ttf"))
-    && existsSync(resolve(directory, "Roboto-Medium.ttf"))
-    && existsSync(resolve(directory, "Roboto-Italic.ttf"))
-    && existsSync(resolve(directory, "Roboto-MediumItalic.ttf")),
-  );
+  let fontPaths = fontNames.map((name) => {
+    const directory = fontDirectories.find((candidate) => existsSync(resolve(candidate, name)));
+    return directory ? resolve(directory, name) : "";
+  });
 
-  if (!fontDirectory) {
-    throw new Error("INVOICE_PDF_ROBOTO_FONT_FILES_NOT_FOUND: reinstall pdfmake with its Roboto TTF assets");
+  if (fontPaths.some((fontPath) => !fontPath)) {
+    // The npm distribution commonly ships Roboto inside pdfmake's virtual font
+    // bundle rather than as standalone TTF files. Extract those bundled assets
+    // to a private temporary directory so PDFKit can embed them normally.
+    const vfsPath = require.resolve("pdfmake/build/vfs_fonts.js");
+    const virtualFonts = require(vfsPath) as Record<string, string> | { pdfMake?: { vfs?: Record<string, string> }; vfs?: Record<string, string> };
+    const vfs = "pdfMake" in virtualFonts
+      ? virtualFonts.pdfMake?.vfs
+      : "vfs" in virtualFonts
+        ? virtualFonts.vfs
+        : virtualFonts;
+    if (!vfs) throw new Error("INVOICE_PDF_ROBOTO_VIRTUAL_FONTS_NOT_FOUND");
+
+    const fontDirectory = mkdtempSync(join(tmpdir(), "zenox-finance-pdf-fonts-"));
+    fontPaths = fontNames.map((name) => {
+      const encoded = vfs[name];
+      if (!encoded) throw new Error(`INVOICE_PDF_ROBOTO_FONT_MISSING:${name}`);
+      const fontPath = resolve(fontDirectory, name);
+      writeFileSync(fontPath, Buffer.from(encoded, "base64"), { flag: "wx" });
+      return fontPath;
+    });
   }
 
-  return {
+  cachedRobotoFonts = {
     Roboto: {
-      normal: resolve(fontDirectory, "Roboto-Regular.ttf"),
-      bold: resolve(fontDirectory, "Roboto-Medium.ttf"),
-      italics: resolve(fontDirectory, "Roboto-Italic.ttf"),
-      bolditalics: resolve(fontDirectory, "Roboto-MediumItalic.ttf"),
+      normal: fontPaths[0]!,
+      bold: fontPaths[1]!,
+      italics: fontPaths[2]!,
+      bolditalics: fontPaths[3]!,
     },
   };
+  return cachedRobotoFonts;
 }
 
 function text(value: unknown, fallback = "—"): string {
