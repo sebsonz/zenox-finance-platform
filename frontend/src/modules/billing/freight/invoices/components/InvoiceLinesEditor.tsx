@@ -18,7 +18,7 @@ export function InvoiceLinesEditor({ documentType, lines, onAdd, onUpdate, onRem
   if (documentType === "CREDIT_NOTE") return null;
   const details = detailsIndex === null ? null : lines[detailsIndex];
 
-  return <section className="invoice-lines-section">
+  return <section className="invoice-lines-section" id="invoice-composer-lines">
     <div className="invoice-lines-heading">
       <div><h3>Lignes de facture <span className="invoice-lines-count">{lines.length}</span></h3><p>Prix unitaires hors taxes · jusqu’à 500 lignes</p></div>
       <div className="invoice-lines-toolbar">
