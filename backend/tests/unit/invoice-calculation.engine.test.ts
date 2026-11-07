@@ -17,7 +17,7 @@ describe("calculateInvoiceTotals", () => {
     expect(result.taxableTotal).toBe("2300");
     expect(result.taxTotal).toBe("324");
     expect(result.grandTotal).toBe("2624");
-    expect(result.calculationPolicy).toBe("LINE_HALF_UP_TAX_EXCLUSIVE_V1");
+    expect(result.calculationPolicy).toBe("LINE_AND_DOCUMENT_DISCOUNT_HALF_UP_TAX_EXCLUSIVE_V2");
   });
 
   it("does not use binary floating point for decimal currency arithmetic", () => {
@@ -48,6 +48,47 @@ describe("calculateInvoiceTotals", () => {
     expect(result.lines[0]?.taxableAmount).toBe("20.56");
     expect(result.lines[0]?.taxAmount).toBe("4.11");
     expect(result.grandTotal).toBe("24.67");
+  });
+
+
+  it("allocates a global percentage discount proportionally across taxable lines before tax", () => {
+    const result = calculateInvoiceTotals({
+      currency: "XOF",
+      currencyDecimalPlaces: 0,
+      globalDiscountPercent: "10",
+      lines: [
+        { quantity: "1", unitPrice: "1000", taxRatePercent: "18" },
+        { quantity: "1", unitPrice: "500", taxRatePercent: "0" },
+      ],
+    });
+    expect(result.discountTotal).toBe("150");
+    expect(result.taxableTotal).toBe("1350");
+    expect(result.taxTotal).toBe("162");
+    expect(result.grandTotal).toBe("1512");
+    expect(result.lines.map(line => line.discountAmount)).toEqual(["100","50"]);
+  });
+
+  it("allocates a fixed global discount without rounding drift and rejects invalid totals", () => {
+    const result = calculateInvoiceTotals({
+      currency: "EUR",
+      currencyDecimalPlaces: 2,
+      globalDiscountAmount: "10.00",
+      lines: [
+        { quantity: "1", unitPrice: "20.00", taxRatePercent: "0" },
+        { quantity: "1", unitPrice: "10.00", taxRatePercent: "0" },
+      ],
+    });
+    expect(result.discountTotal).toBe("10.00");
+    expect(result.taxableTotal).toBe("20.00");
+    expect(result.lines.reduce((sum,line)=>sum+Number(line.discountAmount),0)).toBe(10);
+    expect(() => calculateInvoiceTotals({
+      currency:"EUR",currencyDecimalPlaces:2,globalDiscountPercent:"10",globalDiscountAmount:"1",
+      lines:[{quantity:"1",unitPrice:"20",taxRatePercent:"0"}],
+    })).toThrow("GLOBAL_DISCOUNT_PERCENT_AND_AMOUNT_MUTUALLY_EXCLUSIVE");
+    expect(() => calculateInvoiceTotals({
+      currency:"EUR",currencyDecimalPlaces:2,globalDiscountAmount:"30",
+      lines:[{quantity:"1",unitPrice:"20",taxRatePercent:"0"}],
+    })).toThrow("GLOBAL_DISCOUNT_EXCEEDS_TAXABLE_SUBTOTAL");
   });
 
   it("rejects input precision that cannot be represented by the invoice columns", () => {
