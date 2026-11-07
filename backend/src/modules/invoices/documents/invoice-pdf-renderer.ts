@@ -83,11 +83,15 @@ function money(value: string, currency: string): string {
 function partyLines(snapshot: Record<string, unknown>): string[] {
   return [
     text(snapshot["address"], ""),
+    text(snapshot["addressLine2"], ""),
     [text(snapshot["postalCode"], ""), text(snapshot["city"], "")].filter(Boolean).join(" "),
+    text(snapshot["region"], ""),
     text(snapshot["countryCode"], ""),
     text(snapshot["email"], ""),
     text(snapshot["phone"], ""),
     snapshot["taxIdentifier"] ? `Identifiant fiscal : ${text(snapshot["taxIdentifier"])}` : "",
+    snapshot["registrationIdentifier"] ? `Identifiant légal : ${text(snapshot["registrationIdentifier"])}` : "",
+    text(snapshot["websiteUrl"], ""),
   ].filter(Boolean);
 }
 
@@ -110,7 +114,10 @@ export async function renderInvoicePdfDocument(invoice: FinanceInvoice, document
     throw new Error("INVOICE_PDF_REQUIRES_ISSUED_TAX_SNAPSHOTTED_INVOICE");
   }
 
+  const issuer = invoice.issuerSnapshot;
   const customer = invoice.customerSnapshot;
+  const issuerName = text(issuer["tradeName"] ?? issuer["legalName"], "ZENOX Finance");
+  const issuerDetails = partyLines(issuer);
   const customerName = text(customer["legalName"] ?? customer["displayName"]);
   const customerDetails = partyLines(customer);
   const rows = invoice.lines.map((line) => [
@@ -144,8 +151,9 @@ export async function renderInvoicePdfDocument(invoice: FinanceInvoice, document
         {
           width: "*",
           stack: [
-            { text: "ZENOX FINANCE", style: "brand" },
-            { text: documentLabel, style: "documentTitle" },
+            { text: issuerName, style: "brand" },
+            ...issuerDetails.map((detail) => ({ text: detail, style: "muted" })),
+            { text: documentLabel, style: "documentTitle", margin: [0, 5, 0, 0] },
           ],
         },
         {
