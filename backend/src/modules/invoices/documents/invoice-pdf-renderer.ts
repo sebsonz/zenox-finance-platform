@@ -101,6 +101,8 @@ export function renderInvoicePdfDocument(invoice: FinanceInvoice, documentLabel 
     "",
     String(metadata["title"] || documentLabel),
     `N° : ${invoice.invoiceCode}`,
+    ...(metadata["invoiceKind"] === "ADVANCE" ? ["Type : FACTURE D’ACOMPTE"] : metadata["invoiceKind"] === "BALANCE" ? ["Type : FACTURE DE SOLDE"] : ["Type : FACTURE STANDARD"]),
+    ...(metadata["sourceReference"] ? [`Référence source : ${metadata["sourceReference"]}`] : []),
     `Date d’émission : ${invoice.issueDate ?? "-"} | Échéance : ${invoice.dueDate ?? "-"}`,
     ...(metadata["reference"] ? [`Référence : ${metadata["reference"]}`] : []),
     ...(metadata["purchaseOrderNumber"] ? [`Bon de commande : ${metadata["purchaseOrderNumber"]}`] : []),
@@ -118,7 +120,7 @@ export function renderInvoicePdfDocument(invoice: FinanceInvoice, documentLabel 
     "Ligne | Désignation | Qté | Unité | Prix unitaire | Remise | Taxe | Total",
     "-".repeat(110),
     ...invoice.lines.flatMap((line) => [
-      ...wrap(`${line.lineNumber}. ${line.description} ${line.itemCode ? `[${line.itemCode}]` : ""}`, 90),
+      ...wrap(`${line.lineNumber}. ${line.lineType === "FEE" ? "FRAIS" : line.lineType === "EXPENSE" ? "DÉBOURS" : line.lineType === "SERVICE" ? "PRESTATION" : "ARTICLE"} — ${line.description} ${line.itemCode ? `[${line.itemCode}]` : ""}`, 90),
       `${line.quantity} ${line.unit ?? ""} | ${line.unitPrice} | ${line.discountPercent}% | ${line.taxAmount} | ${line.total}`,
       ...(line.lineNote ? wrap(line.lineNote, 90) : []),
     ]),
