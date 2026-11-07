@@ -101,13 +101,13 @@ for(const decision of ["accept","reject","expire"] as const){
  const ctx=await contextFor(id.data,req,res,"invoices:issue");if(!ctx)return;
  const result=await withTenantTransaction(id.data,async c=>{
  const q=await c.query("SELECT status,valid_until FROM public.finance_quotes WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,qid.data]);if(!q.rows[0]||q.rows[0].status!=="SENT")throw new Error("QUOTE_NOT_SENT");
- if(decision==="accept"&&q.rows[0].valid_until&&q.rows[0].valid_until<new Date().toISOString().slice(0,10))throw new Error("QUOTE_EXPIRED");
+ const today=new Date().toISOString().slice(0,10);if(decision==="accept"&&q.rows[0].valid_until&&q.rows[0].valid_until<today)throw new Error("QUOTE_EXPIRED");if(decision==="expire"&&(!q.rows[0].valid_until||q.rows[0].valid_until>=today))throw new Error("QUOTE_NOT_EXPIRED");
  const status=decision==="accept"?"ACCEPTED":decision==="reject"?"REJECTED":"EXPIRED";
  const col=decision==="accept"?"accepted_at":decision==="reject"?"rejected_at":null;
  const sql=col?"UPDATE public.finance_quotes SET status=$3,"+col+"=now(),updated_at=now(),updated_by_actor_type='USER',updated_by_actor_ref=$4 WHERE tenant_id=$1 AND id=$2 RETURNING *":"UPDATE public.finance_quotes SET status=$3,updated_at=now(),updated_by_actor_type='USER',updated_by_actor_ref=$4 WHERE tenant_id=$1 AND id=$2 RETURNING *";
  const out=await c.query(sql,[id.data,qid.data,status,ctx.actor.ref]);await recordInvoiceAudit(c,ctx,"quote."+decision,"QUOTE",qid.data,{});return out.rows[0];
  });res.json({data:{quote:result,correlationId:ctx.correlationId}});
- }catch(e){if(e instanceof Error&&["QUOTE_NOT_SENT","QUOTE_EXPIRED"].includes(e.message))return fail(res,e.message,"Quote is not eligible for this transition.",409);next(e);}
+ }catch(e){if(e instanceof Error&&["QUOTE_NOT_SENT","QUOTE_EXPIRED","QUOTE_NOT_EXPIRED"].includes(e.message))return fail(res,e.message,"Quote is not eligible for this transition.",409);next(e);}
  });
 }
 
@@ -285,7 +285,7 @@ userCommercialDocumentsRouter.post("/:tenantId/recurring-invoices/:scheduleId/ge
   const lines=lineRows.rows.map((l:any)=>({description:l.description,...(l.item_code?{itemCode:l.item_code}:{}),...(l.unit_label?{unit:l.unit_label}:{}),quantity:l.quantity,unitPrice:l.unit_price,discountPercent:l.discount_percent,taxRatePercent:l.tax_rate_percent}));
   const totals=calculateInvoiceTotals({currency:currency.code,currencyDecimalPlaces:currency.minorUnit,lines:lines.map(l=>({quantity:l.quantity,unitPrice:l.unitPrice,discountPercent:l.discountPercent,taxRatePercent:l.taxRatePercent}))});
   const due=new Date(scheduledFor+"T12:00:00.000Z");due.setUTCDate(due.getUTCDate()+Number(schedule.due_days));const dueDate=due.toISOString().slice(0,10);
-  const invoice=await invoiceRepository.createDraft(c,ctx,{customerId:schedule.customer_id,currencyCode:currency.code,dueDate,notes:schedule.notes??undefined,document:schedule.document_metadata??{},lines},currency.minorUnit,totals,totals.lines,customer);
+  const invoice=await invoiceRepository.createDraft(c,ctx,{customerId:schedule.customer_id,currencyCode:currency.code,dueDate,notes:schedule.notes??undefined,document:schedule.document_metadata??{},...(schedule.notes?{notes:schedule.notes}:{}),lines},currency.minorUnit,totals,totals.lines,customer);
   const key="recurring:"+schedule.id+":"+scheduledFor;
   await c.query("INSERT INTO public.finance_recurring_invoice_runs(tenant_id,schedule_id,scheduled_for,status,invoice_id,idempotency_key,completed_at) VALUES($1,$2,$3,'GENERATED',$4,$5,now())",[id.data,sid.data,scheduledFor,invoice.id,key]);
   const next=nextOccurrence(scheduledFor,schedule.frequency,Number(schedule.interval_count));
