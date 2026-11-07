@@ -387,6 +387,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
             </details>
             <div className="invoice-lines-heading"><h3>Lignes de facture</h3><button className="outline-button" type="button" onClick={() => setForm({ ...form, lines: [...form.lines, emptyLine()] })} disabled={form.lines.length >= 500}><Plus size={14}/> Ajouter une ligne</button></div>
             {form.lines.map((line, index) => <div className="invoice-line-editor" key={index}>
+              <label>Nature<select value={line.lineType} onChange={(event) => updateLine(index, "lineType", event.target.value)}><option value="ITEM">Article</option><option value="SERVICE">Prestation</option><option value="FEE">Frais</option><option value="EXPENSE">Débours</option></select></label>
               <label className="line-description">Description<input value={line.description} maxLength={500} onChange={(event) => updateLine(index, "description", event.target.value)} required/></label>
               <label>Réf. article<input value={line.itemCode} maxLength={100} onChange={(event) => updateLine(index, "itemCode", event.target.value)}/></label>
               <label>Unité<input value={line.unit} maxLength={40} onChange={(event) => updateLine(index, "unit", event.target.value)}/></label>
