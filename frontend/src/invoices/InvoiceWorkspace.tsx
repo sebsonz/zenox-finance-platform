@@ -462,6 +462,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
               <label>Modalités de paiement<input value={form.paymentInstructions} maxLength={2000} onChange={(event) => setForm({ ...form, paymentInstructions: event.target.value })} placeholder="Virement bancaire, Mobile Money…"/></label>
               <label>Note de bas de facture<input value={form.footerNote} maxLength={1000} onChange={(event) => setForm({ ...form, footerNote: event.target.value })} placeholder="Mentions complémentaires"/></label>
               <label>Notes / commentaires<input value={form.notes} maxLength={5000} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Informations complémentaires"/></label>
+              </>}
             </div>
             {form.documentType !== "CREDIT_NOTE" && <><div className="invoice-lines-heading"><h3>Lignes de facture</h3><button className="outline-button" type="button" onClick={() => setForm({ ...form, lines: [...form.lines, emptyLine()] })} disabled={form.lines.length >= 500}><Plus size={14}/> Ajouter une ligne</button></div>
             {form.lines.map((line, index) => <div className="invoice-line-editor" key={index}>
@@ -474,7 +475,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
             </div>)}
             </>}
             <div className="invoice-editor-submit-row"><button className="primary-button" type="submit" disabled={busy || (form.documentType === "CREDIT_NOTE" ? !form.relatedInvoiceId || !canCredit : checkingResources || customers.length === 0 || currencies.length === 0)}>{busy ? "Traitement…" : form.documentType === "CREDIT_NOTE" ? "Émettre la facture d’avoir" : editing ? "Enregistrer les modifications" : "Enregistrer la facture"} <FileText size={15}/></button></div>
-            {customers.length === 0 && <p className="muted-note">Aucun client actif : ajoutez d’abord un client via le module Clients.</p>}
+            {form.documentType !== "CREDIT_NOTE" && customers.length === 0 && <p className="muted-note">Aucun client actif : ajoutez d’abord un client via le module Clients.</p>}
           </form>
         </section>
 
