@@ -6,6 +6,7 @@ import { InvoiceTaxContextPanel } from "../modules/billing/freight/invoices/tax/
 import { InvoiceListPanel } from "../modules/billing/freight/invoices/list/InvoiceListPanel.js";
 import { useInvoiceResources } from "../modules/billing/freight/invoices/hooks/useInvoiceResources.js";
 import { useInvoiceDraft } from "../modules/billing/freight/invoices/hooks/useInvoiceDraft.js";
+import { useInvoiceDraftPersistence } from "../modules/billing/freight/invoices/hooks/useInvoiceDraftPersistence.js";
 import { useInvoiceLifecycle } from "../modules/billing/freight/invoices/hooks/useInvoiceLifecycle.js";
 import { useCreditNotes } from "../modules/billing/freight/invoices/hooks/useCreditNotes.js";
 import type { DraftForm, InvoiceDraftRecord } from "../modules/billing/freight/invoices/types/invoice-draft.js";
@@ -100,6 +101,9 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     form, setForm, editing, setEditing, resetDraft, startEdit, updateLine, addLine, removeLine,
   } = useInvoiceDraft({ customers, currencies, setSelectedInvoiceId, setNotice });
   useEffect(() => { setEditing(null); }, [tenantId, setEditing]);
+  const { saveStandardDraft } = useInvoiceDraftPersistence({
+    tenantId, form, editing, setInvoices, setEditing, setSelectedInvoiceId, setBusy, setNotice,
+  });
   const { calculateTax, issueInvoice } = useInvoiceLifecycle({
     tenantId, jurisdictionId, taxDate, appliesTo, taxFacts, setBusy, setNotice, loadInvoices,
   });
@@ -133,56 +137,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
       await createCreditNote(source, creditNoteReason, creditNoteAmount);
       return;
     }
-    if (!tenantId || !form.customerId || !form.currencyCode || form.lines.some((line) => !line.description.trim())) {
-      setNotice("Renseignez le client, la devise et la description de chaque ligne."); return;
-    }
-    setBusy(true); setNotice("");
-    const payload = {
-      documentType: form.documentType,
-      ...(form.documentType === "DEPOSIT" ? { contractTotal: form.contractTotal } : {}),
-      ...(form.documentType === "BALANCE" ? { relatedInvoiceId: form.relatedInvoiceId } : {}),
-      customerId: form.customerId, currencyCode: form.currencyCode,
-      ...(form.dueDate ? { dueDate: form.dueDate } : {}),
-      ...(form.purchaseOrderReference.trim() ? { purchaseOrderReference: form.purchaseOrderReference.trim() } : {}),
-      ...(form.serviceDate ? { serviceDate: form.serviceDate } : {}),
-      ...(form.paymentTerms.trim() ? { paymentTerms: form.paymentTerms.trim() } : {}),
-      ...(form.paymentInstructions.trim() ? { paymentInstructions: form.paymentInstructions.trim() } : {}),
-      ...(form.externalReference.trim() ? { externalReference: form.externalReference.trim() } : {}),
-      ...(form.footerNote.trim() ? { footerNote: form.footerNote.trim() } : {}),
-      ...(form.notes.trim() ? { notes: form.notes.trim() } : {}),
-      lines: form.lines.map((line) => ({ ...line, description: line.description.trim() })),
-      ...(editing ? { expectedUpdatedAt: editing.updatedAt } : {}),
-    };
-    try {
-      const response = await fetch(editing
-        ? `/api/v1/user/tenants/${tenantId}/invoices/drafts/${editing.id}`
-        : `/api/v1/user/tenants/${tenantId}/invoices/drafts`, {
-        method: editing ? "PUT" : "POST", credentials: "same-origin",
-        headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
-      });
-      const data = await readData<{ invoice: Invoice }>(response, "Impossible d’enregistrer le brouillon.");
-      const savedInvoice = data.invoice;
-      const successMessage = editing ? "Brouillon mis à jour." : "Brouillon créé.";
-
-      // Reflect the successful write immediately. The list refresh below is
-      // only reconciliation and can never undo or mask a successful save.
-      setInvoices((current) => [savedInvoice, ...current.filter((item) => item.id !== savedInvoice.id)]);
-      setEditing(savedInvoice);
-      setSelectedInvoiceId(savedInvoice.id);
-      setNotice(successMessage);
-
-      try {
-        const refreshed = await fetch(`/api/v1/user/tenants/${tenantId}/invoices?limit=100`, { credentials: "same-origin", cache: "no-store" });
-        const refreshedData = await readData<{ invoices?: Invoice[] }>(refreshed, "Impossible d’actualiser les factures.");
-        const refreshedInvoices = refreshedData.invoices ?? [];
-        const reconciledInvoice = refreshedInvoices.find((item) => item.id === savedInvoice.id) ?? savedInvoice;
-        setInvoices([reconciledInvoice, ...refreshedInvoices.filter((item) => item.id !== savedInvoice.id)]);
-        setEditing(reconciledInvoice);
-      } catch {
-        // Keep the server-confirmed invoice visible and retain the success notice.
-      }
-    } catch (error) { setNotice(error instanceof Error ? error.message : "Erreur d’enregistrement."); }
-    finally { setBusy(false); }
+    await saveStandardDraft();
   }
 
   function openIssuedDocument(invoice: Invoice) {
