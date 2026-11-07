@@ -32,10 +32,10 @@ async function readData<T>(response: Response, fallback: string): Promise<T> {
 export function useInvoiceDraftPersistence({
   tenantId, form, editing, setInvoices, setEditing, setSelectedInvoiceId, setBusy, setNotice,
 }: Options) {
-  const saveStandardDraft = useCallback(async () => {
+  const saveStandardDraft = useCallback(async (): Promise<boolean> => {
     if (!tenantId || !form.customerId || !form.currencyCode || form.lines.some((line) => !line.description.trim())) {
       setNotice("Renseignez le client, la devise et la description de chaque ligne.");
-      return;
+      return false;
     }
     setBusy(true);
     setNotice("");
@@ -83,8 +83,10 @@ export function useInvoiceDraftPersistence({
       } catch {
         // A failed reconciliation must not hide a successful server write.
       }
+      return true;
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Erreur d’enregistrement.");
+      return false;
     } finally {
       setBusy(false);
     }
