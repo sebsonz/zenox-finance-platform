@@ -5,6 +5,12 @@ export type Customer = {
   displayName: string | null;
   status: "ACTIVE" | "ARCHIVED";
   defaultCurrency: string | null;
+  email?: string | null;
+  phone?: string | null;
+  addressLine1?: string | null;
+  addressCity?: string | null;
+  countryCode?: string | null;
+  taxIdentifier?: string | null;
 };
 
 export type Currency = { code: string; name: string; minorUnit: number };
