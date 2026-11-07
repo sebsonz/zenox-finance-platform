@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { InvoiceTypeFields } from "../modules/billing/freight/invoices/types/InvoiceTypeFields.js";
 import { FileText, RefreshCw, ShieldCheck, Plus, Trash2, Download, Pencil, Send, ReceiptText, Printer } from "lucide-react";
 
 type ApiError = { error?: { code?: string; message?: string } };
@@ -452,27 +453,33 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
               <label>Type de facture<select value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value as DraftForm["documentType"], contractTotal: "", relatedInvoiceId: "" })}>
                 <option value="STANDARD">Facture standard</option><option value="DEPOSIT">Facture d’acompte</option><option value="BALANCE">Facture de solde</option><option value="CREDIT_NOTE">Facture d’avoir</option>
               </select></label>
-              {form.documentType === "DEPOSIT" && <label>Montant total du contrat<input inputMode="decimal" value={form.contractTotal} onChange={(event) => setForm({ ...form, contractTotal: event.target.value })} placeholder="Montant total avant acompte" required/></label>}
-              {(form.documentType === "BALANCE" || form.documentType === "CREDIT_NOTE") && <label>{form.documentType === "CREDIT_NOTE" ? "Facture d’origine à créditer" : "Facture d’acompte source"}<select value={form.relatedInvoiceId} onChange={(event) => { const source = invoices.find((item) => item.id === event.target.value); setForm({ ...form, relatedInvoiceId: event.target.value, customerId: source?.customerId ?? form.customerId, currencyCode: source?.currencyCode ?? form.currencyCode }); }} required>
-                <option value="">{form.documentType === "CREDIT_NOTE" ? "Sélectionner une facture émise" : "Sélectionner une facture d’acompte émise"}</option>{invoices.filter((item) => item.status === "ISSUED" && (form.documentType === "CREDIT_NOTE" || item.documentType === "DEPOSIT")).map((item) => <option key={item.id} value={item.id}>{item.invoiceCode} · {item.grandTotal} {item.currencyCode} · {item.customerSnapshot?.legalName ?? "Client"}</option>)}
-              </select></label>}
-              {form.documentType === "CREDIT_NOTE" && <><label>Motif de l’avoir<input value={creditNoteReason} onChange={(event) => setCreditNoteReason(event.target.value)} minLength={3} maxLength={2000} required placeholder="Motif commercial, retour, correction…"/></label><label>Montant à créditer<input inputMode="decimal" value={creditNoteAmount} onChange={(event) => setCreditNoteAmount(event.target.value)} placeholder="Vide = avoir intégral"/></label></>}
-              {form.documentType !== "CREDIT_NOTE" && <>
-              <label>Client<select value={form.customerId} onChange={(event) => setForm({ ...form, customerId: event.target.value })} required>
-                <option value="">Choisir un client actif</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.displayName || customer.legalName} · {customer.customerCode}</option>)}
-              </select></label>
-              <label>Devise<select value={form.currencyCode} onChange={(event) => setForm({ ...form, currencyCode: event.target.value })} required>
-                {currencies.map((currency) => <option key={currency.code} value={currency.code}>{currency.code} · {currency.name}</option>)}
-              </select></label>
-              <label>Date d’échéance<input type="date" value={form.dueDate} onChange={(event) => setForm({ ...form, dueDate: event.target.value })}/></label>
-              <label>Date de prestation / livraison<input type="date" value={form.serviceDate} onChange={(event) => setForm({ ...form, serviceDate: event.target.value })}/></label>
-              <label>Référence commande<input value={form.purchaseOrderReference} maxLength={120} onChange={(event) => setForm({ ...form, purchaseOrderReference: event.target.value })} placeholder="BC-2026-0001"/></label>
-              <label>Référence externe<input value={form.externalReference} maxLength={120} onChange={(event) => setForm({ ...form, externalReference: event.target.value })} placeholder="Référence client"/></label>
-              <label>Conditions de paiement<input value={form.paymentTerms} maxLength={500} onChange={(event) => setForm({ ...form, paymentTerms: event.target.value })} placeholder="Paiement à 14 jours"/></label>
-              <label>Modalités de paiement<input value={form.paymentInstructions} maxLength={2000} onChange={(event) => setForm({ ...form, paymentInstructions: event.target.value })} placeholder="Virement bancaire, Mobile Money…"/></label>
-              <label>Note de bas de facture<input value={form.footerNote} maxLength={1000} onChange={(event) => setForm({ ...form, footerNote: event.target.value })} placeholder="Mentions complémentaires"/></label>
-              <label>Notes / commentaires<input value={form.notes} maxLength={5000} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Informations complémentaires"/></label>
-              </>}
+              <InvoiceTypeFields
+                documentType={form.documentType}
+                contractTotal={form.contractTotal}
+                relatedInvoiceId={form.relatedInvoiceId}
+                customerId={form.customerId}
+                currencyCode={form.currencyCode}
+                dueDate={form.dueDate}
+                serviceDate={form.serviceDate}
+                purchaseOrderReference={form.purchaseOrderReference}
+                externalReference={form.externalReference}
+                paymentTerms={form.paymentTerms}
+                paymentInstructions={form.paymentInstructions}
+                footerNote={form.footerNote}
+                notes={form.notes}
+                creditNoteReason={creditNoteReason}
+                creditNoteAmount={creditNoteAmount}
+                invoices={invoices}
+                customers={customers}
+                currencies={currencies}
+                onContractTotalChange={(value) => setForm({ ...form, contractTotal: value })}
+                onRelatedInvoiceChange={(source, id) => setForm({ ...form, relatedInvoiceId: id, customerId: source?.customerId ?? form.customerId, currencyCode: source?.currencyCode ?? form.currencyCode })}
+                onCustomerChange={(value) => setForm({ ...form, customerId: value })}
+                onCurrencyChange={(value) => setForm({ ...form, currencyCode: value })}
+                onFieldChange={(field, value) => setForm({ ...form, [field]: value })}
+                onCreditReasonChange={setCreditNoteReason}
+                onCreditAmountChange={setCreditNoteAmount}
+              />
             </div>
             {form.documentType !== "CREDIT_NOTE" && <><div className="invoice-lines-heading"><h3>Lignes de facture</h3><button className="outline-button" type="button" onClick={() => setForm({ ...form, lines: [...form.lines, emptyLine()] })} disabled={form.lines.length >= 500}><Plus size={14}/> Ajouter une ligne</button></div>
             {form.lines.map((line, index) => <div className="invoice-line-editor" key={index}>
