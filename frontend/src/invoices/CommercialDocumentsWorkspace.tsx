@@ -103,7 +103,7 @@ export function CommercialDocumentsWorkspace({ tenantId }: Props) {
       <table class="totals"><tr><td>Sous-total</td><td>${money(doc.subtotal,doc.currency_code)}</td></tr><tr><td>Remises</td><td>${money(doc.discount_total,doc.currency_code)}</td></tr><tr><td>Taxes estimatives</td><td>${money(doc.tax_total,doc.currency_code)}</td></tr><tr><td>TOTAL</td><td>${money(doc.grand_total,doc.currency_code)}</td></tr></table>
       ${doc.terms ? `<section class="terms"><h2>Conditions commerciales</h2>${esc(doc.terms)}</section>` : ""}${doc.notes ? `<section class="terms"><h2>Notes</h2>${esc(doc.notes)}</section>` : ""}
       <footer>Document généré par ZENOX Finance · Devise : ${esc(doc.currency_code)} · Les taxes et montants de ce document commercial sont estimatifs et ne remplacent pas le calcul fiscal d’une facture émise.</footer></main><script>window.onload=()=>window.print()</script></body></html>`;
-    const popup = window.open("", "_blank", "noopener,noreferrer");
+    const popup = window.open("", "_blank");
     if (!popup) { setError("Autorisez les fenêtres contextuelles pour afficher et imprimer le document."); return; }
     popup.document.write(html); popup.document.close();
   }
