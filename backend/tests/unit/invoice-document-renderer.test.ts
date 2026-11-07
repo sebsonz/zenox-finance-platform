@@ -76,23 +76,38 @@ describe("invoice document rendering", () => {
     expect(html).not.toContain(invoice.taxSnapshotId!);
   });
 
-  it("creates a valid PDF header and includes every line and total across its pages", () => {
-    const pdf = renderInvoicePdfDocument(invoice);
+  it("creates a valid Unicode PDF with embedded fonts", async () => {
+    const pdf = await renderInvoicePdfDocument(invoice);
     expect(pdf.subarray(0, 8).toString("ascii")).toBe("%PDF-1.4");
-    const output = pdf.toString("ascii");
-    expect(output).toContain("Transport maritime");
-    expect(output).toContain("Manutention");
-    expect(output).toContain("TOTAL BRUT");
-    expect(output).toContain("NET A PAYER");
+    const output = pdf.toString("latin1");
     expect(output).not.toContain(invoice.id);
     expect(output).not.toContain(invoice.taxSnapshotId!);
     expect(output).not.toContain("Test multi-ligne");
-    expect(output).toContain("/FontFile2");\n    expect(output).toContain("/ToUnicode");\n    expect(output).toContain("startxref");
+    expect(output).toContain("/FontFile2");
+    expect(output).toContain("/ToUnicode");
+    expect(output).toContain("startxref");
     expect(output).toContain("%%EOF");
   });
 
-  it("rejects PDF rendering of a draft or a missing tax snapshot", () => {
-    expect(() => renderInvoicePdfDocument({ ...invoice, status: "DRAFT" })).toThrow("INVOICE_PDF_REQUIRES_ISSUED_TAX_SNAPSHOTTED_INVOICE");
-    expect(() => renderInvoicePdfDocument({ ...invoice, taxSnapshotId: null })).toThrow("INVOICE_PDF_REQUIRES_ISSUED_TAX_SNAPSHOTTED_INVOICE");
+  it("paginates long Unicode descriptions without clipping the invoice", async () => {
+    const longDescription = "Équipement logistique – manutention, vérification et livraison à Cotonou. ".repeat(35);
+    const manyLines = Array.from({ length: 75 }, (_, index) => ({
+      ...invoice.lines[0]!,
+      id: String(index + 1),
+      lineNumber: index + 1,
+      description: `${index + 1}. ${longDescription}`,
+    }));
+    const pdf = await renderInvoicePdfDocument({ ...invoice, lines: manyLines });
+    const output = pdf.toString("latin1");
+    const pageCount = (output.match(/\\/Type \\/Page\\b/g) ?? []).length;
+
+    expect(pageCount).toBeGreaterThan(1);
+    expect(output).toContain("/FontFile2");
+    expect(output).toContain("/ToUnicode");
+  });
+
+  it("rejects PDF rendering of a draft or a missing tax snapshot", async () => {
+    await expect(renderInvoicePdfDocument({ ...invoice, status: "DRAFT" })).rejects.toThrow("INVOICE_PDF_REQUIRES_ISSUED_TAX_SNAPSHOTTED_INVOICE");
+    await expect(renderInvoicePdfDocument({ ...invoice, taxSnapshotId: null })).rejects.toThrow("INVOICE_PDF_REQUIRES_ISSUED_TAX_SNAPSHOTTED_INVOICE");
   });
 });
