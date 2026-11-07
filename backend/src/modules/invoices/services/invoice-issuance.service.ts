@@ -1,3 +1,4 @@
+import { Decimal } from "decimal.js";
 import { withTenantTransaction } from "../../../db/transaction.js";
 import type { FinanceInvoiceOperationContext } from "../types/invoice-operation-context.js";
 import { invoiceActor, isUserInvoiceContext } from "../types/invoice-operation-context.js";
@@ -8,7 +9,7 @@ import { invoicePdfRepository } from "../repositories/invoice-pdf.repository.js"
 
 export class InvoiceIssuanceServiceError extends Error {
   constructor(
-    readonly code: "INVOICE_NOT_FOUND_OR_CHANGED" | "INVOICE_TAX_NOT_CALCULATED" | "INVOICE_REQUIRES_LINES" | "IDEMPOTENCY_KEY_REUSED",
+    readonly code: "INVOICE_NOT_FOUND_OR_CHANGED" | "INVOICE_TAX_NOT_CALCULATED" | "INVOICE_REQUIRES_LINES" | "IDEMPOTENCY_KEY_REUSED" | "DOCUMENT_TYPE_AMOUNT_INVALID" | "DEPOSIT_SOURCE_INVALID",
     message: string,
   ) {
     super(message);
@@ -67,6 +68,11 @@ export const invoiceIssuanceService = {
       const locked = await client.query<{
         id: string;
         status: string;
+        customer_id: string;
+        currency_code: string;
+        grand_total: string;
+        contract_total: string | null;
+        related_invoice_id: string | null;
         document_type: "STANDARD" | "DEPOSIT" | "BALANCE";
         tax_status: string;
         tax_snapshot_id: string | null;
@@ -87,6 +93,30 @@ export const invoiceIssuanceService = {
           "The draft is unavailable or has changed. Reload it before issuing.",
         );
       }
+      if (invoice.document_type === "DEPOSIT") {
+        if (!invoice.contract_total || !new Decimal(invoice.contract_total).gt(invoice.grand_total)) {
+          throw new InvoiceIssuanceServiceError("DOCUMENT_TYPE_AMOUNT_INVALID", "The contract total must remain greater than the final tax-calculated deposit amount.");
+        }
+      } else if (invoice.document_type === "BALANCE") {
+        const sourceResult = await client.query<{
+          status: string; document_type: string; customer_id: string; currency_code: string;
+          contract_total: string | null; grand_total: string;
+        }>(
+          `SELECT status, document_type, customer_id, currency_code, contract_total::text, grand_total::text
+             FROM public.finance_invoices
+            WHERE tenant_id = $1 AND id = $2
+            FOR UPDATE`,
+          [context.tenantId, invoice.related_invoice_id],
+        );
+        const source = sourceResult.rows[0];
+        if (!source || source.status !== "ISSUED" || source.document_type !== "DEPOSIT"
+          || source.customer_id !== invoice.customer_id || source.currency_code.trim() !== invoice.currency_code.trim()
+          || !source.contract_total
+          || !new Decimal(source.contract_total).minus(source.grand_total).equals(invoice.grand_total)) {
+          throw new InvoiceIssuanceServiceError("DEPOSIT_SOURCE_INVALID", "The balance amount no longer matches the issued deposit contract balance.");
+        }
+      }
+
       if (invoice.tax_status !== "CALCULATED" || !invoice.tax_snapshot_id) {
         throw new InvoiceIssuanceServiceError(
           "INVOICE_TAX_NOT_CALCULATED",
