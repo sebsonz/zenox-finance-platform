@@ -10,6 +10,7 @@ import { useInvoiceDraftPersistence } from "../modules/billing/freight/invoices/
 import { useInvoiceLifecycle } from "../modules/billing/freight/invoices/hooks/useInvoiceLifecycle.js";
 import { useCreditNotes } from "../modules/billing/freight/invoices/hooks/useCreditNotes.js";
 import { useInvoiceDocuments } from "../modules/billing/freight/invoices/hooks/useInvoiceDocuments.js";
+import { useInvoiceList } from "../modules/billing/freight/invoices/hooks/useInvoiceList.js";
 import type { DraftForm, InvoiceDraftRecord } from "../modules/billing/freight/invoices/types/invoice-draft.js";
 import type { Customer, Currency, Jurisdiction } from "../modules/billing/freight/invoices/types/workspace-resources.js";
 import { FileText, RefreshCw, ShieldCheck } from "lucide-react";
@@ -57,9 +58,11 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const [invoiceStatus, setInvoiceStatus] = useState("");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
 
-  const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const { loading, loadInvoices } = useInvoiceList({
+    tenantId, search: invoiceSearch, status: invoiceStatus, setInvoices, setSelectedInvoiceId, setNotice,
+  });
   const {
     creditNotes, creditReason, setCreditReason, creditAmount, setCreditAmount,
     creditNoteReason, setCreditNoteReason, creditNoteAmount, setCreditNoteAmount,
@@ -104,21 +107,6 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     tenantId, jurisdictionId, taxDate, appliesTo, taxFacts, setBusy, setNotice, loadInvoices,
   });
 
-  async function loadInvoices(event?: FormEvent<HTMLFormElement>) {
-    event?.preventDefault(); if (!tenantId) { setNotice("Aucune organisation active n’est disponible."); return; }
-    setLoading(true); setNotice("");
-    try {
-      const params = new URLSearchParams({ limit: "100" });
-      if (invoiceSearch.trim()) params.set("search", invoiceSearch.trim());
-      if (invoiceStatus) params.set("status", invoiceStatus);
-      const data = await readData<{ invoices?: Invoice[] }>(await fetch(`/api/v1/user/tenants/${tenantId}/invoices?${params.toString()}`, { credentials: "same-origin", cache: "no-store" }), "Impossible de charger les factures.");
-      setInvoices(data.invoices ?? []);
-      setSelectedInvoiceId((current) => (data.invoices ?? []).some((item) => item.id === current) ? current : "");
-      setNotice(`${data.invoices?.length ?? 0} facture(s) chargée(s).`);
-    } catch (error) { setInvoices([]); setNotice(error instanceof Error ? error.message : "Impossible de charger les factures."); }
-    finally { setLoading(false); }
-  }
-
   async function saveDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (form.documentType === "CREDIT_NOTE") {
@@ -155,7 +143,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
         <div><h2>Espace de facturation</h2><p>Connecté{sessionUser.email ? ` en tant que ${sessionUser.email}` : ""} · Organisation : {activeTenant.legalName} ({activeTenant.tenantCode}) · {checkingResources ? "Chargement des référentiels…" : `${customers.length} client(s), ${currencies.length} devise(s)`}</p></div>
         <span className="status-chip"><i/> Session active · {activeTenant.role}</span>
       </div>
-      <form className="tenant-lookup-form" onSubmit={(event) => void loadInvoices(event)}>
+      <form className="tenant-lookup-form" onSubmit={(event) => { event.preventDefault(); void loadInvoices(); }}>
         <label>Organisation active<select value={activeTenant.id} onChange={(event) => onTenantChange(event.target.value)} disabled={tenants.length <= 1}>
           {tenants.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.legalName} · {tenant.tenantCode} · {tenant.role}</option>)}
         </select></label>
