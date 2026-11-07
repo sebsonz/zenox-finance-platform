@@ -7,7 +7,7 @@ type Options = {
   search: string;
   status: string;
   setInvoices: Dispatch<SetStateAction<InvoiceDraftRecord[]>>;
-  setSelectedInvoiceId: (id: string) => void;
+  setSelectedInvoiceId: Dispatch<SetStateAction<string>>;
   setNotice: (message: string) => void;
 };
 
