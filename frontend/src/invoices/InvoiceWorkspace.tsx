@@ -36,6 +36,7 @@ type Invoice = {
 };
 type CreditNote = { id: string; originalInvoiceId: string; creditNoteCode: string; status: "ISSUED"; reason: string; currencyCode: string; grandTotal: string; amountDue: string; issuedAt: string };
 type InvoiceAdjustment = { id:string; adjustment_code:string; adjustment_type:"CREDIT_NOTE"|"DEBIT_NOTE"; reason:string; currency_code:string; grand_total:string; amount_due:string; issued_at:string };
+type InvoiceRelationship = {id:string;relationship_type:string;source_reference:string|null;applied_amount:string;source_invoice_id:string;related_invoice_id:string;advance_invoice_code:string|null;related_invoice_code:string|null};
 type DraftForm = { customerId: string; currencyCode: string; dueDate: string; notes: string; document: InvoiceDocumentForm; lines: InvoiceLine[] };
 type ApiPayload<T> = { data?: T } & ApiError;
 const emptyLine = (): InvoiceLine => ({ description: "", itemCode: "", unit: "unité", lineNote: "", quantity: "1", unitPrice: "0", discountPercent: "0", taxRatePercent: "0" });
@@ -72,6 +73,10 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [adjustments, setAdjustments] = useState<InvoiceAdjustment[]>([]);
+  const [relationships, setRelationships] = useState<InvoiceRelationship[]>([]);
+  const [advanceInvoiceId, setAdvanceInvoiceId] = useState("");
+  const [advanceAppliedAmount, setAdvanceAppliedAmount] = useState("");
+  const [advanceReference, setAdvanceReference] = useState("");
   const [adjustmentType, setAdjustmentType] = useState<"CREDIT_NOTE"|"DEBIT_NOTE">("CREDIT_NOTE");
   const [adjustmentReason, setAdjustmentReason] = useState("Correction partielle de la facture");
   const [adjustmentQuantities, setAdjustmentQuantities] = useState<Record<string,string>>({});
@@ -89,6 +94,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     setSelectedInvoiceId("");
     setCreditNotes([]);
     setAdjustments([]);
+    setRelationships([]);
     setEditing(null);
     setTaxFacts(emptyTaxFacts());
     let cancelled = false;
@@ -252,6 +258,24 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     } catch (error) { setCreditNotes([]); setNotice(error instanceof Error ? error.message : "Impossible de charger les avoirs."); }
   }
 
+  async function loadInvoiceRelationships(invoice:Invoice) {
+    setSelectedInvoiceId(invoice.id);
+    try {
+      const data=await readData<{relationships?:InvoiceRelationship[]}>(await fetch("/api/v1/user/tenants/"+tenantId+"/invoices/"+invoice.id+"/relationships",{credentials:"same-origin",cache:"no-store"}),"Impossible de charger les liens d’acomptes.");
+      setRelationships(data.relationships??[]);
+    } catch(error){setRelationships([]);setNotice(error instanceof Error?error.message:"Impossible de charger les liens d’acomptes.");}
+  }
+  async function applyAdvance(invoice:Invoice) {
+    if(!advanceInvoiceId||!advanceAppliedAmount){setNotice("Sélectionnez une facture d’acompte et un montant.");return;}
+    setBusy(true);
+    try {
+      await readData(await fetch("/api/v1/user/tenants/"+tenantId+"/invoices/"+invoice.id+"/relationships",{method:"POST",credentials:"same-origin",headers:{"content-type":"application/json"},body:JSON.stringify({advanceInvoiceId,relationshipType:"BALANCE_OF",appliedAmount:advanceAppliedAmount,sourceReference:advanceReference||undefined})}),"L’acompte n’a pas pu être appliqué.");
+      setNotice("Acompte lié à la facture de solde.");
+      setAdvanceAppliedAmount("");setAdvanceReference("");
+      await loadInvoiceRelationships(invoice);
+    } catch(error){setNotice(error instanceof Error?error.message:"Application de l’acompte impossible.");}
+    finally{setBusy(false);}
+  }
   async function loadAdjustments(invoice: Invoice) {
     setSelectedInvoiceId(invoice.id);
     try {
@@ -419,7 +443,9 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
 
         {selectedInvoice?.status === "ISSUED" && <section className="panel invoice-list-panel">
           <div className="panel-heading"><div><h2>Documents et avoirs</h2><p>{selectedInvoice.invoiceCode} · documents d’émission immuables</p></div></div>
-          <div className="invoice-action-bar">
+          <div className="invoice-form-grid credit-note-form"><label>Facture d’acompte<select value={advanceInvoiceId} onChange={event=>setAdvanceInvoiceId(event.target.value)}><option value="">Choisir une facture d’acompte payée</option>{invoices.filter(item=>item.status==="ISSUED"&&item.id!==selectedInvoice.id&&item.currencyCode===selectedInvoice.currencyCode).map(item=><option key={item.id} value={item.id}>{item.invoiceCode||item.id.slice(0,8)} · {item.grandTotal} {item.currencyCode}</option>)}</select></label><label>Montant d’acompte à appliquer<input inputMode="decimal" value={advanceAppliedAmount} onChange={event=>setAdvanceAppliedAmount(event.target.value)}/></label><label>Référence source<input value={advanceReference} onChange={event=>setAdvanceReference(event.target.value)} placeholder="Contrat / commande"/></label><div className="credit-note-button"><button className="primary-button" disabled={busy||!canIssue||!advanceInvoiceId||!advanceAppliedAmount} onClick={()=>void applyAdvance(selectedInvoice)}>Appliquer l’acompte</button></div></div>
+          <div className="invoice-action-bar"><button className="outline-button" disabled={busy} onClick={()=>void loadInvoiceRelationships(selectedInvoice)}><ReceiptText size={15}/> Charger les acomptes liés</button></div>
+          {relationships.length>0&&<div className="table-scroll"><table className="invoice-table"><thead><tr><th>Facture d’acompte</th><th>Référence</th><th>Montant appliqué</th><th>Relation</th></tr></thead><tbody>{relationships.map(item=><tr key={item.id}><td>{item.advance_invoice_code||item.source_invoice_id}</td><td>{item.source_reference||"—"}</td><td>{item.applied_amount} {selectedInvoice.currencyCode}</td><td>{item.relationship_type}</td></tr>)}</tbody></table></div>}<div className="invoice-action-bar">
             <button className="outline-button" disabled={busy} onClick={() => void downloadDocument(selectedInvoice, "document")}><Download size={15}/> HTML</button>
             <button className="outline-button" disabled={busy} onClick={() => void downloadDocument(selectedInvoice, "document.pdf")}><Download size={15}/> PDF</button>
             <button className="outline-button" disabled={busy} onClick={() => void loadCreditNotes(selectedInvoice)}><ReceiptText size={15}/> Charger les avoirs intégraux</button><button className="outline-button" disabled={busy} onClick={() => void loadAdjustments(selectedInvoice)}><ReceiptText size={15}/> Corrections partielles</button>
