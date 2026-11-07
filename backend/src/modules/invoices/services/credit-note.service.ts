@@ -33,6 +33,7 @@ export const creditNoteService = {
     id: string;
     originalInvoiceId: string;
     creditNoteCode: string;
+    creditKind: "FULL" | "PARTIAL";
     status: "ISSUED";
     reason: string;
     currencyCode: string;
@@ -44,11 +45,11 @@ export const creditNoteService = {
   }>> {
     return withTenantTransaction(context.tenantId, async (client) => {
       const result = await client.query<{
-        id: string; original_invoice_id: string; credit_note_code: string; status: "ISSUED";
+        id: string; original_invoice_id: string; credit_note_code: string; credit_kind: "FULL" | "PARTIAL"; status: "ISSUED";
         reason: string; currency_code: string; grand_total: string; amount_due: string;
         html_sha256: string; pdf_sha256: string; issued_at: string;
       }>(
-        `SELECT id, original_invoice_id, credit_note_code, status, reason, currency_code,
+        `SELECT id, original_invoice_id, credit_note_code, credit_kind, status, reason, currency_code,
                 grand_total::text, amount_due::text, html_sha256, pdf_sha256,
                 to_char(issued_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS issued_at
            FROM public.finance_credit_notes
@@ -65,6 +66,7 @@ export const creditNoteService = {
         id: row.id,
         originalInvoiceId: row.original_invoice_id,
         creditNoteCode: row.credit_note_code,
+        creditKind: row.credit_kind,
         status: row.status,
         reason: row.reason,
         currencyCode: row.currency_code.trim(),
