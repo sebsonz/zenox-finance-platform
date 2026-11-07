@@ -121,22 +121,22 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
         setJurisdictionId((current) => jurisdictionData.jurisdictions?.some((item) => item.id === current)
           ? current : (jurisdictionData.jurisdictions?.[0]?.id ?? ""));
 
-        // Load the invoice register as soon as the active tenant is ready.
-        // This is deliberately independent from customer/tax reference loading:
-        // a reference-data failure must not hide invoices already saved.
-        try {
-          const invoiceData = await readData<{ invoices?: Invoice[] }>(
-            await fetch(`/api/v1/user/tenants/${tenantId}/invoices?limit=100`, { credentials: "same-origin", cache: "no-store" }),
-            "Impossible de charger les factures.",
-          );
-          if (!cancelled) setInvoices(invoiceData.invoices ?? []);
-        } catch (invoiceError) {
-          if (!cancelled) setNotice(invoiceError instanceof Error ? invoiceError.message : "Impossible de charger les factures.");
-        }
       } catch (error) { if (!cancelled) setNotice(error instanceof Error ? error.message : "Impossible de charger les données de facturation."); }
       finally { if (!cancelled) setCheckingResources(false); }
     }
     void loadResources();
+    // Load invoices independently of customer/currency/tax reference APIs.
+    void (async () => {
+      try {
+        const invoiceData = await readData<{ invoices?: Invoice[] }>(
+          await fetch(`/api/v1/user/tenants/${tenantId}/invoices?limit=100`, { credentials: "same-origin", cache: "no-store" }),
+          "Impossible de charger les factures.",
+        );
+        if (!cancelled) setInvoices(invoiceData.invoices ?? []);
+      } catch (invoiceError) {
+        if (!cancelled) setNotice(invoiceError instanceof Error ? invoiceError.message : "Impossible de charger les factures.");
+      }
+    })();
     return () => { cancelled = true; };
   }, [sessionUser.id, tenantId, activeTenant.role]);
 
