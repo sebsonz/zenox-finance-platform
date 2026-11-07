@@ -8,7 +8,7 @@ import { tenantRepository } from "../../tenants/repositories/tenant.repository.j
 import { customerRepository } from "../../customers/repositories/customer.repository.js";
 import { currencyRepository } from "../../currencies/repositories/currency.repository.js";
 import { calculateInvoiceTotals } from "../../invoices/engine/invoice-calculation.engine.js";
-import { invoiceDraftService } from "../../invoices/services/invoice-draft.service.js";
+import { invoiceRepository } from "../../invoices/repositories/invoice.repository.js";
 import type { FinanceUserInvoiceContext } from "../../invoices/types/invoice-operation-context.js";
 import { recordInvoiceAudit } from "../../invoices/repositories/invoice-audit.repository.js";
 
@@ -25,7 +25,6 @@ const documentSchema = z.object({
  validUntil:z.iso.date().optional(), notes:z.string().trim().max(5000).optional(),
  document:z.record(z.string(),z.unknown()).optional(), lines:z.array(lineSchema).min(1).max(500),
 }).strict();
-const actionSchema=z.object({reason:z.string().trim().min(3).max(1000).optional()}).strict();
 
 async function contextFor(tenantId:string,req:Request,res:Response,permission:"invoices:read"|"invoices:create"|"invoices:issue"):Promise<FinanceUserInvoiceContext|null>{
  const user=req.financeUser;
@@ -37,7 +36,7 @@ async function contextFor(tenantId:string,req:Request,res:Response,permission:"i
  return {tenantId,correlationId:String(res.locals["correlationId"]??""),actor:{type:"USER",ref:user.issuer+"|"+user.id,membershipId:membership.id,identityIssuer:user.issuer,identitySubject:user.id}};
 }
 function fail(res:Response,code:string,message:string,status=422){res.status(status).json({error:{code,message}});}
-async function loadCommercialDraft(tenantId:string,customerId:string,currencyCode:string,lines:z.infer<typeof lineSchema>[],kind:"QUOTE"|"PROFORMA"){
+async function loadCommercialDraft(tenantId:string,customerId:string,currencyCode:string,lines:z.infer<typeof lineSchema>[]){
  const currency=await currencyRepository.findActiveByCode(currencyCode);
  if(!currency) throw new Error("CURRENCY_NOT_SUPPORTED");
  return withTenantTransaction(tenantId,async client=>{
@@ -49,7 +48,6 @@ async function loadCommercialDraft(tenantId:string,customerId:string,currencyCod
   return {currency,customer,totals,seller};
  });
 }
-function actor(context:FinanceUserInvoiceContext){return {type:"USER" as const,ref:context.actor.ref};}
 
 userCommercialDocumentsRouter.use((_req,res,next)=>{res.setHeader("Cache-Control","no-store");next();});
 
@@ -113,13 +111,32 @@ for(const decision of ["accept","reject","expire"] as const){
 
 // Conversion produces a normal invoice draft. Fiscal tax evidence and issuance remain explicit invoice workflows.
 userCommercialDocumentsRouter.post("/:tenantId/quotes/:quoteId/convert",requireUserAuth(),async(req,res,next)=>{
- try{const id=uuid.safeParse(req.params["tenantId"]),qid=uuid.safeParse(req.params["quoteId"]);if(!id.success||!qid.success)return fail(res,"INVALID_ID","Invalid resource ID.",400);
- const ctx=await contextFor(id.data,req,res,"invoices:create");if(!ctx)return;
- const quote=await withTenantTransaction(id.data,async c=>{const q=await c.query("SELECT * FROM public.finance_quotes WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,qid.data]);if(!q.rows[0]||q.rows[0].status!=="ACCEPTED")throw new Error("QUOTE_NOT_ACCEPTED");const lines=await c.query("SELECT description,item_code,unit_label,line_note,quantity::text,unit_price::text,discount_percent::text,indicative_tax_rate::text FROM public.finance_quote_lines WHERE tenant_id=$1 AND quote_id=$2 ORDER BY line_number",[id.data,qid.data]);return {q:q.rows[0],lines:lines.rows};});
- const invoice=await invoiceDraftService.create(ctx,{customerId:quote.q.customer_id,currencyCode:quote.q.currency_code.trim(),notes:quote.q.notes??undefined,document:{reference:quote.q.quote_code??undefined,globalDiscountPercent:"0",globalDiscountAmount:"0"},lines:quote.lines.map((l:any)=>({description:l.description,itemCode:l.item_code??undefined,unit:l.unit_label??undefined,lineNote:l.line_note??undefined,quantity:l.quantity,unitPrice:l.unit_price,discountPercent:l.discount_percent,taxRatePercent:l.indicative_tax_rate}))});
- await withTenantTransaction(id.data,async c=>{await c.query("UPDATE public.finance_quotes SET status='CONVERTED',converted_invoice_id=$3,updated_at=now(),updated_by_actor_type='USER',updated_by_actor_ref=$4 WHERE tenant_id=$1 AND id=$2 AND status='ACCEPTED'",[id.data,qid.data,invoice.id,ctx.actor.ref]);await recordInvoiceAudit(c,ctx,"quote.converted","QUOTE",qid.data,{invoiceId:invoice.id});});
- res.status(201).json({data:{invoice,correlationId:ctx.correlationId}});
- }catch(e){if(e instanceof Error&&e.message==="QUOTE_NOT_ACCEPTED")return fail(res,e.message,"Only an accepted quote can be converted.",409);next(e);}
+ try{
+  const id=uuid.safeParse(req.params["tenantId"]),qid=uuid.safeParse(req.params["quoteId"]);
+  if(!id.success||!qid.success)return fail(res,"INVALID_ID","Invalid resource ID.",400);
+  const ctx=await contextFor(id.data,req,res,"invoices:create");if(!ctx)return;
+  const invoice=await withTenantTransaction(id.data,async c=>{
+   const found=await c.query("SELECT * FROM public.finance_quotes WHERE tenant_id=$1 AND id=$2 FOR UPDATE",[id.data,qid.data]);
+   const q=found.rows[0];if(!q||q.status!=="ACCEPTED")throw new Error("QUOTE_NOT_ACCEPTED");
+   const lineResult=await c.query("SELECT description,item_code,unit_label,line_note,quantity::text,unit_price::text,discount_percent::text,indicative_tax_rate::text FROM public.finance_quote_lines WHERE tenant_id=$1 AND quote_id=$2 ORDER BY line_number",[id.data,qid.data]);
+   const customer=await customerRepository.findById(c,q.customer_id);
+   if(!customer||customer.status!=="ACTIVE")throw new Error("CUSTOMER_NOT_ACTIVE");
+   const currency=await currencyRepository.findActiveByCode(String(q.currency_code).trim());
+   if(!currency)throw new Error("CURRENCY_NOT_SUPPORTED");
+   const lines=lineResult.rows.map((l:any)=>({description:l.description,itemCode:l.item_code??undefined,unit:l.unit_label??undefined,lineNote:l.line_note??undefined,quantity:l.quantity,unitPrice:l.unit_price,discountPercent:l.discount_percent,taxRatePercent:l.indicative_tax_rate}));
+   const totals=calculateInvoiceTotals({currency:currency.code,currencyDecimalPlaces:currency.minorUnit,lines:lines.map(l=>({quantity:l.quantity,unitPrice:l.unitPrice,discountPercent:l.discountPercent,taxRatePercent:l.taxRatePercent}))});
+   const draft=await invoiceRepository.createDraft(c,ctx,{customerId:q.customer_id,currencyCode:currency.code,notes:q.notes??undefined,document:{reference:q.quote_code??undefined},lines},currency.minorUnit,totals,totals.lines,customer);
+   const updated=await c.query("UPDATE public.finance_quotes SET status='CONVERTED',converted_invoice_id=$3,updated_at=now(),updated_by_actor_type='USER',updated_by_actor_ref=$4 WHERE tenant_id=$1 AND id=$2 AND status='ACCEPTED'",[id.data,qid.data,draft.id,ctx.actor.ref]);
+   if(updated.rowCount!==1)throw new Error("QUOTE_CONVERSION_CONFLICT");
+   await recordInvoiceAudit(c,ctx,"quote.converted","QUOTE",qid.data,{invoiceId:draft.id});
+   return draft;
+  });
+  res.status(201).json({data:{invoice,correlationId:ctx.correlationId}});
+ }catch(e){
+  if(e instanceof Error&&e.message==="QUOTE_NOT_ACCEPTED")return fail(res,e.message,"Only an accepted quote can be converted.",409);
+  if(e instanceof Error&&["CUSTOMER_NOT_ACTIVE","CURRENCY_NOT_SUPPORTED"].includes(e.message))return fail(res,e.message,"Customer or currency is unavailable.",422);
+  next(e);
+ }
 });
 
 // Pro forma documents are independent non-fiscal records and cannot be issued as tax invoices.
