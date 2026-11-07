@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { FileText, RefreshCw, ShieldCheck, Plus, Trash2, Download, Pencil, Send, ReceiptText } from "lucide-react";
+import { FileText, RefreshCw, ShieldCheck, Plus, Trash2, Download, Pencil, Send, ReceiptText, Printer } from "lucide-react";
 
 type ApiError = { error?: { code?: string; message?: string } };
 type SessionUser = { id: string; email?: string };
@@ -268,6 +268,20 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     finally { setBusy(false); }
   }
 
+  function openIssuedDocument(invoice: Invoice) {
+    if (invoice.status !== "ISSUED") {
+      setNotice("Seules les factures émises disposent d’un document définitif consultable.");
+      return;
+    }
+    // Open synchronously from the user's click so the browser does not block
+    // the authenticated same-origin document response as an async popup.
+    window.open(
+      `/api/v1/user/tenants/${tenantId}/invoices/${invoice.id}/document`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  }
+
   async function downloadDocument(invoice: Invoice, format: "document" | "document.pdf") {
     setBusy(true);
     try {
@@ -411,6 +425,7 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
         {selectedInvoice?.status === "ISSUED" && <section className="panel invoice-list-panel">
           <div className="panel-heading"><div><h2>Documents et avoirs</h2><p>{selectedInvoice.invoiceCode} · documents d’émission immuables</p></div></div>
           <div className="invoice-action-bar">
+            <button className="outline-button" onClick={() => openIssuedDocument(selectedInvoice)}><Printer size={15}/> Aperçu / imprimer</button>
             <button className="outline-button" disabled={busy} onClick={() => void downloadDocument(selectedInvoice, "document")}><Download size={15}/> HTML</button>
             <button className="outline-button" disabled={busy} onClick={() => void downloadDocument(selectedInvoice, "document.pdf")}><Download size={15}/> PDF</button>
             <button className="outline-button" disabled={busy} onClick={() => void loadCreditNotes(selectedInvoice)}><ReceiptText size={15}/> Charger les avoirs</button>
