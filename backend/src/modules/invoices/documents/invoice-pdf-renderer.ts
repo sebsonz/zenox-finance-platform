@@ -42,12 +42,12 @@ function resolveRobotoFonts(): FontSet {
     // bundle rather than as standalone TTF files. Extract those bundled assets
     // to a private temporary directory so PDFKit can embed them normally.
     const vfsPath = require.resolve("pdfmake/build/vfs_fonts.js");
-    const virtualFonts = require(vfsPath) as Record<string, string> | { pdfMake?: { vfs?: Record<string, string> }; vfs?: Record<string, string> };
-    const vfs = "pdfMake" in virtualFonts
-      ? virtualFonts.pdfMake?.vfs
-      : "vfs" in virtualFonts
-        ? virtualFonts.vfs
-        : virtualFonts;
+    const virtualFontModule = require(vfsPath) as {
+      pdfMake?: { vfs?: Record<string, string> };
+      vfs?: Record<string, string>;
+      [fontName: string]: unknown;
+    };
+    const vfs = (virtualFontModule.pdfMake?.vfs ?? virtualFontModule.vfs ?? virtualFontModule) as Record<string, string>;
     if (!vfs) throw new Error("INVOICE_PDF_ROBOTO_VIRTUAL_FONTS_NOT_FOUND");
 
     const fontDirectory = mkdtempSync(join(tmpdir(), "zenox-finance-pdf-fonts-"));
