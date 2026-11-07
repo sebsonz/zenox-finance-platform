@@ -6,6 +6,7 @@ import { InvoiceTaxContextPanel } from "../modules/billing/freight/invoices/tax/
 import { InvoiceListPanel } from "../modules/billing/freight/invoices/list/InvoiceListPanel.js";
 import { useInvoiceResources } from "../modules/billing/freight/invoices/hooks/useInvoiceResources.js";
 import { useInvoiceDraft } from "../modules/billing/freight/invoices/hooks/useInvoiceDraft.js";
+import { useInvoiceLifecycle } from "../modules/billing/freight/invoices/hooks/useInvoiceLifecycle.js";
 import type { DraftForm, InvoiceDraftRecord } from "../modules/billing/freight/invoices/types/invoice-draft.js";
 import type { Customer, Currency, Jurisdiction } from "../modules/billing/freight/invoices/types/workspace-resources.js";
 import { FileText, RefreshCw, ShieldCheck } from "lucide-react";
@@ -98,6 +99,9 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
     form, setForm, editing, setEditing, resetDraft, startEdit, updateLine, addLine, removeLine,
   } = useInvoiceDraft({ customers, currencies, setSelectedInvoiceId, setNotice });
   useEffect(() => { setEditing(null); }, [tenantId, setEditing]);
+  const { calculateTax, issueInvoice } = useInvoiceLifecycle({
+    tenantId, jurisdictionId, taxDate, appliesTo, taxFacts, setBusy, setNotice, loadInvoices,
+  });
 
   async function loadInvoices(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault(); if (!tenantId) { setNotice("Aucune organisation active n’est disponible."); return; }
@@ -188,50 +192,6 @@ export function InvoiceWorkspace({ sessionUser, activeTenant, tenants, onTenantC
         // Keep the server-confirmed invoice visible and retain the success notice.
       }
     } catch (error) { setNotice(error instanceof Error ? error.message : "Erreur d’enregistrement."); }
-    finally { setBusy(false); }
-  }
-
-  async function calculateTax(invoice: Invoice) {
-    if (!jurisdictionId) { setNotice("Aucune juridiction fiscale active n’est disponible."); return; }
-    setBusy(true); setNotice("");
-    try {
-      const response = await fetch(`/api/v1/user/tenants/${tenantId}/invoices/${invoice.id}/tax-snapshot`, {
-        method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          expectedUpdatedAt: invoice.updatedAt, taxDate, jurisdictionId, appliesTo,
-          taxFacts: {
-            ...(taxFacts.transactionType.trim() ? { transactionType: taxFacts.transactionType.trim() } : {}),
-            ...(taxFacts.supplierIfuStatus ? { supplierIfuStatus: taxFacts.supplierIfuStatus } : {}),
-            ...(taxFacts.customerIfuStatus ? { customerIfuStatus: taxFacts.customerIfuStatus } : {}),
-            ...(taxFacts.customerTaxStatus.trim() ? { customerTaxStatus: taxFacts.customerTaxStatus.trim() } : {}),
-            ...(taxFacts.customerCountryCode.trim() ? { customerCountryCode: taxFacts.customerCountryCode.trim().toUpperCase() } : {}),
-            ...(taxFacts.supplierCountryCode.trim() ? { supplierCountryCode: taxFacts.supplierCountryCode.trim().toUpperCase() } : {}),
-            ...(taxFacts.isImport ? { isImport: taxFacts.isImport === "true" } : {}),
-            ...(taxFacts.isExport ? { isExport: taxFacts.isExport === "true" } : {}),
-            ...(taxFacts.goodsCategory.trim() ? { goodsCategory: taxFacts.goodsCategory.trim() } : {}),
-          },
-        }),
-      });
-      await readData(response, "Le calcul fiscal a échoué.");
-      setNotice("Snapshot fiscal calculé et attaché. Le brouillon peut être émis.");
-      await loadInvoices();
-    } catch (error) { setNotice(error instanceof Error ? error.message : "Le calcul fiscal a échoué."); }
-    finally { setBusy(false); }
-  }
-
-  async function issueInvoice(invoice: Invoice) {
-    if (!window.confirm(`Émettre définitivement la facture ${invoice.invoiceCode ?? "brouillon"} ? Cette opération est irréversible.`)) return;
-    setBusy(true); setNotice("");
-    try {
-      const response = await fetch(`/api/v1/user/tenants/${tenantId}/invoices/${invoice.id}/issue`, {
-        method: "POST", credentials: "same-origin",
-        headers: { "content-type": "application/json", "Idempotency-Key": `issue-${invoice.id}-v${invoice.documentVersion}` },
-        body: JSON.stringify({ expectedUpdatedAt: invoice.updatedAt }),
-      });
-      await readData(response, "L’émission de la facture a échoué.");
-      setNotice("Facture émise. Les documents HTML et PDF immuables sont disponibles.");
-      await loadInvoices();
-    } catch (error) { setNotice(error instanceof Error ? error.message : "L’émission a échoué."); }
     finally { setBusy(false); }
   }
 
