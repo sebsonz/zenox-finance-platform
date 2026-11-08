@@ -7,6 +7,7 @@ import {
   LockKeyhole, Globe2, type LucideIcon,
 } from "lucide-react";
 import { PlatformReviewWorkspace } from "./PlatformReviewWorkspace.js";
+import { PlatformOrganizationsWorkspace } from "./PlatformOrganizationsWorkspace.js";
 import { PlatformTaxAdmin } from "./PlatformTaxAdmin.js";
 import "./PlatformTaxAdmin.css";
 import "./PlatformAdminDashboard.css";
@@ -194,11 +195,6 @@ function DashboardOverview({ organizations, requests, organizationsError, reques
     </div>
     <section className="pad-panel pad-activity-panel"><div className="pad-panel-heading"><div><h2><Activity size={16}/> Activité de la plateforme</h2><p>Événements récents du journal d'audit.</p></div><span className="pad-source-label">Journal global à connecter</span></div><div className="pad-empty-row">Le module d'audit global n'est pas encore implémenté. Aucun événement fictif n'est affiché.</div></section>
   </>;
-}
-function OrganizationsWorkspace({ organizations, total, loading, error, statusFilter, setStatusFilter, onRefresh }: {
-  organizations: PlatformOrganization[]; total: number; loading: boolean; error: string; statusFilter: string; setStatusFilter: (value: string) => void; onRefresh: () => void;
-}) {
-  return <section className="pad-module"><div className="pad-module-tools"><div><h2>Répertoire global</h2><p>{total} organisation(s) · Données issues de l'API plateforme sécurisée.</p></div><div className="pad-module-actions"><span className="pad-source-label">Lecture seule</span><button className="pad-refresh-button" onClick={onRefresh} disabled={loading}><RefreshCw size={14}/> Actualiser</button></div></div><div className="pad-filterbar"><label>Statut <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="ALL">Tous les statuts</option><option value="ACTIVE">Active</option><option value="PENDING">En attente</option><option value="SUSPENDED">Suspendue</option><option value="DISABLED">Désactivée</option></select></label><span>{organizations.length} résultat(s)</span></div>{error ? <ErrorState message={error} onRetry={onRefresh}/> : loading ? <div className="pad-empty-row">Chargement des organisations…</div> : organizations.length === 0 ? <div className="pad-empty-row">Aucune organisation ne correspond aux filtres.</div> : <div className="pad-table-scroll"><table className="pad-table"><thead><tr><th>Organisation</th><th>Code</th><th>Pays</th><th>Devise</th><th>Statut</th><th>Créée le</th></tr></thead><tbody>{organizations.map((item) => <tr key={item.id}><td><strong>{item.legalName}</strong><small>{item.id}</small></td><td>{item.tenantCode}</td><td>{item.countryCode}</td><td>{item.defaultCurrency}</td><td><StatusBadge status={item.status}/></td><td>{formatDate(item.createdAt)}</td></tr>)}</tbody></table></div>}</section>;
 }
 function StatusBadge({ status }: { status: string }) { return <span className={`pad-status ${status.toLowerCase()}`}>{statusLabel(status)}</span>; }
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) { return <div className="pad-inline-error" role="alert"><span>{message}</span><button className="pad-refresh-button" onClick={onRetry}>Réessayer</button></div>; }
