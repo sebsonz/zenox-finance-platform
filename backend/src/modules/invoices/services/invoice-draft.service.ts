@@ -5,6 +5,7 @@ import type { FinanceInvoiceOperationContext } from "../types/invoice-operation-
 import { recordInvoiceAudit } from "../repositories/invoice-audit.repository.js";
 import { customerRepository } from "../../customers/repositories/customer.repository.js";
 import { calculateInvoiceTotals } from "../engine/invoice-calculation.engine.js";
+import { isContractTotalGreaterThanInvoiceTotal } from "../domain/invoice-document-type.js";
 import { invoiceRepository, type FinanceInvoice } from "../repositories/invoice.repository.js";
 import type { CreateInvoiceDraftInput, ListInvoiceDraftsQuery, UpdateInvoiceDraftInput } from "../validators/invoice-draft.schema.js";
 
@@ -26,8 +27,7 @@ async function validateDocumentType(
 ): Promise<void> {
   if (input.documentType === "STANDARD") return;
   if (input.documentType === "DEPOSIT") {
-    const contractTotal = new Decimal(input.contractTotal ?? "0");
-    if (!contractTotal.isFinite() || !contractTotal.gt(grandTotal)) {
+    if (!isContractTotalGreaterThanInvoiceTotal(input.contractTotal ?? "0", grandTotal)) {
       throw new InvoiceDraftServiceError("INVALID_DOCUMENT_TYPE_AMOUNT", "The contract total must be greater than the deposit invoice amount.");
     }
     return;

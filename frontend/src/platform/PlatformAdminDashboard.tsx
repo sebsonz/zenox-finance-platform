@@ -4,13 +4,15 @@ import {
   CircleHelp, ClipboardList, CreditCard, FileCheck2,
   LayoutDashboard, LogOut, Moon, RefreshCw, Search,
   Server, Settings2, ShieldCheck, Sun, Users, X, ArrowLeftRight, BarChart3,
-  LockKeyhole, type LucideIcon,
+  LockKeyhole, Globe2, type LucideIcon,
 } from "lucide-react";
 import { PlatformReviewWorkspace } from "./PlatformReviewWorkspace.js";
+import { PlatformTaxAdmin } from "./PlatformTaxAdmin.js";
+import "./PlatformTaxAdmin.css";
 import "./PlatformAdminDashboard.css";
 import { BrandLogo } from "../shared/components/BrandLogo.js";
 
-type Section = "dashboard" | "analytics" | "orgs" | "users" | "requests" | "kyc" | "operations" | "revenue" | "audit" | "health" | "security" | "settings";
+type Section = "dashboard" | "analytics" | "orgs" | "users" | "requests" | "kyc" | "operations" | "revenue" | "audit" | "health" | "security" | "settings" | "tax";
 type RequestItem = { id: string; legalName: string; countryCode: string; status?: string; submittedAt: string };
 type PlatformOrganization = { id: string; tenantCode: string; legalName: string; countryCode: string; defaultCurrency: string; status: "PENDING" | "ACTIVE" | "SUSPENDED" | "DISABLED"; createdAt: string };
 type Payload<T> = { data?: T; error?: { message?: string } };
@@ -35,6 +37,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   { label: "ADMINISTRATION", items: [
     { id: "security", label: "Administrateurs & sécurité", icon: ShieldCheck },
     { id: "settings", label: "Paramètres plateforme", icon: Settings2 },
+    { id: "tax", label: "Fiscalité & juridictions", icon: Globe2 },
   ]},
 ];
 const titles: Record<Section, string> = {
@@ -42,6 +45,7 @@ const titles: Record<Section, string> = {
   users: "Utilisateurs & permissions", requests: "Inscriptions & approbations", kyc: "Conformité & KYC",
   operations: "Opérations financières", revenue: "Facturation & revenus", audit: "Journal d'audit",
   health: "Santé & surveillance", security: "Administrateurs & sécurité", settings: "Paramètres plateforme",
+  tax: "Fiscalité & juridictions",
 };
 const descriptions: Record<Section, string> = {
   dashboard: "Supervisez ZENOX Finance, ses organisations, ses utilisateurs et ses opérations.",
@@ -56,6 +60,7 @@ const descriptions: Record<Section, string> = {
   health: "Surveillez les services, les dépendances et la disponibilité de la plateforme.",
   security: "Gérez les accès privilégiés et les paramètres de sécurité.",
   settings: "Configurez les référentiels et les préférences globales de ZENOX Finance.",
+  tax: "Administrez le référentiel fiscal global et préparez les juridictions prises en charge.",
 };
 
 async function readPayload<T>(response: Response, fallback: string): Promise<T> {
@@ -157,6 +162,7 @@ export function PlatformAdminDashboard({ email, onSignOut }: { email: string; on
         {section === "health" && <ModuleWorkspace icon={Server} title="Santé & surveillance" source="Contrôles techniques partiels" description="État de disponibilité des composants critiques de la plateforme." features={["API et base de données","Stockage documentaire","Authentification","Latence, erreurs et disponibilité"]} note="Les endpoints de santé existants vérifient l'API et la connexion DB. Les métriques avancées ne sont pas encore collectées."/>}
         {section === "security" && <ModuleWorkspace icon={LockKeyhole} title="Administrateurs & sécurité" source="Contrôle opérateur existant" description="Administration des accès privilégiés, avec séparation des responsabilités." features={["Liste des opérateurs plateforme","Rôles et habilitations","Sessions et événements sensibles","Révocation contrôlée des accès"]} note="L'autorisation d'opérateur existe. La gestion complète des administrateurs et des sessions reste à développer."/>}
         {section === "settings" && <ModuleWorkspace icon={Settings2} title="Paramètres plateforme" source="Configuration à structurer" description="Centralisation des paramètres globaux et des référentiels." features={["Identité et coordonnées plateforme","Devises et référentiels","Notifications et modèles","Intégrations et maintenance"]} note="Les changements de configuration devront être validés, journalisés et limités aux administrateurs autorisés."/>}
+        {section === "tax" && <PlatformTaxAdmin/>}
         <footer className="pad-footer"><span>© 2026 ZENOX Finance</span><span><ShieldCheck size={13}/> Administration sécurisée · Isolation multi-tenant</span><span>Platform Console V3</span></footer>
       </div>
     </main>
