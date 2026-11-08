@@ -76,10 +76,10 @@ BEGIN
   PERFORM 1 FROM public.finance_tenants WHERE id = p_tenant_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'ORGANIZATION_NOT_FOUND'; END IF;
   v_primary_language := coalesce(nullif(btrim(p_profile ->> 'primaryLanguage'), ''), 'en');
-  IF jsonb_typeof(p_profile -> 'supportedLanguages') <> 'array' THEN
+  IF jsonb_typeof(p_profile -> 'supportedLanguages') IS DISTINCT FROM 'array' THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'INVALID_SUPPORTED_LANGUAGES';
   END IF;
-  SELECT array_agg(value) INTO v_languages FROM jsonb_array_elements_text(p_profile -> 'supportedLanguages') AS value;
+  SELECT array_agg(lang.value) INTO v_languages FROM jsonb_array_elements_text(p_profile -> 'supportedLanguages') AS lang(value);
   IF cardinality(v_languages) NOT BETWEEN 1 AND 20 OR NOT (v_primary_language = ANY(v_languages)) THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'INVALID_SUPPORTED_LANGUAGES';
   END IF;
@@ -118,7 +118,7 @@ BEGIN
   IF NOT public.finance_is_active_platform_operator(p_operator_issuer, p_operator_subject) THEN
     RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'PLATFORM_OPERATOR_REQUIRED';
   END IF;
-  IF p_tenant_id IS NULL OR p_member_id IS NULL
+  IF p_tenant_id IS NULL OR p_member_id IS NULL OR p_role_code IS NULL OR p_status IS NULL
      OR p_role_code NOT IN ('OWNER','ADMIN','FINANCE_MANAGER','FINANCE_OPERATOR','VIEWER')
      OR p_status NOT IN ('PENDING','ACTIVE','SUSPENDED','REVOKED') THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'INVALID_ORGANIZATION_MEMBER_UPDATE';
