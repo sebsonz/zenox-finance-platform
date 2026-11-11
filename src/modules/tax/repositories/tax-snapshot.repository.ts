@@ -97,6 +97,7 @@ export const taxSnapshotRepository = {
 
   async findByDocumentVersion(
     client: PoolClient,
+    tenantId: string,
     documentType: CreateTaxSnapshotInput["documentType"],
     documentId: string,
     documentVersion: number,
@@ -104,9 +105,12 @@ export const taxSnapshotRepository = {
     const result = await client.query<SnapshotRow>(
       `SELECT ${columns}
          FROM public.finance_tax_calculation_snapshots
-        WHERE document_type = $1 AND document_id = $2 AND document_version = $3
+        WHERE tenant_id = $1
+          AND document_type = $2
+          AND document_id = $3
+          AND document_version = $4
         LIMIT 1`,
-      [documentType, documentId, documentVersion],
+      [tenantId, documentType, documentId, documentVersion],
     );
     const row = result.rows[0];
     return row ? mapRow(row) : null;

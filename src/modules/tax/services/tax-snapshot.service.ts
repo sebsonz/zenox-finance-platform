@@ -54,6 +54,6 @@ export const taxSnapshotService = {
     documentVersion: number,
   ): Promise<TaxCalculationSnapshot | null> {
     return withTenantTransaction(context.tenantId, async (client) =>
-      taxSnapshotRepository.findByDocumentVersion(client, documentType, documentId, documentVersion));
+      taxSnapshotRepository.findByDocumentVersion(client, context.tenantId, documentType, documentId, documentVersion));
   },
 };

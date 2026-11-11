@@ -100,12 +100,16 @@ export const taxRuleRepository = {
                            version DESC,
                            priority ASC
                 ) AS override_rank
-           FROM public.finance_tax_rules
+           FROM public.finance_tax_rules r
           WHERE jurisdiction_id = $1
             AND status = 'ACTIVE'
             AND applies_to IN ($2, 'ALL')
             AND valid_from <= $3::date
             AND (valid_to IS NULL OR valid_to >= $3::date)
+            AND EXISTS (
+              SELECT 1 FROM public.finance_tax_jurisdictions j
+               WHERE j.id = r.jurisdiction_id AND j.is_active = true
+            )
        )
        SELECT id, tenant_id, jurisdiction_id, rule_code, name, tax_type,
               treatment, rate_percent, price_mode, priority, is_compound,
