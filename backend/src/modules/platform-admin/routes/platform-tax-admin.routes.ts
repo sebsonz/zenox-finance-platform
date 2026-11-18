@@ -351,8 +351,8 @@ platformTaxAdminRouter.post("/tax/rules", requireUserAuth(), async (req,res,next
       return;
     }
     const parsedRule=taxRuleSchema.safeParse(body.data.rule);
-    if(!parsedRule.success || parsedRule.data.tenantId!==undefined) {
-      res.status(400).json({error:{code:"INVALID_GLOBAL_TAX_RULE",message:"Une règle globale doit être valide et ne peut pas contenir de tenantId."}});
+    if(!parsedRule.success || parsedRule.data.tenantId!==undefined || !parsedRule.data.sourceReference?.trim()) {
+      res.status(400).json({error:{code:"INVALID_GLOBAL_TAX_RULE",message:"Une règle globale doit être valide, référencer sa source juridique et ne peut pas contenir de tenantId."}});
       return;
     }
     const rule=Object.fromEntries(
