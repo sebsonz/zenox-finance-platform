@@ -77,9 +77,18 @@ userTenantTaxRouter.get("/:tenantId/tax-jurisdictions", requireUserAuth(), async
         jurisdiction_level: string; parent_id: string | null;
       }>(
         `SELECT id, code, country_code, name, jurisdiction_level, parent_id
-           FROM public.finance_tax_jurisdictions
-          WHERE is_active = true
-          ORDER BY country_code, jurisdiction_level, name`,
+           FROM public.finance_tax_jurisdictions j
+          WHERE j.is_active = true
+            AND EXISTS (
+              SELECT 1
+                FROM public.finance_tenant_tax_jurisdictions tj
+               WHERE tj.tenant_id = $1
+                 AND tj.jurisdiction_id = j.id
+                 AND tj.status = 'ACTIVE'
+                 AND tj.valid_from <= CURRENT_DATE
+                 AND (tj.valid_to IS NULL OR tj.valid_to >= CURRENT_DATE)
+            )
+          ORDER BY j.country_code, j.jurisdiction_level, j.name`,
       );
       return result.rows.map((row) => ({
         id: row.id, code: row.code, countryCode: row.country_code.trim(),
@@ -108,7 +117,8 @@ userTenantTaxRouter.get("/:tenantId/tax-rules", requireUserAuth(), async (req, r
                 r.rule_code, r.name, r.tax_type, r.treatment, r.rate_percent::text AS rate_percent,
                 r.price_mode, r.priority, r.is_compound, r.applies_to, r.source_reference,
                 r.source_url, r.version, r.valid_from::text AS valid_from,
-                r.valid_to::text AS valid_to, r.status, r.created_at::text AS created_at
+                r.valid_to::text AS valid_to, r.status, r.created_at::text AS created_at,
+                r.accounting_treatment, r.applicability_conditions
            FROM public.finance_tax_rules r
            JOIN public.finance_tax_jurisdictions j ON j.id = r.jurisdiction_id
           WHERE (r.tenant_id IS NULL OR r.tenant_id = $1)
@@ -125,6 +135,8 @@ userTenantTaxRouter.get("/:tenantId/tax-rules", requireUserAuth(), async (req, r
         version: row.version, validFrom: row.valid_from, validTo: row.valid_to,
         status: row.status, scope: row.tenant_id === null ? "GLOBAL" : "ORGANIZATION",
         createdAt: row.created_at,
+        accountingTreatment: row.accounting_treatment,
+        applicabilityConditions: row.applicability_conditions,
       }));
     });
     res.status(200).json({ data: { rules, correlationId: context.correlationId } });
@@ -176,8 +188,8 @@ userTenantTaxRouter.post("/:tenantId/tax-rules", requireUserAuth(), async (req, 
         `INSERT INTO public.finance_tax_rules
           (tenant_id, jurisdiction_id, rule_code, name, tax_type, treatment, rate_percent,
            price_mode, priority, is_compound, applies_to, source_reference, source_url,
-           version, valid_from, valid_to, status)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'DRAFT')
+           version, valid_from, valid_to, status, accounting_treatment, applicability_conditions)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'DRAFT',$17,$18::jsonb)
          RETURNING id, jurisdiction_id, rule_code, name, tax_type, treatment,
                    rate_percent::text AS rate_percent, price_mode, priority, is_compound,
                    applies_to, source_reference, source_url, version,
@@ -186,7 +198,8 @@ userTenantTaxRouter.post("/:tenantId/tax-rules", requireUserAuth(), async (req, 
           parsed.data.taxType, parsed.data.treatment, parsed.data.ratePercent, parsed.data.priceMode,
           parsed.data.priority, parsed.data.isCompound, parsed.data.appliesTo,
           parsed.data.sourceReference ?? null, parsed.data.sourceUrl ?? null, version,
-          parsed.data.validFrom, parsed.data.validTo ?? null],
+          parsed.data.validFrom, parsed.data.validTo ?? null,
+          parsed.data.accountingTreatment, JSON.stringify(parsed.data.applicabilityConditions)],
       );
       return inserted.rows[0];
     });
