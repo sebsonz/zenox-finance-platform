@@ -124,6 +124,15 @@ userTenantTaxRouter.get("/:tenantId/tax-rules", requireUserAuth(), async (req, r
            JOIN public.finance_tax_jurisdictions j ON j.id = r.jurisdiction_id
           WHERE (r.tenant_id IS NULL OR r.tenant_id = $1)
             AND ($2::uuid IS NULL OR r.jurisdiction_id = $2)
+            AND EXISTS (
+              SELECT 1
+                FROM public.finance_tenant_tax_jurisdictions tj
+               WHERE tj.tenant_id = $1
+                 AND tj.jurisdiction_id = r.jurisdiction_id
+                 AND tj.status = 'ACTIVE'
+                 AND tj.valid_from <= CURRENT_DATE
+                 AND (tj.valid_to IS NULL OR tj.valid_to >= CURRENT_DATE)
+            )
           ORDER BY j.country_code, r.rule_code, r.version DESC`,
         [tenantId, jurisdictionId?.success ? jurisdictionId.data : null],
       );
