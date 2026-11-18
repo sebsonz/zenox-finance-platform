@@ -88,6 +88,29 @@ integrationDescribe("PostgreSQL invoice tax snapshot binding", () => {
          VALUES ($1, $2, 'BJ', 'Tax flow integration jurisdiction', 'COUNTRY', true)`,
         [jurisdictionId, `TF_${suffix}`],
       );
+      const assignmentId = randomUUID();
+      const evidenceId = randomUUID();
+      await admin.query(
+        `INSERT INTO public.finance_tenant_tax_jurisdictions
+          (id,tenant_id,jurisdiction_id,status,valid_from,basis_type,initiated_by,
+           requested_by_issuer,requested_by_subject,reviewed_by_issuer,reviewed_by_subject,
+           reviewed_at,evidence_verified_at,evidence_verified_by_issuer,
+           evidence_verified_by_subject,activated_at)
+         VALUES ($1,$2,$3,'ACTIVE',CURRENT_DATE,'TAX_REGISTRATION','TENANT',
+                 'integration-test','tax-snapshot','reviewer-test','reviewer-subject',
+                 now(),now(),'reviewer-test','reviewer-subject',now())`,
+        [assignmentId,tenantA,jurisdictionId],
+      );
+      await admin.query(
+        `INSERT INTO public.finance_tax_assignment_evidence
+          (id,assignment_id,tenant_id,document_type,original_filename,content_type,
+           byte_size,sha256,storage_path,uploaded_by_issuer,uploaded_by_subject,
+           status,reviewed_at,reviewed_by_issuer,reviewed_by_subject)
+         VALUES ($1,$2,$3,'TAX_REGISTRATION','tax-proof.pdf','application/pdf',
+                 1024,repeat('a',64),$4,'integration-test','tax-snapshot',
+                 'VERIFIED',now(),'reviewer-test','reviewer-subject')`,
+        [evidenceId,assignmentId,tenantA,`tax-assignments/${assignmentId}/${evidenceId}.pdf`],
+      );
       // A matching tenant override must shadow the global rule with the same code.
       await admin.query(
         `INSERT INTO public.finance_tax_rules
