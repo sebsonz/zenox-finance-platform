@@ -107,7 +107,7 @@ END
 $fn$;
 
 CREATE OR REPLACE FUNCTION public.finance_get_tax_assignment_evidence_content(
-  p_evidence_id uuid,p_actor_issuer text,p_actor_subject text
+  p_evidence_id uuid,p_tenant_id uuid,p_actor_issuer text,p_actor_subject text
 ) RETURNS TABLE (storage_path text,content_type text,original_filename text,tenant_id uuid)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public
 AS $fn$
@@ -118,7 +118,7 @@ BEGIN
     FROM public.finance_tax_assignment_evidence e
     JOIN public.finance_tenant_tax_jurisdictions a
       ON a.id=e.assignment_id AND a.tenant_id=e.tenant_id
-   WHERE e.id=p_evidence_id AND e.status<>'REMOVED';
+   WHERE e.id=p_evidence_id AND e.tenant_id=p_tenant_id AND e.status<>'REMOVED';
   IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='P0002',MESSAGE='TAX_EVIDENCE_NOT_FOUND'; END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.finance_user_tenant_memberships m
@@ -310,7 +310,7 @@ BEGIN
     'finance_list_platform_tax_assignments(text,text,text,character,integer,integer)',
     'finance_list_tenant_tax_assignments(uuid,text,text)',
     'finance_list_tax_assignment_evidence(uuid,text,text)',
-    'finance_get_tax_assignment_evidence_content(uuid,text,text)',
+    'finance_get_tax_assignment_evidence_content(uuid,uuid,text,text)',
     'finance_platform_upsert_tax_jurisdiction_level(character,text,text,text,integer,boolean,boolean,text,text,text,text)',
     'finance_platform_upsert_tax_jurisdiction(uuid,text,character,text,text,uuid,boolean,text,text,text,text)',
     'finance_list_platform_tax_delegations(text,text)',
