@@ -454,3 +454,20 @@ platformTaxAdminRouter.post("/tax/assignment-evidence/:evidenceId/review",requir
     if(!taxDatabaseError(error,res))next(error);
   }
 });
+
+
+platformTaxAdminRouter.get("/tax/assignments/:assignmentId/evidence",requireUserAuth(),async(req,res,next)=>{
+  const identity=requestIdentity(req);
+  const assignmentId=z.string().uuid().safeParse(req.params["assignmentId"]);
+  if(!identity||!assignmentId.success){
+    res.status(identity?400:401).json({error:{code:identity?"INVALID_ASSIGNMENT_ID":"UNAUTHENTICATED",message:"The assignment or session is invalid."}});
+    return;
+  }
+  try{
+    const evidence=await platformTaxWorkflowRepository.listEvidence(assignmentId.data,identity.issuer,identity.subject);
+    res.setHeader("Cache-Control","no-store");
+    res.status(200).json({data:{evidence}});
+  }catch(error){
+    if(!taxDatabaseError(error,res))next(error);
+  }
+});
