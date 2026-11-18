@@ -57,9 +57,9 @@ export const taxAssignmentEvidenceService={
       throw error;
     }
   },
-  async download(evidenceId:string,issuer:string,subject:string){
+  async download(evidenceId:string,tenantId:string,issuer:string,subject:string){
     const result=await pool.query<{storage_path:string;content_type:string;original_filename:string}>(
-      "SELECT * FROM public.finance_get_tax_assignment_evidence_content($1,$2,$3)",[evidenceId,issuer,subject],
+      "SELECT * FROM public.finance_get_tax_assignment_evidence_content($1,$2,$3,$4)",[evidenceId,tenantId,issuer,subject],
     );
     const row=result.rows[0];
     if(!row)throw new TaxAssignmentEvidenceError("TAX_EVIDENCE_NOT_FOUND","Le justificatif fiscal est introuvable.");
