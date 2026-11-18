@@ -110,6 +110,15 @@ const jurisdictionLevelSchema = z.object({
   reason: z.string().trim().min(10).max(1000),
 }).strict();
 
+function taxSameOrigin(req: import("express").Request): boolean {
+  const origin = req.header("origin");
+  if (!origin) return false;
+  try {
+    const parsed = new URL(origin);
+    return (parsed.protocol === "https:" || parsed.protocol === "http:") &&
+      parsed.host.toLowerCase() === (req.get("host") ?? "").toLowerCase();
+  } catch { return false; }
+}
 function requestIdentity(req: import("express").Request) {
   const identity = req.financeUser;
   if (!identity) return null;
@@ -157,6 +166,10 @@ platformTaxAdminRouter.get("/tax/assignments", requireUserAuth(), async (req, re
 });
 
 platformTaxAdminRouter.post("/tax/assignments/:assignmentId/review", requireUserAuth(), async (req, res, next) => {
+  if (!taxSameOrigin(req)) {
+    res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origine de requête non autorisée." } });
+    return;
+  }
   const identity = requestIdentity(req);
   const assignmentId = z.string().uuid().safeParse(req.params["assignmentId"]);
   const body = assignmentDecisionSchema.safeParse(req.body);
@@ -181,6 +194,10 @@ platformTaxAdminRouter.post("/tax/assignments/:assignmentId/review", requireUser
 });
 
 platformTaxAdminRouter.put("/tax/jurisdiction-levels", requireUserAuth(), async (req, res, next) => {
+  if (!taxSameOrigin(req)) {
+    res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origine de requête non autorisée." } });
+    return;
+  }
   const identity = requestIdentity(req);
   const body = jurisdictionLevelSchema.safeParse(req.body);
   if (!identity || !body.success) {
@@ -198,6 +215,10 @@ platformTaxAdminRouter.put("/tax/jurisdiction-levels", requireUserAuth(), async 
 });
 
 platformTaxAdminRouter.put("/tax/jurisdictions", requireUserAuth(), async (req, res, next) => {
+  if (!taxSameOrigin(req)) {
+    res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origine de requête non autorisée." } });
+    return;
+  }
   const identity = requestIdentity(req);
   const body = jurisdictionSchema.safeParse(req.body);
   if (!identity || !body.success) {
