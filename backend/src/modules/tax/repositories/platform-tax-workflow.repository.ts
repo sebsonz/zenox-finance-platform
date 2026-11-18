@@ -1,6 +1,35 @@
 import { pool } from "../../../db/pool.js";
 
 export const platformTaxWorkflowRepository = {
+  async createGlobalRuleDraft(input: {
+    issuer: string; subject: string; rule: Record<string, unknown>; reason: string; correlationId: string;
+  }) {
+    const result = await pool.query<{ finance_platform_create_global_tax_rule_draft: string }>(
+      "SELECT public.finance_platform_create_global_tax_rule_draft($1,$2,$3::jsonb,$4,$5)",
+      [input.issuer,input.subject,JSON.stringify(input.rule),input.reason,input.correlationId],
+    );
+    return result.rows[0]?.finance_platform_create_global_tax_rule_draft;
+  },
+
+  async submitGlobalRuleForApproval(ruleId: string, issuer: string, subject: string, correlationId: string) {
+    const result = await pool.query<{ finance_submit_global_tax_rule_for_approval: string }>(
+      "SELECT public.finance_submit_global_tax_rule_for_approval($1,$2,$3,$4)",
+      [ruleId,issuer,subject,correlationId],
+    );
+    return result.rows[0]?.finance_submit_global_tax_rule_for_approval;
+  },
+
+  async reviewGlobalRule(input: {
+    approvalId: string; decision: "APPROVE" | "REJECT"; reason?: string;
+    issuer: string; subject: string; correlationId: string;
+  }) {
+    const result = await pool.query(
+      "SELECT * FROM public.finance_review_global_tax_rule($1,$2,$3,$4,$5,$6)",
+      [input.approvalId,input.decision,input.reason ?? null,input.issuer,input.subject,input.correlationId],
+    );
+    return result.rows[0];
+  },
+
   async canReviewAssignment(issuer: string, subject: string, assignmentId: string): Promise<boolean> {
     const result = await pool.query<{ allowed: boolean }>(
       `SELECT public.finance_tax_actor_can($1,$2,'ASSIGNMENT_REVIEW',a.jurisdiction_id) AS allowed
