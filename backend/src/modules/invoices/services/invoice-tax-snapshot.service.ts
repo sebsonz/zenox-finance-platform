@@ -82,6 +82,14 @@ export const invoiceTaxSnapshotService = {
             AND status = 'ACTIVE'
             AND valid_from <= $3::date
             AND (valid_to IS NULL OR valid_to >= $3::date)
+            AND evidence_verified_at IS NOT NULL
+            AND EXISTS (
+              SELECT 1
+                FROM public.finance_tax_assignment_evidence e
+               WHERE e.assignment_id = finance_tenant_tax_jurisdictions.id
+                 AND e.tenant_id = finance_tenant_tax_jurisdictions.tenant_id
+                 AND e.status = 'VERIFIED'
+            )
           LIMIT 1`,
         [context.tenantId, input.jurisdictionId, input.taxDate],
       );
