@@ -5,13 +5,12 @@ import {
 } from "../../src/modules/tax/schemas/tenant-jurisdiction.schema.js";
 
 describe("tenant jurisdiction schemas", () => {
-  it("accepts a dated jurisdiction assignment with evidence reference", () => {
+  it("accepts a dated jurisdiction assignment before separate evidence upload", () => {
     expect(createTenantJurisdictionAssignmentSchema.safeParse({
       jurisdictionId: "d9428888-122b-4b8b-9a3a-5e8b5e8a6f01",
       validFrom: "2026-01-01",
       basisType: "TAX_REGISTRATION",
       basisReference: "REG-2026-01",
-      evidenceDocumentId: "d9428888-122b-4b8b-9a3a-5e8b5e8a6f02",
     }).success).toBe(true);
   });
 
