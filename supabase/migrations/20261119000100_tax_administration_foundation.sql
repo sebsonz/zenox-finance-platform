@@ -260,6 +260,12 @@ BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
       EXECUTE format('REVOKE ALL ON TABLE public.%I FROM authenticated', t);
     END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+      EXECUTE format('REVOKE ALL ON TABLE public.%I FROM service_role', t);
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'finance_runtime') THEN
+      EXECUTE format('REVOKE ALL ON TABLE public.%I FROM finance_runtime', t);
+    END IF;
   END LOOP;
 END
 $rls$;
