@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import express from "express";
 import { z } from "zod";
 import { requireUserAuth } from "../../../middleware/require-user-auth.js";
 import { withTenantTransaction } from "../../../db/transaction.js";
@@ -8,6 +9,7 @@ import { tenantRepository } from "../../tenants/repositories/tenant.repository.j
 import { taxRuleSchema } from "../../tax/validators/tax-rule.schema.js";
 import { createTenantJurisdictionAssignmentSchema } from "../../tax/schemas/tenant-jurisdiction.schema.js";
 import { tenantTaxAssignmentRepository } from "../../tax/repositories/tenant-tax-assignment.repository.js";
+import { taxAssignmentEvidenceService, TaxAssignmentEvidenceError } from "../../tax/application/tax-assignment-evidence.service.js";
 
 export const userTenantTaxRouter = Router();
 const uuidSchema = z.string().uuid();
@@ -289,6 +291,81 @@ userTenantTaxRouter.post("/:tenantId/tax-assignments", requireUserAuth(), async 
       res.status(422).json({ error: { code: db.message ?? "INVALID_TAX_ASSIGNMENT", message: "The tax assignment request does not satisfy business rules." } });
       return;
     }
+    next(error);
+  }
+});
+
+
+userTenantTaxRouter.get("/:tenantId/tax-assignments/:assignmentId/evidence", requireUserAuth(), async(req,res,next)=>{
+  const tenantId=parseTenantId(req,res);if(!tenantId)return;
+  const assignmentId=uuidSchema.safeParse(req.params["assignmentId"]);
+  if(!assignmentId.success){res.status(400).json({error:{code:"INVALID_ASSIGNMENT_ID",message:"A valid assignment ID is required."}});return;}
+  try{
+    const context=await authorize(tenantId,req,res,"tax:read");
+    if(!context||!req.financeUser)return;
+    const result=await withTenantTransaction(tenantId,async(client)=>client.query(
+      "SELECT * FROM public.finance_list_tax_assignment_evidence($1,$2,$3)",
+      [assignmentId.data,req.financeUser!.issuer,req.financeUser!.id],
+    ));
+    res.setHeader("Cache-Control","no-store");
+    res.status(200).json({data:{evidence:result.rows,correlationId:context.correlationId}});
+  }catch(error){next(error);}
+});
+
+userTenantTaxRouter.post("/:tenantId/tax-assignments/:assignmentId/evidence", requireUserAuth(), (req,res,next)=>{
+  if(!sameOrigin(req)){res.status(403).json({error:{code:"ORIGIN_NOT_ALLOWED",message:"The request origin is not allowed."}});return;}
+  express.raw({type:["application/pdf","image/jpeg","image/png"],limit:"10mb"})(req,res,next);
+}, async(req,res,next)=>{
+  const tenantId=parseTenantId(req,res);if(!tenantId)return;
+  const assignmentId=uuidSchema.safeParse(req.params["assignmentId"]);
+  if(!assignmentId.success||!req.financeUser){res.status(req.financeUser?400:401).json({error:{code:req.financeUser?"INVALID_ASSIGNMENT_ID":"UNAUTHENTICATED",message:"The assignment or session is invalid."}});return;}
+  const type=z.enum(["TAX_REGISTRATION","BUSINESS_REGISTRATION","PROOF_OF_ADDRESS","AUTHORIZATION_LETTER","OTHER"]).safeParse(req.header("x-document-type"));
+  const filename=req.header("x-file-name");
+  if(!type.success||!filename||filename.length>180||!Buffer.isBuffer(req.body)){
+    res.status(400).json({error:{code:"INVALID_DOCUMENT_METADATA",message:"Document type, filename and file content are required."}});return;
+  }
+  try{
+    const context=await authorize(tenantId,req,res,"tax:manage");
+    if(!context)return;
+    const document=await taxAssignmentEvidenceService.upload({
+      assignmentId:assignmentId.data,tenantId,issuer:req.financeUser.issuer,
+      subject:req.financeUser.id,correlationId:context.correlationId,type:type.data,
+      filename,contentType:req.header("content-type")??"",bytes:req.body,
+    });
+    res.status(201).json({data:{document,correlationId:context.correlationId}});
+  }catch(error){
+    if(error instanceof TaxAssignmentEvidenceError){
+      const status=error.code==="TAX_ASSIGNMENT_NOT_EDITABLE"?409:
+        error.code==="DOCUMENT_STORAGE_UNAVAILABLE"||error.code==="DOCUMENT_STORAGE_FAILED"?503:422;
+      res.status(status).json({error:{code:error.code,message:error.message}});return;
+    }
+    const db=error as {code?:string;message?:string};
+    if(db.code==="42501"){res.status(403).json({error:{code:db.message??"TAX_ASSIGNMENT_MANAGE_REQUIRED",message:"You are not authorized to upload evidence."}});return;}
+    if(db.code==="P0002"){res.status(404).json({error:{code:db.message??"TAX_ASSIGNMENT_NOT_FOUND",message:"The tax assignment is not available."}});return;}
+    next(error);
+  }
+});
+
+userTenantTaxRouter.get("/:tenantId/tax-assignment-evidence/:evidenceId/content", requireUserAuth(), async(req,res,next)=>{
+  const tenantId=parseTenantId(req,res);if(!tenantId)return;
+  const evidenceId=uuidSchema.safeParse(req.params["evidenceId"]);
+  if(!evidenceId.success||!req.financeUser){res.status(req.financeUser?404:401).json({error:{code:req.financeUser?"TAX_EVIDENCE_NOT_FOUND":"UNAUTHENTICATED"}});return;}
+  try{
+    const context=await authorize(tenantId,req,res,"tax:read");
+    if(!context)return;
+    const file=await taxAssignmentEvidenceService.download(evidenceId.data,req.financeUser.issuer,req.financeUser.id);
+    res.setHeader("Cache-Control","private,no-store");
+    res.setHeader("Content-Type",file.contentType);
+    res.setHeader("Content-Disposition",`attachment; filename*=UTF-8''${encodeURIComponent(file.filename)}`);
+    res.setHeader("X-Content-Type-Options","nosniff");
+    const reader=file.body.getReader();
+    while(true){const chunk=await reader.read();if(chunk.done)break;res.write(chunk.value);}
+    res.end();
+  }catch(error){
+    if(error instanceof TaxAssignmentEvidenceError){res.status(error.code==="TAX_EVIDENCE_NOT_FOUND"?404:503).json({error:{code:error.code,message:error.message}});return;}
+    const db=error as {code?:string;message?:string};
+    if(db.code==="42501"){res.status(403).json({error:{code:db.message??"TAX_EVIDENCE_ACCESS_DENIED"}});return;}
+    if(db.code==="P0002"){res.status(404).json({error:{code:db.message??"TAX_EVIDENCE_NOT_FOUND"}});return;}
     next(error);
   }
 });
