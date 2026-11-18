@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { taxTreatmentSchema } from "../types/tax.types.js";
+import { taxApplicabilityConditionsSchema } from "./tax-applicability.schema.js";
 
 const decimalString = z.string().regex(/^(?:0|[1-9]\d{0,2})(?:\.\d{1,6})?$/);
 const taxTreatmentValidator = z.enum(taxTreatmentSchema);
@@ -30,21 +31,7 @@ export const taxRuleSchema = z.object({
   validTo: z.iso.date().optional(),
   status: z.enum(["DRAFT", "ACTIVE", "RETIRED"]).default("DRAFT"),
   accountingTreatment: z.string().trim().min(1).max(80).default("STANDARD"),
-  applicabilityConditions: z.object({
-    schemaVersion: z.literal(1),
-    all: z.array(z.discriminatedUnion("operator", [
-      z.object({
-        field: z.enum(["transactionType", "supplierIfuStatus", "customerIfuStatus", "customerTaxStatus", "customerCountryCode", "supplierCountryCode", "isImport", "isExport", "goodsCategory"]),
-        operator: z.literal("EQ"),
-        value: z.union([z.string().trim().min(1).max(120), z.boolean()]),
-      }).strict(),
-      z.object({
-        field: z.enum(["transactionType", "supplierIfuStatus", "customerIfuStatus", "customerTaxStatus", "customerCountryCode", "supplierCountryCode", "isImport", "isExport", "goodsCategory"]),
-        operator: z.literal("IN"),
-        value: z.array(z.union([z.string().trim().min(1).max(120), z.boolean()])).min(1).max(50),
-      }).strict(),
-    ])).max(30),
-  }).strict().default({ schemaVersion: 1, all: [] }),
+  applicabilityConditions: taxApplicabilityConditionsSchema.default({ schemaVersion: 1, all: [] }),
 }).strict().superRefine((rule, ctx) => {
   const rate = Number(rule.ratePercent);
   if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
