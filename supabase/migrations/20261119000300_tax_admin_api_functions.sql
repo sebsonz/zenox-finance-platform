@@ -111,10 +111,10 @@ CREATE OR REPLACE FUNCTION public.finance_get_tax_assignment_evidence_content(
 ) RETURNS TABLE (storage_path text,content_type text,original_filename text,tenant_id uuid)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public
 AS $fn$
-DECLARE v_jurisdiction_id uuid;
+DECLARE v_jurisdiction_id uuid; v_tenant_id uuid;
 BEGIN
   SELECT e.storage_path,e.content_type,e.original_filename,e.tenant_id,a.jurisdiction_id
-    INTO storage_path,content_type,original_filename,tenant_id,v_jurisdiction_id
+    INTO storage_path,content_type,original_filename,v_tenant_id,v_jurisdiction_id
     FROM public.finance_tax_assignment_evidence e
     JOIN public.finance_tenant_tax_jurisdictions a
       ON a.id=e.assignment_id AND a.tenant_id=e.tenant_id
@@ -122,11 +122,12 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='P0002',MESSAGE='TAX_EVIDENCE_NOT_FOUND'; END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.finance_user_tenant_memberships m
-     WHERE m.tenant_id=tenant_id AND m.identity_issuer=p_actor_issuer
+     WHERE m.tenant_id=v_tenant_id AND m.identity_issuer=p_actor_issuer
        AND m.identity_subject=p_actor_subject AND m.status='ACTIVE'
   ) AND NOT public.finance_tax_actor_can(p_actor_issuer,p_actor_subject,'EVIDENCE_REVIEW',v_jurisdiction_id) THEN
     RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='TAX_EVIDENCE_ACCESS_DENIED';
   END IF;
+  tenant_id := v_tenant_id;
   RETURN NEXT;
 END
 $fn$;
