@@ -6,6 +6,8 @@ import { userTenantMembershipRepository } from "../../tenants/repositories/user-
 import { assertActiveMembershipCan } from "../../tenants/services/user-tenant-permissions.service.js";
 import { tenantRepository } from "../../tenants/repositories/tenant.repository.js";
 import { taxRuleSchema } from "../../tax/validators/tax-rule.schema.js";
+import { createTenantJurisdictionAssignmentSchema } from "../../tax/schemas/tenant-jurisdiction.schema.js";
+import { tenantTaxAssignmentRepository } from "../../tax/repositories/tenant-tax-assignment.repository.js";
 
 export const userTenantTaxRouter = Router();
 const uuidSchema = z.string().uuid();
@@ -229,6 +231,62 @@ userTenantTaxRouter.post("/:tenantId/tax-rules", requireUserAuth(), async (req, 
   } catch (error) {
     if (error instanceof Error && error.name === "TaxAdminValidationError") {
       res.status(422).json({ error: { code: "JURISDICTION_NOT_AVAILABLE", message: "The selected jurisdiction is not active." } });
+      return;
+    }
+    next(error);
+  }
+});
+
+
+// Organization tax jurisdiction assignment requests.
+userTenantTaxRouter.get("/:tenantId/tax-assignments", requireUserAuth(), async (req, res, next) => {
+  const tenantId = parseTenantId(req, res);
+  if (!tenantId) return;
+  try {
+    const context = await authorize(tenantId, req, res, "tax:read");
+    if (!context || !req.financeUser) return;
+    const assignments = await tenantTaxAssignmentRepository.list(
+      tenantId,req.financeUser.issuer,req.financeUser.id,
+    );
+    res.status(200).json({ data: { assignments, correlationId: context.correlationId } });
+  } catch (error) { next(error); }
+});
+
+userTenantTaxRouter.post("/:tenantId/tax-assignments", requireUserAuth(), async (req, res, next) => {
+  const tenantId = parseTenantId(req, res);
+  if (!tenantId) return;
+  if (!sameOrigin(req)) {
+    res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "The request origin is not allowed." } });
+    return;
+  }
+  const parsed = createTenantJurisdictionAssignmentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: { code: "INVALID_TAX_ASSIGNMENT", message: "The tax jurisdiction assignment request is invalid." } });
+    return;
+  }
+  try {
+    const context = await authorize(tenantId,req,res,"tax:manage");
+    if (!context || !req.financeUser) return;
+    const assignmentId = await tenantTaxAssignmentRepository.create({
+      tenantId,jurisdictionId:parsed.data.jurisdictionId,validFrom:parsed.data.validFrom,
+      validTo:parsed.data.validTo ?? null,basisType:parsed.data.basisType,
+      basisReference:parsed.data.basisReference ?? null,
+      issuer:req.financeUser.issuer,subject:req.financeUser.id,
+      initiatedBy:"TENANT",correlationId:context.correlationId,
+    });
+    res.status(201).json({ data: { assignmentId,status:"PENDING_REVIEW",correlationId:context.correlationId } });
+  } catch (error) {
+    const db = error as { code?: string; message?: string };
+    if (db.code === "42501") {
+      res.status(403).json({ error: { code: db.message ?? "TAX_ASSIGNMENT_MANAGE_REQUIRED", message: "You are not authorized to request this tax assignment." } });
+      return;
+    }
+    if (db.code === "P0002") {
+      res.status(404).json({ error: { code: db.message ?? "TAX_REFERENCE_NOT_FOUND", message: "The tenant or jurisdiction is not available." } });
+      return;
+    }
+    if (db.code === "22023") {
+      res.status(422).json({ error: { code: db.message ?? "INVALID_TAX_ASSIGNMENT", message: "The tax assignment request does not satisfy business rules." } });
       return;
     }
     next(error);
