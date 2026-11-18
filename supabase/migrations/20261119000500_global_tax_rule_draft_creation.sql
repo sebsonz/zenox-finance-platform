@@ -12,7 +12,8 @@ BEGIN
   END IF;
   IF jsonb_typeof(p_rule)<>'object'
      OR length(btrim(coalesce(p_reason,''))) NOT BETWEEN 10 AND 1000
-     OR length(btrim(coalesce(p_correlation_id,''))) NOT BETWEEN 1 AND 100 THEN
+     OR length(btrim(coalesce(p_correlation_id,''))) NOT BETWEEN 1 AND 100
+     OR length(btrim(coalesce(p_rule->>'sourceReference',''))) NOT BETWEEN 1 AND 500 THEN
     RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='INVALID_GLOBAL_TAX_RULE_DRAFT';
   END IF;
   v_jurisdiction_id := (p_rule->>'jurisdictionId')::uuid;
