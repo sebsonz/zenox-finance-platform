@@ -353,7 +353,7 @@ userTenantTaxRouter.get("/:tenantId/tax-assignment-evidence/:evidenceId/content"
   try{
     const context=await authorize(tenantId,req,res,"tax:read");
     if(!context)return;
-    const file=await taxAssignmentEvidenceService.download(evidenceId.data,req.financeUser.issuer,req.financeUser.id);
+    const file=await taxAssignmentEvidenceService.download(evidenceId.data,tenantId,req.financeUser.issuer,req.financeUser.id);
     res.setHeader("Cache-Control","private,no-store");
     res.setHeader("Content-Type",file.contentType);
     res.setHeader("Content-Disposition",`attachment; filename*=UTF-8''${encodeURIComponent(file.filename)}`);
