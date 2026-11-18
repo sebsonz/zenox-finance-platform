@@ -89,6 +89,7 @@ userTenantTaxRouter.get("/:tenantId/tax-jurisdictions", requireUserAuth(), async
                  AND (tj.valid_to IS NULL OR tj.valid_to >= CURRENT_DATE)
             )
           ORDER BY j.country_code, j.jurisdiction_level, j.name`,
+        [tenantId],
       );
       return result.rows.map((row) => ({
         id: row.id, code: row.code, countryCode: row.country_code.trim(),
@@ -169,8 +170,20 @@ userTenantTaxRouter.post("/:tenantId/tax-rules", requireUserAuth(), async (req, 
     if (!context) return;
     const rule = await withTenantTransaction(tenantId, async (client) => {
       const jurisdiction = await client.query(
-        "SELECT id FROM public.finance_tax_jurisdictions WHERE id = $1 AND is_active = true",
-        [parsed.data.jurisdictionId],
+        `SELECT j.id
+           FROM public.finance_tax_jurisdictions j
+          WHERE j.id = $1
+            AND j.is_active = true
+            AND EXISTS (
+              SELECT 1
+                FROM public.finance_tenant_tax_jurisdictions tj
+               WHERE tj.tenant_id = $2
+                 AND tj.jurisdiction_id = j.id
+                 AND tj.status = 'ACTIVE'
+                 AND tj.valid_from <= CURRENT_DATE
+                 AND (tj.valid_to IS NULL OR tj.valid_to >= CURRENT_DATE)
+            )`,
+        [parsed.data.jurisdictionId, tenantId],
       );
       if (!jurisdiction.rows[0]) {
         const error = new Error("JURISDICTION_NOT_AVAILABLE");
