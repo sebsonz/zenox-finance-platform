@@ -15,6 +15,7 @@ export class InvoiceTaxSnapshotServiceError extends Error {
   constructor(
     readonly code:
       | "INVOICE_NOT_FOUND_OR_CHANGED"
+      | "JURISDICTION_NOT_ASSIGNED"
       | "CURRENCY_NOT_SUPPORTED"
       | "NO_ACTIVE_TAX_RULES"
       | "INCOMPATIBLE_TAX_PRICE_MODES"
@@ -70,6 +71,24 @@ export const invoiceTaxSnapshotService = {
         throw new InvoiceTaxSnapshotServiceError(
           "INVOICE_NOT_FOUND_OR_CHANGED",
           "The draft is unavailable or was changed. Reload the draft before attaching tax evidence.",
+        );
+      }
+
+      const jurisdictionAssignment = await client.query(
+        `SELECT 1
+           FROM public.finance_tenant_tax_jurisdictions
+          WHERE tenant_id = $1
+            AND jurisdiction_id = $2
+            AND status = 'ACTIVE'
+            AND valid_from <= $3::date
+            AND (valid_to IS NULL OR valid_to >= $3::date)
+          LIMIT 1`,
+        [context.tenantId, input.jurisdictionId, input.taxDate],
+      );
+      if (jurisdictionAssignment.rowCount !== 1) {
+        throw new InvoiceTaxSnapshotServiceError(
+          "JURISDICTION_NOT_ASSIGNED",
+          "The selected tax jurisdiction is not actively assigned to this organization for the tax date.",
         );
       }
 
