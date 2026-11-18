@@ -76,6 +76,8 @@ CREATE TABLE IF NOT EXISTS public.finance_tenant_tax_jurisdictions (
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT finance_tenant_tax_jurisdictions_period_check
     CHECK (valid_to IS NULL OR valid_to >= valid_from),
+  CONSTRAINT finance_tenant_tax_jurisdictions_id_tenant_key
+    UNIQUE (id, tenant_id),
   CONSTRAINT finance_tenant_tax_jurisdictions_basis_type_check
     CHECK (basis_type ~ '^[A-Z][A-Z0-9_.-]{1,59}$'),
   CONSTRAINT finance_tenant_tax_jurisdictions_basis_reference_check
@@ -103,7 +105,7 @@ CREATE INDEX IF NOT EXISTS finance_tenant_tax_jurisdictions_jurisdiction_idx
 -- but tax evidence has its own ownership, lifecycle and review boundary.
 CREATE TABLE IF NOT EXISTS public.finance_tax_assignment_evidence (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  assignment_id uuid NOT NULL REFERENCES public.finance_tenant_tax_jurisdictions(id) ON DELETE RESTRICT,
+  assignment_id uuid NOT NULL,
   tenant_id uuid NOT NULL REFERENCES public.finance_tenants(id) ON DELETE RESTRICT,
   document_type text NOT NULL
     CHECK (document_type IN ('TAX_REGISTRATION','BUSINESS_REGISTRATION','PROOF_OF_ADDRESS','AUTHORIZATION_LETTER','OTHER')),
@@ -122,6 +124,9 @@ CREATE TABLE IF NOT EXISTS public.finance_tax_assignment_evidence (
   review_note text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT finance_tax_assignment_evidence_assignment_tenant_fk
+    FOREIGN KEY (assignment_id, tenant_id)
+    REFERENCES public.finance_tenant_tax_jurisdictions(id, tenant_id) ON DELETE RESTRICT,
   CONSTRAINT finance_tax_assignment_evidence_review_pair_check
     CHECK ((reviewed_by_issuer IS NULL) = (reviewed_by_subject IS NULL)),
   CONSTRAINT finance_tax_assignment_evidence_review_state_check
