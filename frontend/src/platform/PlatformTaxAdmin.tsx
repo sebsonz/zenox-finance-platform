@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { PlatformTaxOperations } from "./PlatformTaxOperations.js";
 
 type TaxRule = {
   id: string; jurisdictionId: string; ruleCode: string; name: string;
@@ -104,6 +105,7 @@ export function PlatformTaxAdmin() {
         {page.items.map((item) => <tr key={item.id}><td><strong>{item.name}</strong><small>{item.ruleCode}</small></td><td><small>{item.jurisdictionId}</small></td><td>{item.taxType}</td><td>{item.treatment}</td><td>{item.ratePercent}%</td><td>{item.validFrom}{item.validTo ? ` → ${item.validTo}` : " → …"}</td><td>v{item.version}</td><td><span className={`pad-status ${item.status.toLowerCase()}`}>{statusLabels[item.status]}</span></td></tr>)}
       </tbody></table></div><div className="pta-pagination"><span>Page {page.page} · {page.items.length} résultat(s)</span><div><button className="pad-refresh-button" disabled={pageNumber <= 1 || loading} onClick={() => setPageNumber((value) => Math.max(1, value - 1))}>Précédent</button><button className="pad-refresh-button" disabled={!page.hasMore || loading} onClick={() => setPageNumber((value) => value + 1)}>Suivant</button></div></div></>}
     </div>
-    <div className="pad-module-note"><ShieldCheck size={17}/><p>La consultation globale est sécurisée par le contrôle d'opérateur plateforme. Les opérations de création, modification, validation et publication seront ajoutées avec des fonctions SQL dédiées, des permissions minimales et un journal d'audit immuable.</p></div>
+    <PlatformTaxOperations />
+    <div className="pad-module-note"><ShieldCheck size={17}/><p>Les décisions fiscales sont contrôlées côté PostgreSQL, avec permissions explicites, vérification des justificatifs, prévention de l’auto-approbation et journal d’audit dédié. La publication des règles globales reste soumise au workflow d’approbation.</p></div>
   </section>;
 }
