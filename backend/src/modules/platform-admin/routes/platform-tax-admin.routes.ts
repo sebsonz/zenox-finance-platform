@@ -355,7 +355,9 @@ platformTaxAdminRouter.post("/tax/rules", requireUserAuth(), async (req,res,next
       res.status(400).json({error:{code:"INVALID_GLOBAL_TAX_RULE",message:"Une règle globale doit être valide et ne peut pas contenir de tenantId."}});
       return;
     }
-    const {tenantId: _tenantId,version: _version,status: _status,...rule}=parsedRule.data;
+    const rule=Object.fromEntries(
+      Object.entries(parsedRule.data).filter(([key])=>!["tenantId","version","status"].includes(key)),
+    );
     const id=await platformTaxWorkflowRepository.createGlobalRuleDraft({
       issuer:identity.issuer,subject:identity.subject,rule,reason:body.data.reason,correlationId:taxCorrelation(res),
     });
