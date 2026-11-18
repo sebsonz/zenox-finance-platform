@@ -134,6 +134,17 @@ BEGIN
     SELECT 1 FROM public.finance_tax_jurisdiction_levels
      WHERE country_code=p_country_code AND level_code=p_parent_level_code AND is_active
   ) THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='PARENT_JURISDICTION_LEVEL_NOT_FOUND'; END IF;
+  IF p_parent_level_code=p_level_code OR EXISTS (
+    WITH RECURSIVE ancestors(level_code,parent_level_code) AS (
+      SELECT level_code,parent_level_code FROM public.finance_tax_jurisdiction_levels
+       WHERE country_code=p_country_code AND level_code=p_parent_level_code
+      UNION ALL
+      SELECT l.level_code,l.parent_level_code
+        FROM public.finance_tax_jurisdiction_levels l
+        JOIN ancestors a ON l.country_code=p_country_code AND l.level_code=a.parent_level_code
+    )
+    SELECT 1 FROM ancestors WHERE level_code=p_level_code
+  ) THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='JURISDICTION_LEVEL_CYCLE'; END IF;
   INSERT INTO public.finance_tax_jurisdiction_levels
     (country_code,level_code,label,parent_level_code,sort_order,is_required,is_active)
   VALUES (p_country_code,p_level_code,p_label,p_parent_level_code,p_sort_order,p_is_required,p_is_active)
@@ -179,6 +190,31 @@ BEGIN
     IF NOT FOUND OR v_parent_country<>p_country_code OR p_parent_id=v_id THEN
       RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='INVALID_JURISDICTION_PARENT';
     END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM public.finance_tax_jurisdiction_levels child_level
+      JOIN public.finance_tax_jurisdictions parent_j ON parent_j.id=p_parent_id
+      JOIN public.finance_tax_jurisdiction_levels parent_level
+        ON parent_level.country_code=parent_j.country_code
+       AND parent_level.level_code=parent_j.jurisdiction_level
+      WHERE child_level.country_code=p_country_code
+        AND child_level.level_code=p_level_code
+        AND child_level.parent_level_code=parent_j.jurisdiction_level
+    ) THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='JURISDICTION_PARENT_LEVEL_MISMATCH'; END IF;
+    IF EXISTS (
+      WITH RECURSIVE descendants(id,parent_id) AS (
+        SELECT id,parent_id FROM public.finance_tax_jurisdictions WHERE id=p_parent_id
+        UNION ALL
+        SELECT j.id,j.parent_id FROM public.finance_tax_jurisdictions j
+        JOIN descendants d ON j.id=d.parent_id
+      )
+      SELECT 1 FROM descendants WHERE id=v_id
+    ) THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='JURISDICTION_HIERARCHY_CYCLE'; END IF;
+  ELSE
+    IF EXISTS (
+      SELECT 1 FROM public.finance_tax_jurisdiction_levels
+       WHERE country_code=p_country_code AND level_code=p_level_code
+         AND parent_level_code IS NOT NULL
+    ) THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='JURISDICTION_PARENT_REQUIRED'; END IF;
   END IF;
   IF p_id IS NOT NULL THEN
     UPDATE public.finance_tax_jurisdictions SET code=p_code,country_code=p_country_code,
