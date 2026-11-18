@@ -6,7 +6,6 @@ export const createTenantJurisdictionAssignmentSchema = z.object({
   validTo: z.string().date().nullable().optional(),
   basisType: z.string().trim().min(2).max(60).regex(/^[A-Z][A-Z0-9_.-]*$/),
   basisReference: z.string().trim().max(200).nullable().optional(),
-  evidenceDocumentId: z.string().uuid().nullable().optional(),
 }).strict().superRefine((value, ctx) => {
   if (value.validTo && value.validTo < value.validFrom) {
     ctx.addIssue({
