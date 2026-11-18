@@ -5,6 +5,7 @@ import { platformAdminAccessService, PlatformAdminAccessError } from "../service
 import { listPlatformTaxRules } from "../../tax/application/list-platform-tax-rules.use-case.js";
 import { listPlatformTaxJurisdictions } from "../../tax/application/list-platform-tax-jurisdictions.use-case.js";
 import { platformTaxWorkflowRepository } from "../../tax/repositories/platform-tax-workflow.repository.js";
+import { taxRuleSchema } from "../../tax/validators/tax-rule.schema.js";
 
 export const platformTaxAdminRouter = Router();
 
@@ -329,5 +330,91 @@ platformTaxAdminRouter.post("/tax/delegations/:delegationId/revoke", requireUser
       return;
     }
     if (!taxDatabaseError(error,res)) next(error);
+  }
+});
+
+
+platformTaxAdminRouter.post("/tax/rules", requireUserAuth(), async (req,res,next) => {
+  if (!taxSameOrigin(req)) {
+    res.status(403).json({ error:{code:"ORIGIN_NOT_ALLOWED",message:"Origine de requête non autorisée."} });
+    return;
+  }
+  try {
+    await platformAdminAccessService.assertActiveOperator(req.financeUser);
+    const identity=requestIdentity(req);
+    const body=z.object({
+      rule:z.unknown(),
+      reason:z.string().trim().min(10).max(1000),
+    }).strict().safeParse(req.body);
+    if(!identity || !body.success) {
+      res.status(identity?400:401).json({error:{code:identity?"VALIDATION_ERROR":"UNAUTHENTICATED",message:"La règle ou la session est invalide."}});
+      return;
+    }
+    const parsedRule=taxRuleSchema.safeParse(body.data.rule);
+    if(!parsedRule.success || parsedRule.data.tenantId!==undefined) {
+      res.status(400).json({error:{code:"INVALID_GLOBAL_TAX_RULE",message:"Une règle globale doit être valide et ne peut pas contenir de tenantId."}});
+      return;
+    }
+    const {tenantId: _tenantId,version: _version,status: _status,...rule}=parsedRule.data;
+    const id=await platformTaxWorkflowRepository.createGlobalRuleDraft({
+      issuer:identity.issuer,subject:identity.subject,rule,reason:body.data.reason,correlationId:taxCorrelation(res),
+    });
+    res.status(201).json({data:{id,status:"DRAFT"}});
+  } catch(error) {
+    if(error instanceof PlatformAdminAccessError) {
+      res.status(error.status).json({error:{code:error.code,message:error.message}});
+      return;
+    }
+    if(!taxDatabaseError(error,res)) next(error);
+  }
+});
+
+platformTaxAdminRouter.post("/tax/rules/:ruleId/submit", requireUserAuth(), async (req,res,next) => {
+  if (!taxSameOrigin(req)) {
+    res.status(403).json({ error:{code:"ORIGIN_NOT_ALLOWED",message:"Origine de requête non autorisée."} });
+    return;
+  }
+  try {
+    await platformAdminAccessService.assertActiveOperator(req.financeUser);
+    const identity=requestIdentity(req);
+    const ruleId=z.string().uuid().safeParse(req.params["ruleId"]);
+    if(!identity || !ruleId.success) {
+      res.status(identity?400:401).json({error:{code:identity?"INVALID_RULE_ID":"UNAUTHENTICATED",message:"La règle ou la session est invalide."}});
+      return;
+    }
+    const approvalId=await platformTaxWorkflowRepository.submitGlobalRuleForApproval(
+      ruleId.data,identity.issuer,identity.subject,taxCorrelation(res),
+    );
+    res.status(201).json({data:{approvalId,status:"PENDING_REVIEW"}});
+  } catch(error) {
+    if(error instanceof PlatformAdminAccessError) {
+      res.status(error.status).json({error:{code:error.code,message:error.message}});
+      return;
+    }
+    if(!taxDatabaseError(error,res)) next(error);
+  }
+});
+
+platformTaxAdminRouter.post("/tax/rule-approvals/:approvalId/review", requireUserAuth(), async (req,res,next) => {
+  if (!taxSameOrigin(req)) {
+    res.status(403).json({ error:{code:"ORIGIN_NOT_ALLOWED",message:"Origine de requête non autorisée."} });
+    return;
+  }
+  const identity=requestIdentity(req);
+  const approvalId=z.string().uuid().safeParse(req.params["approvalId"]);
+  const body=assignmentDecisionSchema.safeParse(req.body);
+  if(!identity || !approvalId.success || !body.success) {
+    res.status(identity?400:401).json({error:{code:identity?"VALIDATION_ERROR":"UNAUTHENTICATED",message:"La décision ou la session est invalide."}});
+    return;
+  }
+  try {
+    const result=await platformTaxWorkflowRepository.reviewGlobalRule({
+      approvalId:approvalId.data,decision:body.data.decision,
+      ...(body.data.reason?{reason:body.data.reason}:{}),
+      issuer:identity.issuer,subject:identity.subject,correlationId:taxCorrelation(res),
+    });
+    res.status(200).json({data:result});
+  } catch(error) {
+    if(!taxDatabaseError(error,res)) next(error);
   }
 });
