@@ -1,6 +1,22 @@
 import { pool } from "../../../db/pool.js";
 
 export const platformTaxWorkflowRepository = {
+  async canReviewAssignment(issuer: string, subject: string, assignmentId: string): Promise<boolean> {
+    const result = await pool.query<{ allowed: boolean }>(
+      `SELECT public.finance_tax_actor_can($1,$2,'ASSIGNMENT_REVIEW',a.jurisdiction_id) AS allowed
+         FROM public.finance_tenant_tax_jurisdictions a WHERE a.id=$3`,
+      [issuer,subject,assignmentId],
+    );
+    return result.rows[0]?.allowed === true;
+  },
+
+  async canManageJurisdiction(issuer: string, subject: string, jurisdictionId: string): Promise<boolean> {
+    const result = await pool.query<{ allowed: boolean }>(
+      "SELECT public.finance_tax_actor_can($1,$2,'JURISDICTION_MANAGE',$3) AS allowed",
+      [issuer,subject,jurisdictionId],
+    );
+    return result.rows[0]?.allowed === true;
+  },
   async listAssignments(input: {
     issuer: string; subject: string; status?: string; countryCode?: string;
     limit: number; offset: number;
