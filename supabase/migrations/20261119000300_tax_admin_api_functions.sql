@@ -86,8 +86,8 @@ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public
 AS $fn$
 DECLARE v_tenant_id uuid; v_jurisdiction_id uuid;
 BEGIN
-  SELECT tenant_id,jurisdiction_id INTO v_tenant_id,v_jurisdiction_id
-    FROM public.finance_tenant_tax_jurisdictions WHERE id=p_assignment_id;
+  SELECT a.tenant_id,a.jurisdiction_id INTO v_tenant_id,v_jurisdiction_id
+    FROM public.finance_tenant_tax_jurisdictions a WHERE a.id=p_assignment_id;
   IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='P0002',MESSAGE='TAX_ASSIGNMENT_NOT_FOUND'; END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.finance_user_tenant_memberships m
