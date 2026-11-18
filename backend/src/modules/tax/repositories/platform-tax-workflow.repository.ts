@@ -71,6 +71,21 @@ export const platformTaxWorkflowRepository = {
     return result.rows[0]?.finance_platform_upsert_tax_jurisdiction_level;
   },
 
+  async createDelegation(input: {
+    identityIssuer: string; identitySubject: string; jurisdictionId?: string | null;
+    countryCode?: string | null; permissions: string[]; validFrom: string; validTo?: string | null;
+    reason: string; issuer: string; subject: string; correlationId: string;
+  }) {
+    const result = await pool.query<{ finance_create_platform_tax_delegation: string }>(
+      `SELECT public.finance_create_platform_tax_delegation(
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
+      )`,
+      [input.identityIssuer,input.identitySubject,input.jurisdictionId ?? null,input.countryCode ?? null,
+       input.permissions,input.validFrom,input.validTo ?? null,input.reason,input.issuer,input.subject,input.correlationId],
+    );
+    return result.rows[0]?.finance_create_platform_tax_delegation;
+  },
+
   async listDelegations(issuer: string, subject: string) {
     const result = await pool.query(
       "SELECT * FROM public.finance_list_platform_tax_delegations($1,$2)",
