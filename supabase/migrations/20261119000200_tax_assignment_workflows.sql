@@ -81,6 +81,9 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public
 AS $fn$
 DECLARE v_id uuid := gen_random_uuid(); v_status text;
 BEGIN
+  IF p_storage_path IS NULL OR p_storage_path NOT LIKE p_assignment_id::text || '/%' THEN
+    RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='INVALID_TAX_EVIDENCE_STORAGE_PATH';
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.finance_tenant_tax_jurisdictions a
      WHERE a.id=p_assignment_id AND a.tenant_id=p_tenant_id AND a.status='PENDING_REVIEW'
