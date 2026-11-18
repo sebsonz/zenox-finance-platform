@@ -418,3 +418,37 @@ platformTaxAdminRouter.post("/tax/rule-approvals/:approvalId/review", requireUse
     if(!taxDatabaseError(error,res)) next(error);
   }
 });
+
+
+const evidenceDecisionSchema = z.object({
+  decision:z.enum(["VERIFY","REJECT"]),
+  note:z.string().trim().min(10).max(1000).optional(),
+}).strict().superRefine((value,ctx)=>{
+  if(value.decision==="REJECT"&&!value.note){
+    ctx.addIssue({code:z.ZodIssueCode.custom,path:["note"],message:"Une note est obligatoire pour rejeter le justificatif."});
+  }
+});
+
+platformTaxAdminRouter.post("/tax/assignment-evidence/:evidenceId/review",requireUserAuth(),async(req,res,next)=>{
+  if(!taxSameOrigin(req)){
+    res.status(403).json({error:{code:"ORIGIN_NOT_ALLOWED",message:"Origine de requête non autorisée."}});
+    return;
+  }
+  const identity=requestIdentity(req);
+  const evidenceId=z.string().uuid().safeParse(req.params["evidenceId"]);
+  const body=evidenceDecisionSchema.safeParse(req.body);
+  if(!identity||!evidenceId.success||!body.success){
+    res.status(identity?400:401).json({error:{code:identity?"VALIDATION_ERROR":"UNAUTHENTICATED",message:"La décision ou la session est invalide."}});
+    return;
+  }
+  try{
+    const assignmentId=await platformTaxWorkflowRepository.reviewEvidence({
+      evidenceId:evidenceId.data,decision:body.data.decision,
+      ...(body.data.note?{note:body.data.note}:{}),
+      issuer:identity.issuer,subject:identity.subject,correlationId:taxCorrelation(res),
+    });
+    res.status(200).json({data:{evidenceId:evidenceId.data,assignmentId,status:body.data.decision==="VERIFY"?"VERIFIED":"REJECTED"}});
+  }catch(error){
+    if(!taxDatabaseError(error,res))next(error);
+  }
+});
