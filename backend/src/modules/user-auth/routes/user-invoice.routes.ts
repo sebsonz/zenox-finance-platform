@@ -588,6 +588,7 @@ userInvoiceRouter.get(
               )
             ORDER BY j.country_code, j.jurisdiction_level, j.name
             LIMIT 500`,
+          [tenant.data],
         );
         return result.rows.map((row) => ({
           id: row.id, code: row.code, countryCode: row.country_code,
