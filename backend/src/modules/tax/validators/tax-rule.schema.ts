@@ -29,6 +29,22 @@ export const taxRuleSchema = z.object({
   validFrom: z.iso.date(),
   validTo: z.iso.date().optional(),
   status: z.enum(["DRAFT", "ACTIVE", "RETIRED"]).default("DRAFT"),
+  accountingTreatment: z.string().trim().min(1).max(80).default("STANDARD"),
+  applicabilityConditions: z.object({
+    schemaVersion: z.literal(1),
+    all: z.array(z.discriminatedUnion("operator", [
+      z.object({
+        field: z.enum(["transactionType", "supplierIfuStatus", "customerIfuStatus", "customerTaxStatus", "customerCountryCode", "supplierCountryCode", "isImport", "isExport", "goodsCategory"]),
+        operator: z.literal("EQ"),
+        value: z.union([z.string().trim().min(1).max(120), z.boolean()]),
+      }).strict(),
+      z.object({
+        field: z.enum(["transactionType", "supplierIfuStatus", "customerIfuStatus", "customerTaxStatus", "customerCountryCode", "supplierCountryCode", "isImport", "isExport", "goodsCategory"]),
+        operator: z.literal("IN"),
+        value: z.array(z.union([z.string().trim().min(1).max(120), z.boolean()])).min(1).max(50),
+      }).strict(),
+    ])).max(30),
+  }).strict().default({ schemaVersion: 1, all: [] }),
 }).strict().superRefine((rule, ctx) => {
   const rate = Number(rule.ratePercent);
   if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
