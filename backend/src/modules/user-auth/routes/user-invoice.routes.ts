@@ -575,9 +575,18 @@ userInvoiceRouter.get(
       const jurisdictions = await withTenantTransaction(tenant.data, async (client) => {
         const result = await client.query<{ id: string; code: string; country_code: string; name: string; jurisdiction_level: string }>(
           `SELECT id, code, country_code, name, jurisdiction_level
-             FROM public.finance_tax_jurisdictions
-            WHERE is_active = true
-            ORDER BY country_code, jurisdiction_level, name
+             FROM public.finance_tax_jurisdictions j
+            WHERE j.is_active = true
+              AND EXISTS (
+                SELECT 1
+                  FROM public.finance_tenant_tax_jurisdictions tj
+                 WHERE tj.tenant_id = $1
+                   AND tj.jurisdiction_id = j.id
+                   AND tj.status = 'ACTIVE'
+                   AND tj.valid_from <= CURRENT_DATE
+                   AND (tj.valid_to IS NULL OR tj.valid_to >= CURRENT_DATE)
+              )
+            ORDER BY j.country_code, j.jurisdiction_level, j.name
             LIMIT 500`,
         );
         return result.rows.map((row) => ({
