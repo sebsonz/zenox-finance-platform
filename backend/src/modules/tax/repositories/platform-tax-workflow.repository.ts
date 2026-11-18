@@ -59,6 +59,17 @@ export const platformTaxWorkflowRepository = {
     return result.rows;
   },
 
+  async reviewEvidence(input: {
+    evidenceId: string; decision: "VERIFY" | "REJECT"; note?: string;
+    issuer: string; subject: string; correlationId: string;
+  }) {
+    const result = await pool.query<{ finance_review_tax_assignment_evidence: string }>(
+      "SELECT public.finance_review_tax_assignment_evidence($1,$2,$3,$4,$5,$6) AS assignment_id",
+      [input.evidenceId,input.decision,input.note ?? null,input.issuer,input.subject,input.correlationId],
+    );
+    return result.rows[0]?.assignment_id;
+  },
+
   async reviewAssignment(input: {
     assignmentId: string; decision: "APPROVE" | "REJECT"; reason?: string;
     issuer: string; subject: string; correlationId: string;
