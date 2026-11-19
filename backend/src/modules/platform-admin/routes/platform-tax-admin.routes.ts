@@ -199,7 +199,12 @@ platformTaxAdminRouter.get("/tax/approvals", requireUserAuth(), async (req, res,
     return;
   }
   try {
-    const data = await listPlatformTaxApprovals.execute(parsed.data);
+    const query = {
+      page: parsed.data.page,
+      pageSize: parsed.data.pageSize,
+      ...(parsed.data.status !== undefined ? { status: parsed.data.status } : {}),
+    };
+    const data = await listPlatformTaxApprovals.execute(query);
     res.status(200).json({ data });
   } catch (error) { next(error); }
 });
