@@ -45,6 +45,18 @@ jobs:
         run: npm --prefix backend run typecheck
       - name: Backend build
         run: npm --prefix backend run build
+      - name: Provision Supabase-compatible roles for disposable PostgreSQL
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $roles$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role NOLOGIN BYPASSRLS; END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'finance_runtime') THEN CREATE ROLE finance_runtime NOLOGIN; END IF;
+          END
+          $roles$;
+          SQL
       - name: Apply Finance migrations to disposable PostgreSQL
         run: npm --prefix backend run db:migrate
       - name: Prepare least-privilege integration role and fixtures
@@ -53,6 +65,26 @@ jobs:
         run: npm --prefix backend run db:drift-check
       - name: Unit and PostgreSQL integration tests
         run: npm --prefix backend test
+      - name: Install frontend dependencies
+        run: npm --prefix frontend install
+      - name: Frontend typecheck
+        run: npm --prefix frontend run typecheck
+      - name: Frontend navigation tests
+        run: npm --prefix frontend run test:navigation
+      - name: Frontend auth API tests
+        run: npm --prefix frontend run test:auth-api
+      - name: Frontend build
+        run: npm --prefix frontend run build
+
+  frontend-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Install frontend dependencies
         run: npm --prefix frontend install
       - name: Frontend typecheck
