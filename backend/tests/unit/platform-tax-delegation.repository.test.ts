@@ -39,4 +39,13 @@ describe("platformTaxDelegationRepository", () => {
     })).resolves.toBe(true);
     expect(vi.mocked(pool.query).mock.calls[0]?.[0]).toContain("finance_revoke_platform_tax_delegation");
   });
+  it("detects only active time-valid RULE_REVIEW delegations", async () => {
+    vi.mocked(pool.query).mockResolvedValue({ rows: [{ is_reviewer: true }] } as never);
+    await expect(platformTaxDelegationRepository.isActiveRuleReviewer("issuer", "agent")).resolves.toBe(true);
+    const [sql, values] = vi.mocked(pool.query).mock.calls[0] ?? [];
+    expect(sql).toContain("'RULE_REVIEW' = ANY(permissions)");
+    expect(sql).toContain("valid_from <= now()");
+    expect(values).toEqual(["issuer", "agent"]);
+  });
+
 });
