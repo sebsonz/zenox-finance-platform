@@ -91,6 +91,26 @@ Creates or updates a country's hierarchy level through `finance_platform_upsert_
 
 Returns paginated global tax-rule and jurisdiction administration events from `finance_platform_tax_audit_events`, including actor, action, resource, reason, correlation ID, safe metadata and timestamp.
 
+
+## Tax administration delegations
+
+### `GET /tax/delegations`
+
+Lists time-bounded tax permissions granted to other identities. Operator-only.
+
+### `POST /tax/delegations`
+
+Creates a delegation through `finance_create_platform_tax_delegation`.
+- Body: `identityIssuer`, `identitySubject`, exactly one of `jurisdictionId` or `countryCode`, one or more `permissions`, `validFrom`, optional `validTo`, and `reason`.
+- Supported permissions: `ASSIGNMENT_REVIEW`, `EVIDENCE_REVIEW`, `RULE_REVIEW`, `JURISDICTION_MANAGE`.
+- The database rejects self-delegation, invalid scopes, invalid permissions and invalid periods.
+
+### `POST /tax/delegations/:delegationId/revoke`
+
+Revokes an active delegation through `finance_revoke_platform_tax_delegation`. A 10–1000 character reason is mandatory.
+
+Delegated reviewers can read only approval rows whose jurisdiction passes `finance_tax_actor_can(actor, 'RULE_REVIEW', jurisdiction)`. The review function re-checks this permission and prevents self-review at decision time.
+
 ## Workflow invariants
 
 - New rules are drafts and never become effective at creation time.
