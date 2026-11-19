@@ -185,12 +185,22 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM public.finance_tax_jurisdictions j WHERE j.id=v_jurisdiction_id AND j.is_active) THEN
       RAISE EXCEPTION USING ERRCODE='23514', MESSAGE='JURISDICTION_REFERENCE_INACTIVE';
     END IF;
+    -- The rule must be effective on the assignment's own start date.
+    -- Approval date (CURRENT_DATE) is not the tax-effective date and would
+    -- incorrectly reject future-dated assignments or accept expired coverage.
     IF NOT EXISTS (
-      SELECT 1 FROM public.finance_tax_rules r
-       WHERE r.jurisdiction_id=v_jurisdiction_id AND r.status='ACTIVE'
-         AND r.tenant_id IS NULL AND r.valid_from<=CURRENT_DATE
-         AND (r.valid_to IS NULL OR r.valid_to>=CURRENT_DATE)
-    ) THEN RAISE EXCEPTION USING ERRCODE='23514', MESSAGE='NO_ACTIVE_GLOBAL_TAX_RULE'; END IF;
+      SELECT 1
+        FROM public.finance_tenant_tax_jurisdictions a
+        JOIN public.finance_tax_rules r
+          ON r.jurisdiction_id=a.jurisdiction_id
+         AND r.status='ACTIVE'
+         AND r.tenant_id IS NULL
+         AND r.valid_from<=a.valid_from
+         AND (r.valid_to IS NULL OR r.valid_to>=a.valid_from)
+       WHERE a.id=p_assignment_id
+    ) THEN
+      RAISE EXCEPTION USING ERRCODE='23514', MESSAGE='NO_ACTIVE_GLOBAL_TAX_RULE_FOR_EFFECTIVE_DATE';
+    END IF;
     UPDATE public.finance_tenant_tax_jurisdictions
        SET status='ACTIVE',reviewed_by_issuer=p_actor_issuer,reviewed_by_subject=p_actor_subject,
            reviewed_at=v_now,decision_reason=nullif(btrim(p_reason),''),evidence_verified_at=v_now,
