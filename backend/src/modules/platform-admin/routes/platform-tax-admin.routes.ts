@@ -195,8 +195,15 @@ const uuidSchema = z.string().uuid();
 
 platformTaxAdminRouter.get("/tax/approvals", requireUserAuth(), async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
-  try { await platformAdminAccessService.assertActiveOperator(req.financeUser); }
-  catch (error) { if (!sendTaxAdminError(error, res)) next(error); return; }
+  const identity = req.financeUser;
+  if (!identity) {
+    res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Une session utilisateur valide est requise." } });
+    return;
+  }
+  if (!identity.emailConfirmedAt) {
+    res.status(403).json({ error: { code: "EMAIL_CONFIRMATION_REQUIRED", message: "Confirmez votre adresse e-mail." } });
+    return;
+  }
   const parsed = approvalQuerySchema.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Les filtres de validation sont invalides." } });
@@ -208,7 +215,7 @@ platformTaxAdminRouter.get("/tax/approvals", requireUserAuth(), async (req, res,
       pageSize: parsed.data.pageSize,
       ...(parsed.data.status !== undefined ? { status: parsed.data.status } : {}),
     };
-    const data = await listPlatformTaxApprovals.execute(query);
+    const data = await listPlatformTaxApprovals.execute(query, identity.issuer, identity.id);
     res.status(200).json({ data });
   } catch (error) { next(error); }
 });
@@ -242,15 +249,21 @@ platformTaxAdminRouter.post("/tax/approvals/:approvalId/review", requireUserAuth
     res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origine de requête non autorisée." } });
     return;
   }
-  try { await platformAdminAccessService.assertActiveOperator(req.financeUser); }
-  catch (error) { if (!sendTaxAdminError(error, res)) next(error); return; }
+  const identity = req.financeUser;
+  if (!identity) {
+    res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Une session utilisateur valide est requise." } });
+    return;
+  }
+  if (!identity.emailConfirmedAt) {
+    res.status(403).json({ error: { code: "EMAIL_CONFIRMATION_REQUIRED", message: "Confirmez votre adresse e-mail." } });
+    return;
+  }
   const approvalId = uuidSchema.safeParse(req.params["approvalId"]);
   const body = reviewBodySchema.safeParse(req.body);
   if (!approvalId.success || !body.success) {
     res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "La décision ou le motif est invalide." } });
     return;
   }
-  const identity = req.financeUser!;
   try {
     const data = await reviewGlobalTaxRule.execute({
       approvalId: approvalId.data, decision: body.data.decision, reason: body.data.reason,
