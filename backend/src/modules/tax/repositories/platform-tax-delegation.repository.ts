@@ -15,6 +15,21 @@ export interface PlatformTaxDelegationInput {
 }
 
 export const platformTaxDelegationRepository = {
+  async isActiveRuleReviewer(identityIssuer: string, identitySubject: string): Promise<boolean> {
+    const result = await pool.query<{ is_reviewer: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM public.finance_platform_tax_delegations
+          WHERE identity_issuer = $1 AND identity_subject = $2
+            AND status = 'ACTIVE' AND valid_from <= now()
+            AND (valid_to IS NULL OR valid_to > now())
+            AND 'RULE_REVIEW' = ANY(permissions)
+       ) AS is_reviewer`,
+      [identityIssuer, identitySubject],
+    );
+    return result.rows[0]?.is_reviewer === true;
+  },
+
+
   async list(actorIssuer: string, actorSubject: string) {
     const result = await pool.query(
       "SELECT * FROM public.finance_list_platform_tax_delegations($1, $2)",
