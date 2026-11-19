@@ -369,8 +369,11 @@ const delegationBodySchema = z.object({
   if ((value.jurisdictionId === null) === (value.countryCode === null)) {
     context.addIssue({ code: "custom", path: ["jurisdictionId"], message: "Choisir une juridiction précise ou un pays, mais pas les deux." });
   }
-  if (value.validTo && value.validTo <= value.validFrom) {
+  if (value.validTo && Date.parse(value.validTo) <= Date.parse(value.validFrom)) {
     context.addIssue({ code: "custom", path: ["validTo"], message: "La fin de validité doit être postérieure au début." });
+  }
+  if (new Set(value.permissions).size !== value.permissions.length) {
+    context.addIssue({ code: "custom", path: ["permissions"], message: "Une permission ne peut être attribuée qu’une fois." });
   }
 });
 const delegationRevokeSchema = z.object({ reason: z.string().trim().min(10).max(1000) }).strict();
