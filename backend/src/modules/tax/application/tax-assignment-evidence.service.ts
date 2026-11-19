@@ -2,7 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { pool } from "../../../db/pool.js";
 import { env } from "../../../config/env.js";
 
-const BUCKET="zenox-tax-assignment-evidence";
+// Reuse the existing private registration-document bucket as approved for tax evidence.
+const BUCKET="zenox-registration-documents";
 const MAX_BYTES=10*1024*1024;
 const MIME_TYPES=new Set(["application/pdf","image/jpeg","image/png"]);
 const DOCUMENT_TYPES=new Set(["TAX_REGISTRATION","BUSINESS_REGISTRATION","PROOF_OF_ADDRESS","AUTHORIZATION_LETTER","OTHER"]);
