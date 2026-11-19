@@ -1,32 +1,30 @@
--- Provision the dedicated private bucket used by tax-assignment evidence uploads.
--- Objects are accessed only by the backend using the Supabase service role.
--- No browser role receives storage object access.
-INSERT INTO storage.buckets (
-  id,
-  name,
-  public,
-  file_size_limit,
-  allowed_mime_types
-)
-VALUES (
-  'zenox-tax-assignment-evidence',
-  'zenox-tax-assignment-evidence',
-  false,
-  10485760,
-  ARRAY['application/pdf', 'image/jpeg', 'image/png']::text[]
-)
-ON CONFLICT (id) DO UPDATE
-SET
-  public = false,
-  file_size_limit = 10485760,
-  allowed_mime_types = ARRAY['application/pdf', 'image/jpeg', 'image/png']::text[];
+-- Tax assignment evidence reuses the existing private registration-document bucket.
+-- The application stores tax evidence metadata separately and scopes every object
+-- under <assignment_id>/<uuid>. Do not create a second bucket or alter registration
+-- storage policies as part of tax administration.
+DO $$
+DECLARE
+  v_bucket record;
+BEGIN
+  SELECT id, public, file_size_limit, allowed_mime_types
+    INTO v_bucket
+    FROM storage.buckets
+   WHERE id = 'zenox-registration-documents';
 
--- Explicitly prevent browser access. Backend Storage requests use the service role.
-DROP POLICY IF EXISTS zenox_tax_assignment_evidence_backend_only
-  ON storage.objects;
-CREATE POLICY zenox_tax_assignment_evidence_backend_only
-  ON storage.objects
-  FOR ALL
-  TO service_role
-  USING (bucket_id = 'zenox-tax-assignment-evidence')
-  WITH CHECK (bucket_id = 'zenox-tax-assignment-evidence');
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = '55000',
+      MESSAGE = 'REQUIRED_PRIVATE_REGISTRATION_DOCUMENT_BUCKET_MISSING';
+  END IF;
+
+  IF v_bucket.public IS DISTINCT FROM false
+     OR v_bucket.file_size_limit IS NULL
+     OR v_bucket.file_size_limit < 10485760
+     OR NOT (
+       ARRAY['application/pdf', 'image/jpeg', 'image/png']::text[]
+       <@ coalesce(v_bucket.allowed_mime_types, ARRAY[]::text[])
+     ) THEN
+    RAISE EXCEPTION USING ERRCODE = '55000',
+      MESSAGE = 'REGISTRATION_DOCUMENT_BUCKET_CONFIGURATION_INVALID';
+  END IF;
+END
+$$;
