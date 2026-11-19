@@ -5,7 +5,7 @@ import { TaxWorkspace } from "../modules/tax/TaxWorkspace.js";
 import { ComingSoon } from "../shared/components/ComingSoon.js";
 import { pageFromPath, pagePaths, type Page } from "./navigation.js";
 import {
-  Bell, Building2, ChevronDown, CircleHelp, CreditCard, FileText, FilePlus2, Globe2, Users,
+  Bell, Building2, ChevronDown, CircleHelp, CreditCard, FileText, FilePlus2, Globe2, Users, ClipboardCheck,
   LayoutDashboard, Menu, Search, Settings2, ShieldCheck, WalletCards, X
 } from "lucide-react";
 import { RegistrationWorkspace } from "../auth/RegistrationWorkspace.js";
@@ -15,6 +15,7 @@ import { CommercialDocumentsWorkspace } from "../invoices/CommercialDocumentsWor
 import { CustomersWorkspace } from "../features/customers/CustomersWorkspace.js";
 import { PlatformReviewWorkspace } from "../platform/PlatformReviewWorkspace.js";
 import { PlatformAdminDashboard } from "../platform/PlatformAdminDashboard.js";
+import { PlatformTaxReviewWorkspace } from "../platform/PlatformTaxReviewWorkspace.js";
 import { LandingPage } from "../public/LandingPage.js";
 import { BrandLogo } from "../shared/components/BrandLogo.js";
 
@@ -36,6 +37,7 @@ const navigation: { id: Page; label: string; icon: typeof LayoutDashboard }[] = 
   { id: "tax", label: "Moteur fiscal", icon: Globe2 },
   { id: "settings", label: "Paramètres", icon: Settings2 },
   { id: "platform", label: "Demandes d’inscription", icon: ShieldCheck },
+  { id: "tax-review", label: "Revue fiscale", icon: ClipboardCheck },
 ];
 
 export function App() {
@@ -46,6 +48,7 @@ export function App() {
   const [activeTenant, setActiveTenant] = useState<ActiveTenant | null>(null);
   const [tenants, setTenants] = useState<ActiveTenant[]>([]);
   const [isPlatformOperator, setIsPlatformOperator] = useState(false);
+  const [isTaxReviewer, setIsTaxReviewer] = useState(false);
   const [entryError, setEntryError] = useState("");
   const [showOrganizationSetup, setShowOrganizationSetup] = useState(false);
 
@@ -109,7 +112,7 @@ export function App() {
   const navigate = (next: Page) => { routerNavigate(pagePaths[next]); setMobileOpen(false); setNotice(""); };
   const visibleNavigation = isPlatformOperator
     ? (activeTenant ? navigation : navigation.filter((item) => item.id === "platform"))
-    : navigation.filter((item) => item.id !== "platform");
+    : navigation.filter((item) => item.id !== "platform" && (item.id !== "tax-review" || isTaxReviewer));
   const title = visibleNavigation.find((item) => item.id === page)?.label ?? "Vue d’ensemble";
 
   if (entryChecking) return <main className="entry-loading"><BrandLogo variant="light" /><p>Vérification sécurisée de votre espace…</p></main>;
@@ -125,17 +128,17 @@ export function App() {
     />;
   }
   if (!sessionUser) return <><RegistrationWorkspace user={null} initialMode={authRequested ? requestedMode : "login"} onSessionChanged={refreshEntry}/>{entryError && <div className="entry-error">{entryError}</div>}</>;
-  if (!activeTenant && !isPlatformOperator && !sessionUser.emailConfirmedAt) {
+  if (!activeTenant && !isPlatformOperator && !isTaxReviewer && !sessionUser.emailConfirmedAt) {
     return <RegistrationWorkspace user={sessionUser} onSessionChanged={refreshEntry} />;
   }
-  if (!activeTenant && !isPlatformOperator && !showOrganizationSetup) {
+  if (!activeTenant && !isPlatformOperator && !isTaxReviewer && !showOrganizationSetup) {
     return <PlatformEntryWorkspace
       user={sessionUser}
       onCreateOrganization={() => setShowOrganizationSetup(true)}
       onSessionChanged={refreshEntry}
     />;
   }
-  if (!activeTenant && !isPlatformOperator) {
+  if (!activeTenant && !isPlatformOperator && !isTaxReviewer) {
     return <><RegistrationWorkspace
       user={sessionUser}
       onSessionChanged={refreshEntry}
@@ -144,6 +147,7 @@ export function App() {
   }
 
   if (isPlatformOperator) return <PlatformAdminDashboard email={sessionUser.email ?? "admin"} onSignOut={async () => { await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" }); await refreshEntry(); }} />;
+  if (!activeTenant && isTaxReviewer) return <PlatformTaxReviewWorkspace email={sessionUser.email ?? "reviewer"} onSignOut={async () => { await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" }); await refreshEntry(); }} />;
 
   async function signOut() {
     await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" });
@@ -172,7 +176,7 @@ export function App() {
         {page === "customers" && activeTenant && <CustomersWorkspace tenantId={activeTenant.id} canManage={["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(activeTenant.role)}/>}
         {page === "payments" && <ComingSoon icon={WalletCards} title="Paiements & allocations" description="Les paiements, affectations et soldes seront servis par le backend Finance, avec idempotence et contrôle multi-tenant."/>}
         {page === "settings" && <ComingSoon icon={Settings2} title="Paramètres Finance" description="La configuration des organisations, devises et intégrations sera reliée aux services authentifiés."/>}
-        {page === "platform" && isPlatformOperator && <PlatformReviewWorkspace/>}
+        {page === "platform" && isPlatformOperator && <PlatformReviewWorkspace/>}\n        {page === "tax-review" && isTaxReviewer && <PlatformTaxReviewWorkspace email={sessionUser.email ?? "reviewer"} onSignOut={signOut}/>}
         <footer><span>© 2026 ZENOX Finance</span><span><ShieldCheck size={13}/> Finance indépendante · API-first</span><span>Interface en construction</span></footer>
       </div>
     </main>
