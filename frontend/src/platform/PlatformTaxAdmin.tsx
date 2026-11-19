@@ -315,6 +315,7 @@ export function PlatformTaxAdmin() {
         ["approvals", "Approbations", ClipboardCheck],
         ["jurisdictions", "Juridictions", Globe2],
         ["levels", "Niveaux", Layers3],
+        ["delegations", "Délégations", KeyRound],
         ["audit", "Journal d’audit", History],
       ] as const).map(([id, label, Icon]) => <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}><Icon size={15}/>{label}{id === "approvals" && pendingCount > 0 && <b>{pendingCount}</b>}</button>)}
     </nav>
@@ -398,7 +399,7 @@ export function PlatformTaxAdmin() {
           <Field label="Portée"><select value={delegationForm.scopeType} onChange={(e) => setDelegationForm((v) => ({ ...v, scopeType: e.target.value as "COUNTRY" | "JURISDICTION" }))}><option value="COUNTRY">Pays entier</option><option value="JURISDICTION">Juridiction précise</option></select></Field>
           {delegationForm.scopeType === "COUNTRY"
             ? <Field label="Pays ISO-2 *"><input required pattern="[A-Z]{2}" maxLength={2} value={delegationForm.countryCode} onChange={(e) => setDelegationForm((v) => ({ ...v, countryCode: e.target.value.toUpperCase() }))}/></Field>
-            : <Field label="Juridiction *"><select required value={delegationForm.jurisdictionId} onChange={(e) => setDelegationForm((v) => ({ ...v, jurisdictionId: e.target.value }))}><option value="">Sélectionner…</option>{jurisdictions?.items.map((j) => <option key={j.id} value={j.id}>{j.countryCode} · {j.code} — {j.name}</option>)}</select></Field>}
+            : <Field label="Juridiction *"><select required value={delegationForm.jurisdictionId} onChange={(e) => setDelegationForm((v) => ({ ...v, jurisdictionId: e.target.value }))}><option value="">Sélectionner…</option>{jurisdictions?.items.filter((j) => j.isActive).map((j) => <option key={j.id} value={j.id}>{j.countryCode} · {j.code} — {j.name}</option>)}</select></Field>}
           <Field label="Début de validité *"><input required type="datetime-local" value={delegationForm.validFrom} onChange={(e) => setDelegationForm((v) => ({ ...v, validFrom: e.target.value }))}/></Field>
           <Field label="Fin de validité"><input type="datetime-local" min={delegationForm.validFrom} value={delegationForm.validTo} onChange={(e) => setDelegationForm((v) => ({ ...v, validTo: e.target.value }))}/></Field>
           <Field label="Motif *"><input required minLength={10} maxLength={1000} value={delegationForm.reason} onChange={(e) => setDelegationForm((v) => ({ ...v, reason: e.target.value }))}/></Field>
