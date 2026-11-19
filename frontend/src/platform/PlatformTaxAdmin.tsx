@@ -9,7 +9,7 @@ type TaxRule = {
   taxType: string; treatment: string; ratePercent: string; priceMode: string;
   priority: number; isCompound: boolean; appliesTo: string; version: number;
   validFrom: string; validTo: string | null; status: "DRAFT" | "ACTIVE" | "RETIRED";
-  sourceReference: string | null; sourceUrl: string | null;
+  sourceReference: string | null; sourceUrl: string | null; sourceVerifiedAt: string | null; reviewedBy: string | null;
   accountingTreatment: string; applicabilityConditions: { schemaVersion: 1; all: unknown[] };
 };
 type Page<T> = { items: T[]; page: number; pageSize: number; hasMore: boolean; scope?: "GLOBAL" };
