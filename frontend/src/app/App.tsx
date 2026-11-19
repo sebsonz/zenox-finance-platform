@@ -62,6 +62,7 @@ export function App() {
         setActiveTenant(null);
         setTenants([]);
         setIsPlatformOperator(false);
+        setIsTaxReviewer(false);
         setShowOrganizationSetup(false);
         if (location.pathname !== "/") routerNavigate(pagePaths.dashboard, { replace: true });
         return;
@@ -76,18 +77,24 @@ export function App() {
       setActiveTenant((current) => availableTenants.find((tenant) => tenant.id === current?.id) ?? availableTenants[0] ?? null);
       const platformResponse = await fetch("/api/v1/user/platform/me", { credentials: "same-origin", cache: "no-store" });
       let nextIsPlatformOperator = false;
+      let nextIsTaxReviewer = false;
       if (platformResponse.ok) {
-        const platformData = await readEntryData<{ isPlatformOperator: boolean }>(platformResponse);
+        const platformData = await readEntryData<{ isPlatformOperator: boolean; isTaxReviewer?: boolean }>(platformResponse);
         nextIsPlatformOperator = platformData.isPlatformOperator;
+        nextIsTaxReviewer = platformData.isTaxReviewer === true;
       }
       setIsPlatformOperator(nextIsPlatformOperator);
+      setIsTaxReviewer(nextIsTaxReviewer);
       if (availableTenants.length === 0 && nextIsPlatformOperator) routerNavigate(pagePaths.platform, { replace: true });
+      else if (availableTenants.length === 0 && nextIsTaxReviewer) routerNavigate(pagePaths["tax-review"], { replace: true });
       else if (page === "platform" && !nextIsPlatformOperator) routerNavigate(pagePaths.dashboard, { replace: true });
+      else if (page === "tax-review" && !nextIsTaxReviewer && !nextIsPlatformOperator) routerNavigate(pagePaths.dashboard, { replace: true });
     } catch (error) {
       setSessionUser(null);
       setActiveTenant(null);
       setTenants([]);
       setIsPlatformOperator(false);
+      setIsTaxReviewer(false);
       setShowOrganizationSetup(false);
       routerNavigate(pagePaths.dashboard, { replace: true });
       setEntryError(error instanceof Error ? error.message : "L’API Finance est inaccessible.");
@@ -104,7 +111,10 @@ export function App() {
     if (!entryChecking && page === "platform" && !isPlatformOperator) {
       routerNavigate(pagePaths.dashboard, { replace: true });
     }
-  }, [entryChecking, isPlatformOperator, page, routerNavigate]);
+    if (!entryChecking && page === "tax-review" && !isTaxReviewer && !isPlatformOperator) {
+      routerNavigate(pagePaths.dashboard, { replace: true });
+    }
+  }, [entryChecking, isPlatformOperator, isTaxReviewer, page, routerNavigate]);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notice, setNotice] = useState("");
