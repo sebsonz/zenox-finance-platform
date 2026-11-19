@@ -9,11 +9,11 @@ All routes are mounted under `/api/v1/user/platform`. Browser clients call the F
 ## Authorization and security
 
 - A valid authenticated user session is required.
-- The identity must have a confirmed email and active platform-operator status.
+- A confirmed email and authenticated identity are required for all routes. Operator-only management routes additionally require active platform-operator status. Approval queue and review routes also accept a delegated identity with `RULE_REVIEW` permission for the rule jurisdiction.
 - Mutating browser requests require a same-origin `Origin` header.
 - Identity issuer and subject are taken from the verified session, never from request payloads.
 - Every mutation carries the server-generated correlation ID and a reason where required.
-- Database SECURITY DEFINER functions re-check operator/delegation permissions and enforce workflow invariants.
+- Database SECURITY DEFINER functions re-check operator/delegation permissions and enforce workflow invariants. Approval queue reads are scoped per jurisdiction through `finance_tax_actor_can`.
 - A rule submitter cannot review their own submission. Review permission is checked by `finance_tax_actor_can(..., 'RULE_REVIEW', ...)`.
 - The browser cannot set tenant scope, rule version, rule status, approval status, or reviewer identity.
 
