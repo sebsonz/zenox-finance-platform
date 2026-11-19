@@ -176,7 +176,8 @@ export function App() {
         {page === "customers" && activeTenant && <CustomersWorkspace tenantId={activeTenant.id} canManage={["OWNER", "ADMIN", "FINANCE_MANAGER"].includes(activeTenant.role)}/>}
         {page === "payments" && <ComingSoon icon={WalletCards} title="Paiements & allocations" description="Les paiements, affectations et soldes seront servis par le backend Finance, avec idempotence et contrôle multi-tenant."/>}
         {page === "settings" && <ComingSoon icon={Settings2} title="Paramètres Finance" description="La configuration des organisations, devises et intégrations sera reliée aux services authentifiés."/>}
-        {page === "platform" && isPlatformOperator && <PlatformReviewWorkspace/>}\n        {page === "tax-review" && isTaxReviewer && <PlatformTaxReviewWorkspace email={sessionUser.email ?? "reviewer"} onSignOut={signOut}/>}
+        {page === "platform" && isPlatformOperator && <PlatformReviewWorkspace/>}
+        {page === "tax-review" && isTaxReviewer && <PlatformTaxReviewWorkspace email={sessionUser.email ?? "reviewer"} onSignOut={signOut}/>}
         <footer><span>© 2026 ZENOX Finance</span><span><ShieldCheck size={13}/> Finance indépendante · API-first</span><span>Interface en construction</span></footer>
       </div>
     </main>
