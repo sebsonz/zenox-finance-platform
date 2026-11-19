@@ -2,7 +2,6 @@
 -- The historical table and its data remain authoritative; no rows are deleted or rewritten.
 -- Finance database only. Review and test before applying to any Supabase environment.
 
-BEGIN;
 
 -- The original 20261108000400 migration created a one-row-per-tenant/jurisdiction
 -- configuration record. The reviewed workflow needs immutable request history, so
