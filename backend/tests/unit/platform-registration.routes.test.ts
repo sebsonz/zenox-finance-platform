@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     emailConfirmedAt: "2026-10-20T10:00:00.000Z" as string | null,
   } as { id: string; issuer: string; email?: string; emailConfirmedAt?: string | null } | undefined,
   isPlatformOperator: vi.fn(),
+  isActiveRuleReviewer: vi.fn(),
   listPendingForOperator: vi.fn(),
   review: vi.fn(),
   requireUserAuth: vi.fn(() => (req: Request, _res: Response, next: NextFunction) => {
@@ -20,6 +21,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../src/middleware/require-user-auth.js", () => ({ requireUserAuth: mocks.requireUserAuth }));
+vi.mock("../../src/modules/tax/application/manage-platform-tax-delegations.use-case.js", () => ({
+  managePlatformTaxDelegations: { isActiveRuleReviewer: mocks.isActiveRuleReviewer },
+}));
 vi.mock("../../src/modules/registration/repositories/registration.repository.js", () => ({
   registrationRepository: {
     isPlatformOperator: mocks.isPlatformOperator,
@@ -79,6 +83,7 @@ describe("platform registration review routes", () => {
       emailConfirmedAt: "2026-10-20T10:00:00.000Z",
     };
     mocks.isPlatformOperator.mockResolvedValue(true);
+    mocks.isActiveRuleReviewer.mockResolvedValue(false);
     mocks.listPendingForOperator.mockResolvedValue([]);
     mocks.review.mockResolvedValue({
       request_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
