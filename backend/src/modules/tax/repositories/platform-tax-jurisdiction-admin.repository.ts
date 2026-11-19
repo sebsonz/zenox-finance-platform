@@ -69,7 +69,7 @@ export const platformTaxJurisdictionAdminRepository = {
       `SELECT id, actor_issuer, actor_subject, action, resource_type,
               resource_id, correlation_id, reason, safe_metadata, created_at
          FROM public.finance_platform_tax_audit_events
-        WHERE action LIKE 'GLOBAL_TAX_RULE_%' OR action LIKE 'TAX_JURISDICTION%'
+        WHERE action LIKE 'GLOBAL_TAX_RULE_%' OR action LIKE 'TAX_JURISDICTION%' OR action LIKE 'TAX_DELEGATION%'
         ORDER BY created_at DESC, id DESC
         LIMIT $1 OFFSET $2`,
       values,
