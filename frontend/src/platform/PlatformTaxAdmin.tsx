@@ -124,8 +124,7 @@ export function PlatformTaxAdmin() {
     if (search.trim()) params.set("search", search.trim());
     if (ruleStatus) params.set("status", ruleStatus);
     if (ruleType) params.set("taxType", ruleType);
-    const approvalParams = new URLSearchParams({ page: "1", pageSize: "50" });
-    if (approvalStatus) approvalParams.set("status", approvalStatus);
+    const approvalParams = new URLSearchParams({ page: "1", pageSize: "100" });
     const auditParams = new URLSearchParams({ page: "1", pageSize: "50" });
     try {
       const results = await Promise.allSettled([
@@ -149,7 +148,8 @@ export function PlatformTaxAdmin() {
   useEffect(() => { void load(); }, [load, refreshKey]);
 
   const activeCount = rules?.items.filter((rule) => rule.status === "ACTIVE").length ?? 0;
-  const pendingCount = approvals?.items.filter((approval) => approval.status === "PENDING_REVIEW").length ?? 0;\n  const filteredApprovals = approvals?.items.filter((approval) => approval.status === approvalStatus) ?? [];
+  const pendingCount = approvals?.items.filter((approval) => approval.status === "PENDING_REVIEW").length ?? 0;
+  const filteredApprovals = approvals?.items.filter((approval) => approval.status === approvalStatus) ?? [];
   const activeJurisdictions = jurisdictions?.items.filter((item) => item.isActive).length ?? 0;
   const selectedJurisdiction = jurisdictions?.items.find((item) => item.countryCode === selectedCountry && item.isActive) ?? null;
   const parentOptions = useMemo(() => jurisdictions?.items.filter((item) =>
