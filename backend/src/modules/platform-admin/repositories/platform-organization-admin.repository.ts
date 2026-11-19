@@ -27,8 +27,8 @@ export const platformOrganizationAdminRepository = {
     profile: PlatformOrganizationProfileInput; reason: string; correlationId: string;
   }): Promise<{ tenant_id: string; updated_at: Date }> {
     const result = await pool.query<{ tenant_id: string; updated_at: Date }>(
-      \`SELECT tenant_id, updated_at
-         FROM public.finance_platform_update_organization_profile($1, $2, $3, $4::jsonb, $5, $6)\`,
+      `SELECT tenant_id, updated_at
+         FROM public.finance_platform_update_organization_profile($1, $2, $3, $4::jsonb, $5, $6)`,
       [input.operatorIssuer, input.operatorSubject, input.tenantId, JSON.stringify(input.profile), input.reason, input.correlationId],
     );
     const row = result.rows[0];
@@ -42,8 +42,8 @@ export const platformOrganizationAdminRepository = {
     reason: string; correlationId: string;
   }): Promise<{ member_id: string; role_code: string; status: string; updated_at: Date }> {
     const result = await pool.query<{ member_id: string; role_code: string; status: string; updated_at: Date }>(
-      \`SELECT member_id, role_code, status, updated_at
-         FROM public.finance_platform_update_organization_member($1, $2, $3, $4, $5, $6, $7, $8)\`,
+      `SELECT member_id, role_code, status, updated_at
+         FROM public.finance_platform_update_organization_member($1, $2, $3, $4, $5, $6, $7, $8)`,
       [input.operatorIssuer, input.operatorSubject, input.tenantId, input.memberId, input.role, input.status, input.reason, input.correlationId],
     );
     const row = result.rows[0];
