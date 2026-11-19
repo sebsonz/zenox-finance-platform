@@ -23,6 +23,10 @@ describe("platformTaxRuleRepository", () => {
     expect(sql).toContain("tax_type = $1");
     expect(sql).toContain("status = $2");
     expect(sql).toContain("ILIKE $3");
+    expect(sql).toContain("accounting_treatment");
+    expect(sql).toContain("applicability_conditions");
+    expect(sql).toContain("source_verified_at");
+    expect(sql).toContain("reviewed_by");
     expect(values).toEqual(["VAT", "ACTIVE", "%standard%", 2, 1]);
     expect(result.rows).toHaveLength(1);
     expect(result.hasMore).toBe(true);
