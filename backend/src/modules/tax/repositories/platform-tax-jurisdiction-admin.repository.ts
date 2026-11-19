@@ -31,7 +31,7 @@ export interface TaxJurisdictionLevelInput {
 export const platformTaxJurisdictionAdminRepository = {
   async upsert(input: TaxJurisdictionInput): Promise<string> {
     const result = await pool.query<{ id: string }>(
-      "SELECT public.finance_platform_upsert_tax_jurisdiction($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) AS id",
+      "SELECT public.finance_platform_upsert_tax_jurisdiction($1,$2,$3::char(2),$4,$5,$6,$7,$8,$9,$10,$11) AS id",
       [input.id, input.code, input.countryCode, input.name, input.levelCode, input.parentId,
         input.isActive, input.actorIssuer, input.actorSubject, input.reason, input.correlationId],
     );
@@ -42,7 +42,7 @@ export const platformTaxJurisdictionAdminRepository = {
 
   async upsertLevel(input: TaxJurisdictionLevelInput): Promise<string> {
     const result = await pool.query<{ id: string }>(
-      "SELECT public.finance_platform_upsert_tax_jurisdiction_level($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) AS id",
+      "SELECT public.finance_platform_upsert_tax_jurisdiction_level($1::char(2),$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) AS id",
       [input.countryCode, input.levelCode, input.label, input.parentLevelCode, input.sortOrder,
         input.isRequired, input.isActive, input.actorIssuer, input.actorSubject, input.reason, input.correlationId],
     );
