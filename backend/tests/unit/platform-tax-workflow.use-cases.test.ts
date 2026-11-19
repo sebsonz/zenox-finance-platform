@@ -4,7 +4,7 @@ vi.mock("../../src/modules/tax/repositories/platform-tax-approval.repository.js"
   platformTaxApprovalRepository: { submit: vi.fn(), review: vi.fn() },
 }));
 vi.mock("../../src/modules/tax/repositories/platform-tax-delegation.repository.js", () => ({
-  platformTaxDelegationRepository: { list: vi.fn(), create: vi.fn(), revoke: vi.fn() },
+  platformTaxDelegationRepository: { isActiveRuleReviewer: vi.fn(), list: vi.fn(), create: vi.fn(), revoke: vi.fn() },
 }));
 vi.mock("../../src/modules/tax/repositories/platform-tax-jurisdiction-admin.repository.js", () => ({
   platformTaxJurisdictionAdminRepository: { upsert: vi.fn(), upsertLevel: vi.fn(), listLevels: vi.fn(), listAuditEvents: vi.fn() },
@@ -61,5 +61,9 @@ describe("platform tax workflow use cases", () => {
       delegationId: "delegation-1", reason: "Fin de la mission fiscale",
       actorIssuer: "issuer", actorSubject: "operator", correlationId: "corr-6",
     })).resolves.toBe(true);
+  });
+  it("exposes delegated rule-review eligibility for platform entry", async () => {
+    vi.mocked(platformTaxDelegationRepository.isActiveRuleReviewer).mockResolvedValue(true);
+    await expect(managePlatformTaxDelegations.isActiveRuleReviewer("issuer", "agent")).resolves.toBe(true);
   });
 });
