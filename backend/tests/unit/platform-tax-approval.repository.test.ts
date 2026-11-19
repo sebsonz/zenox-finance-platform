@@ -27,12 +27,13 @@ describe("platformTaxApprovalRepository", () => {
 
   it("lists only global approvals and binds filters and pagination", async () => {
     vi.mocked(pool.query).mockResolvedValue({ rows: [{ approval_id: "approval-1" }, { approval_id: "approval-2" }] } as never);
-    const result = await platformTaxApprovalRepository.list({ status: "PENDING_REVIEW", page: 2, pageSize: 1 });
+    const result = await platformTaxApprovalRepository.list({ status: "PENDING_REVIEW", page: 2, pageSize: 1 }, "issuer", "reviewer");
     const [sql, values] = vi.mocked(pool.query).mock.calls[0] ?? [];
     expect(sql).toContain("a.tenant_id IS NULL");
-    expect(sql).toContain("a.status = $1");
+    expect(sql).toContain("public.finance_tax_actor_can($1, $2, 'RULE_REVIEW', r.jurisdiction_id)");
+    expect(sql).toContain("a.status = $3");
     expect(sql).toContain("r.tenant_id IS NULL");
-    expect(values).toEqual(["PENDING_REVIEW", 2, 1]);
+    expect(values).toEqual(["issuer", "reviewer", "PENDING_REVIEW", 2, 1]);
     expect(result.rows).toHaveLength(1);
     expect(result.hasMore).toBe(true);
   });
