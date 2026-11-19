@@ -13,6 +13,7 @@ BEGIN
   IF jsonb_typeof(p_rule)<>'object'
      OR length(btrim(coalesce(p_reason,''))) NOT BETWEEN 10 AND 1000
      OR length(btrim(coalesce(p_correlation_id,''))) NOT BETWEEN 1 AND 100
+     OR length(btrim(coalesce(p_rule->>'ruleCode',''))) NOT BETWEEN 1 AND 80
      OR length(btrim(coalesce(p_rule->>'sourceReference',''))) NOT BETWEEN 1 AND 500 THEN
     RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='INVALID_GLOBAL_TAX_RULE_DRAFT';
   END IF;
@@ -20,6 +21,12 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.finance_tax_jurisdictions WHERE id=v_jurisdiction_id AND is_active) THEN
     RAISE EXCEPTION USING ERRCODE='P0002',MESSAGE='JURISDICTION_NOT_ACTIVE';
   END IF;
+  -- Serialize version allocation for this jurisdiction/rule code. The
+  -- unique constraint remains the final integrity guard, while this transaction-
+  -- scoped lock prevents concurrent draft creation from choosing the same version.
+  PERFORM pg_advisory_xact_lock(
+    hashtextextended(v_jurisdiction_id::text || ':' || (p_rule->>'ruleCode'), 0)
+  );
   SELECT coalesce(max(r.version),0)+1 INTO v_version
     FROM public.finance_tax_rules r
    WHERE r.tenant_id IS NULL AND r.jurisdiction_id=v_jurisdiction_id
