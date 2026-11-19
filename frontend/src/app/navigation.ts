@@ -1,4 +1,4 @@
-export type Page = "dashboard" | "tax" | "invoices" | "commercial-documents" | "customers" | "payments" | "settings" | "platform";
+export type Page = "dashboard" | "tax" | "invoices" | "commercial-documents" | "customers" | "payments" | "settings" | "platform" | "tax-review";
 
 export const pagePaths: Record<Page, string> = {
   dashboard: "/dashboard",
@@ -9,6 +9,7 @@ export const pagePaths: Record<Page, string> = {
   payments: "/payments",
   settings: "/settings",
   platform: "/platform",
+  "tax-review": "/tax-review",
 };
 
 export function pageFromPath(pathname: string): Page {
