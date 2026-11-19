@@ -24,9 +24,9 @@ DECLARE
   v_status text;
 BEGIN
   IF p_assignment_id IS NULL OR p_tenant_id IS NULL
-     OR p_document_type NOT IN ('TAX_REGISTRATION','BUSINESS_REGISTRATION','PROOF_OF_ADDRESS','AUTHORIZATION_LETTER','OTHER')
+     OR p_document_type IS NULL OR p_document_type NOT IN ('TAX_REGISTRATION','BUSINESS_REGISTRATION','PROOF_OF_ADDRESS','AUTHORIZATION_LETTER','OTHER')
      OR p_filename IS NULL OR length(p_filename) NOT BETWEEN 1 AND 180
-     OR p_content_type NOT IN ('application/pdf','image/jpeg','image/png')
+     OR p_content_type IS NULL OR p_content_type NOT IN ('application/pdf','image/jpeg','image/png')
      OR p_byte_size IS NULL OR p_byte_size NOT BETWEEN 1 AND 10485760
      OR p_sha256 IS NULL OR p_sha256 !~ '^[a-f0-9]{64}$'
      OR p_storage_path IS NULL OR p_storage_path NOT LIKE p_assignment_id::text || '/%'
