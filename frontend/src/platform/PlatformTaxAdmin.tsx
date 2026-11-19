@@ -162,7 +162,8 @@ export function PlatformTaxAdmin() {
       if (jurisdictionResult.status === "fulfilled") setJurisdictions(jurisdictionResult.value);
       if (approvalResult.status === "fulfilled") setApprovals(approvalResult.value);
       if (auditResult.status === "fulfilled") setAudit(auditResult.value);
-      if (levelResult.status === "fulfilled") setLevels(levelResult.value.items);\n      if (delegationResult.status === "fulfilled") setDelegations(delegationResult.value.items);
+      if (levelResult.status === "fulfilled") setLevels(levelResult.value.items);
+      if (delegationResult.status === "fulfilled") setDelegations(delegationResult.value.items);
       const failures = results.filter((item) => item.status === "rejected") as PromiseRejectedResult[];
       if (failures.length) setError(failures.map((item) => item.reason instanceof Error ? item.reason.message : "Une section n’a pas pu être chargée.").join(" · "));
     } finally { setLoading(false); }
