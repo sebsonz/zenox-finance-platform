@@ -48,4 +48,18 @@ describe("platform tax workflow use cases", () => {
       correlationId: "corr-4",
     })).resolves.toBe("level-1");
   });
+  it("delegates tax permission grants and revocations to the audited repository", async () => {
+    vi.mocked(platformTaxDelegationRepository.create).mockResolvedValue("delegation-1");
+    vi.mocked(platformTaxDelegationRepository.revoke).mockResolvedValue(true);
+    await expect(managePlatformTaxDelegations.create({
+      identityIssuer: "issuer", identitySubject: "agent", jurisdictionId: null, countryCode: "BJ",
+      permissions: ["RULE_REVIEW"], validFrom: "2026-11-19T00:00:00.000Z", validTo: null,
+      reason: "Délégation de revue fiscale", actorIssuer: "issuer", actorSubject: "operator",
+      correlationId: "corr-5",
+    })).resolves.toBe("delegation-1");
+    await expect(managePlatformTaxDelegations.revoke({
+      delegationId: "delegation-1", reason: "Fin de la mission fiscale",
+      actorIssuer: "issuer", actorSubject: "operator", correlationId: "corr-6",
+    })).resolves.toBe(true);
+  });
 });
