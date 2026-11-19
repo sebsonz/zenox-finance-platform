@@ -2,7 +2,7 @@ import { z } from "zod";
 import { taxTreatmentSchema } from "../types/tax.types.js";
 import { taxApplicabilityConditionsSchema } from "./tax-applicability.schema.js";
 
-const decimalString = z.string().regex(/^(?:0|[1-9]\\d{0,2})(?:\\.\\d{1,6})?$/);
+const decimalString = z.string().regex(/^(?:0|[1-9]\d{0,2})(?:\.\d{1,6})?$/);
 const taxTreatmentValidator = z.enum(taxTreatmentSchema);
 const taxTypeSchema = z.enum([
   "VAT", "GST", "SALES_TAX", "EXCISE", "WITHHOLDING",
