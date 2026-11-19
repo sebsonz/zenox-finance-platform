@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
   AlertCircle, CheckCircle2, ClipboardCheck, FilePlus2, Globe2, History,
   RefreshCw, Save, Send, ShieldCheck, XCircle, Layers3, PencilLine,
@@ -163,9 +163,9 @@ export function PlatformTaxAdmin() {
     catch { setError("Le JSON des conditions d’applicabilité est invalide."); return; }
     setSaving(true); setError(""); setNotice("");
     try {
-      const { reason, applicabilityConditions: _conditions, priority, ...fields } = ruleForm;
+      const { reason, applicabilityConditions: _conditions, priority, validTo, sourceUrl, ...fields } = ruleForm;
       const data = await apiPost<{ id: string; status: string; scope: string }>("/api/v1/user/platform/tax/rules", {
-        rule: { ...fields, priority: Number(priority), applicabilityConditions },
+        rule: { ...fields, priority: Number(priority), applicabilityConditions, ...(validTo ? { validTo } : {}), ...(sourceUrl.trim() ? { sourceUrl: sourceUrl.trim() } : {}) },
         reason,
       }, "La création du brouillon a échoué.");
       setNotice(`Brouillon global créé (${data.id}). Il doit être soumis puis approuvé par un autre opérateur avant activation.`);
