@@ -12,14 +12,30 @@ const baseRule = {
 };
 
 describe("taxRuleSchema", () => {
-  it("accepts a valid effective-dated tax rule and defaults safe fields", () => {
+  it("accepts a valid effective-dated tax rule and defaults SQL-compatible fields", () => {
     expect(taxRuleSchema.parse(baseRule)).toMatchObject({
       jurisdictionId: baseRule.jurisdictionId,
       priceMode: "EXCLUSIVE",
       priority: 100,
       appliesTo: "GOODS",
       status: "DRAFT",
+      accountingTreatment: "TAX_CHARGED",
+      applicabilityConditions: { schemaVersion: 1, all: [] },
     });
+  });
+
+  it("accepts every accounting treatment allowed by the database constraint", () => {
+    const treatments = [
+      "TAX_CHARGED", "WITHHOLDING_DEDUCTION", "ADVANCE_INCOME_TAX",
+      "RECOVERABLE_CREDIT", "NON_RECOVERABLE_COST", "CUSTOMS_COST", "OTHER",
+    ];
+    for (const accountingTreatment of treatments) {
+      expect(taxRuleSchema.safeParse({ ...baseRule, accountingTreatment }).success).toBe(true);
+    }
+  });
+
+  it("rejects accounting treatments outside the database constraint", () => {
+    expect(taxRuleSchema.safeParse({ ...baseRule, accountingTreatment: "STANDARD" }).success).toBe(false);
   });
 
   it("rejects a non-zero rate for exempt treatment", () => {
