@@ -48,7 +48,7 @@ describe("platformTaxJurisdictionAdminRepository", () => {
   it("returns only tax administration audit events with bounded pagination", async () => {
     vi.mocked(pool.query).mockResolvedValue({ rows: [{ id: "event-1" }] } as never);
     const result = await platformTaxJurisdictionAdminRepository.listAuditEvents(1, 25);
-    expect(vi.mocked(pool.query).mock.calls[0]?.[0]).toContain("GLOBAL_TAX_RULE_%");
+    expect(vi.mocked(pool.query).mock.calls[0]?.[0]).toContain("tenant_id IS NULL");\n    expect(vi.mocked(pool.query).mock.calls[0]?.[0]).toContain("GLOBAL_TAX_RULE_%");
     expect(vi.mocked(pool.query).mock.calls[0]?.[1]).toEqual([26, 0]);
     expect(result.rows).toHaveLength(1);
     expect(result.hasMore).toBe(false);
