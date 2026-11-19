@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
   AlertCircle, CheckCircle2, ClipboardCheck, FilePlus2, Globe2, History,
-  RefreshCw, Save, Send, ShieldCheck, XCircle, Layers3, PencilLine,
+  RefreshCw, Save, Send, ShieldCheck, XCircle, Layers3, PencilLine, KeyRound,
 } from "lucide-react";
 
 type TaxRule = {
@@ -40,7 +40,13 @@ type AuditEvent = {
   reason: string | null; safe_metadata: Record<string, unknown>; created_at: string;
 };
 type Payload<T> = { data?: T; error?: { message?: string } };
-type Tab = "rules" | "approvals" | "jurisdictions" | "levels" | "audit";
+type Delegation = {
+  id: string; identity_issuer: string; identity_subject: string;
+  jurisdiction_id: string | null; country_code: string | null; permissions: string[];
+  status: string; valid_from: string; valid_to: string | null;
+  granted_by_issuer: string; granted_by_subject: string; reason: string;
+};
+type Tab = "rules" | "approvals" | "jurisdictions" | "levels" | "delegations" | "audit";
 const taxTypes = ["VAT", "GST", "SALES_TAX", "EXCISE", "WITHHOLDING", "CUSTOMS_DUTY", "IMPORT_TAX", "ENVIRONMENTAL", "STAMP_DUTY", "OTHER"];
 const treatments = ["STANDARD", "REDUCED", "ZERO_RATED", "EXEMPT", "REVERSE_CHARGE", "WITHHOLDING"];
 const accountingTreatments = ["TAX_CHARGED", "WITHHOLDING_DEDUCTION", "ADVANCE_INCOME_TAX", "RECOVERABLE_CREDIT", "NON_RECOVERABLE_COST", "CUSTOMS_COST", "OTHER"];
@@ -58,6 +64,17 @@ const emptyRule = (jurisdictionId = "") => ({
 const emptyJurisdiction = () => ({
   id: "", code: "", countryCode: "BJ", name: "", levelCode: "COUNTRY",
   parentId: "", isActive: true, reason: "Création ou mise à jour du référentiel juridictionnel",
+});
+const localDateTime = () => {
+  const date = new Date();
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 16);
+};
+const emptyDelegation = () => ({
+  identityIssuer: "", identitySubject: "", scopeType: "COUNTRY" as "COUNTRY" | "JURISDICTION",
+  countryCode: "BJ", jurisdictionId: "", permissions: ["RULE_REVIEW"] as string[],
+  validFrom: localDateTime(), validTo: "",
+  reason: "Délégation des permissions d’administration fiscale",
 });
 const emptyLevel = () => ({
   countryCode: "BJ", levelCode: "", label: "", parentLevelCode: "",
@@ -96,6 +113,11 @@ export function PlatformTaxAdmin() {
   const [approvals, setApprovals] = useState<Page<Approval> | null>(null);
   const [audit, setAudit] = useState<Page<AuditEvent> | null>(null);
   const [levels, setLevels] = useState<JurisdictionLevel[]>([]);
+  const [delegations, setDelegations] = useState<Delegation[]>([]);
+  const [delegationFormOpen, setDelegationFormOpen] = useState(false);
+  const [delegationForm, setDelegationForm] = useState(emptyDelegation());
+  const [revokeTarget, setRevokeTarget] = useState<Delegation | null>(null);
+  const [revokeReason, setRevokeReason] = useState("");
   const [selectedCountry, setSelectedCountry] = useState("BJ");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -133,13 +155,14 @@ export function PlatformTaxAdmin() {
         apiGet<Page<Approval>>(`/api/v1/user/platform/tax/approvals?${approvalParams}`, "Impossible de charger la file de validation."),
         apiGet<Page<AuditEvent>>(`/api/v1/user/platform/tax/audit?${auditParams}`, "Impossible de charger le journal fiscal."),
         apiGet<{ items: JurisdictionLevel[] }>(`/api/v1/user/platform/tax/jurisdiction-levels?countryCode=${selectedCountry}`, "Impossible de charger les niveaux juridictionnels."),
+        apiGet<{ items: Delegation[] }>("/api/v1/user/platform/tax/delegations", "Impossible de charger les délégations fiscales."),
       ]);
-      const [ruleResult, jurisdictionResult, approvalResult, auditResult, levelResult] = results;
+      const [ruleResult, jurisdictionResult, approvalResult, auditResult, levelResult, delegationResult] = results;
       if (ruleResult.status === "fulfilled") setRules(ruleResult.value);
       if (jurisdictionResult.status === "fulfilled") setJurisdictions(jurisdictionResult.value);
       if (approvalResult.status === "fulfilled") setApprovals(approvalResult.value);
       if (auditResult.status === "fulfilled") setAudit(auditResult.value);
-      if (levelResult.status === "fulfilled") setLevels(levelResult.value.items);
+      if (levelResult.status === "fulfilled") setLevels(levelResult.value.items);\n      if (delegationResult.status === "fulfilled") setDelegations(delegationResult.value.items);
       const failures = results.filter((item) => item.status === "rejected") as PromiseRejectedResult[];
       if (failures.length) setError(failures.map((item) => item.reason instanceof Error ? item.reason.message : "Une section n’a pas pu être chargée.").join(" · "));
     } finally { setLoading(false); }
@@ -154,6 +177,39 @@ export function PlatformTaxAdmin() {
   const selectedJurisdiction = jurisdictions?.items.find((item) => item.countryCode === selectedCountry && item.isActive) ?? null;
   const parentOptions = useMemo(() => jurisdictions?.items.filter((item) =>
     item.countryCode === jurisdictionForm.countryCode && item.id !== jurisdictionForm.id && item.isActive) ?? [], [jurisdictions, jurisdictionForm.countryCode, jurisdictionForm.id]);
+
+  async function createDelegation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const data = await apiPost<{ id: string }>("/api/v1/user/platform/tax/delegations", {
+        identityIssuer: delegationForm.identityIssuer,
+        identitySubject: delegationForm.identitySubject,
+        jurisdictionId: delegationForm.scopeType === "JURISDICTION" ? delegationForm.jurisdictionId : null,
+        countryCode: delegationForm.scopeType === "COUNTRY" ? delegationForm.countryCode : null,
+        permissions: delegationForm.permissions,
+        validFrom: new Date(delegationForm.validFrom).toISOString(),
+        validTo: delegationForm.validTo ? new Date(delegationForm.validTo).toISOString() : null,
+        reason: delegationForm.reason,
+      }, "La création de la délégation a échoué.");
+      setNotice(`Délégation créée : ${data.id}`);
+      setDelegationFormOpen(false); setDelegationForm(emptyDelegation()); refresh();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "La délégation a échoué."); }
+    finally { setSaving(false); }
+  }
+
+  async function revokeDelegation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!revokeTarget || saving) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      await apiPost<{ status: string }>(`/api/v1/user/platform/tax/delegations/${revokeTarget.id}/revoke`, { reason: revokeReason }, "La révocation a échoué.");
+      setNotice("Délégation révoquée. Les permissions ne seront plus reconnues.");
+      setRevokeTarget(null); setRevokeReason(""); refresh();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "La révocation a échoué."); }
+    finally { setSaving(false); }
+  }
 
   async function createRule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -330,7 +386,29 @@ export function PlatformTaxAdmin() {
       {!levels.length ? <div className="pta-empty">Aucun niveau configuré pour {selectedCountry}. Configurez d’abord le modèle hiérarchique du pays.</div> : <div className="pta-table-wrap"><table className="pad-table"><thead><tr><th>Code</th><th>Libellé</th><th>Parent</th><th>Ordre</th><th>Requis</th><th>Statut</th><th>Actions</th></tr></thead><tbody>{levels.map((l) => <tr key={l.id}><td><strong>{l.level_code}</strong></td><td>{l.label}</td><td>{l.parent_level_code ?? "—"}</td><td>{l.sort_order}</td><td>{l.is_required ? "Oui" : "Non"}</td><td><Status value={l.is_active ? "ACTIVE" : "RETIRED"}/></td><td><button className="pta-action-link" onClick={() => { setLevelForm({ countryCode: l.country_code, levelCode: l.level_code, label: l.label, parentLevelCode: l.parent_level_code ?? "", sortOrder: String(l.sort_order), isRequired: l.is_required, isActive: l.is_active, reason: "Mise à jour du modèle hiérarchique juridictionnel" }); setLevelFormOpen(true); }}>Modifier</button></td></tr>)}</tbody></table></div>}
     </section>}
 
-    {tab === "audit" && <section className="pta-panel"><div className="pta-panel-head"><div><h3>Journal d’audit fiscal</h3><p>Événements de création, soumission, décision et modification des juridictions.</p></div><History size={18}/></div>
+
+    {tab === "delegations" && <section className="pta-panel">
+      <div className="pta-panel-head"><div><h3>Délégations d’administration fiscale</h3><p>Attribuez des permissions ciblées à un opérateur ou agent de conformité, limitées à un pays ou à une juridiction et à une période définie.</p></div><button className="pta-primary" onClick={() => { setDelegationForm(emptyDelegation()); setDelegationFormOpen((v) => !v); }}><KeyRound size={15}/> Nouvelle délégation</button></div>
+      {delegationFormOpen && <form className="pta-form" onSubmit={(e) => void createDelegation(e)}>
+        <div className="pta-form-head"><div><strong>Accorder une délégation</strong><small>Le titulaire ne peut pas s’auto-déléguer. Toute attribution est auditée.</small></div><button type="button" className="pta-close" onClick={() => setDelegationFormOpen(false)}><XCircle size={17}/></button></div>
+        <div className="pta-form-grid">
+          <Field label="Identity issuer *"><input required maxLength={500} value={delegationForm.identityIssuer} onChange={(e) => setDelegationForm((v) => ({ ...v, identityIssuer: e.target.value }))} placeholder="https://issuer.example"/></Field>
+          <Field label="Identity subject *"><input required maxLength={500} value={delegationForm.identitySubject} onChange={(e) => setDelegationForm((v) => ({ ...v, identitySubject: e.target.value }))} placeholder="Identifiant utilisateur"/></Field>
+          <Field label="Portée"><select value={delegationForm.scopeType} onChange={(e) => setDelegationForm((v) => ({ ...v, scopeType: e.target.value as "COUNTRY" | "JURISDICTION" }))}><option value="COUNTRY">Pays entier</option><option value="JURISDICTION">Juridiction précise</option></select></Field>
+          {delegationForm.scopeType === "COUNTRY"
+            ? <Field label="Pays ISO-2 *"><input required pattern="[A-Z]{2}" maxLength={2} value={delegationForm.countryCode} onChange={(e) => setDelegationForm((v) => ({ ...v, countryCode: e.target.value.toUpperCase() }))}/></Field>
+            : <Field label="Juridiction *"><select required value={delegationForm.jurisdictionId} onChange={(e) => setDelegationForm((v) => ({ ...v, jurisdictionId: e.target.value }))}><option value="">Sélectionner…</option>{jurisdictions?.items.map((j) => <option key={j.id} value={j.id}>{j.countryCode} · {j.code} — {j.name}</option>)}</select></Field>}
+          <Field label="Début de validité *"><input required type="datetime-local" value={delegationForm.validFrom} onChange={(e) => setDelegationForm((v) => ({ ...v, validFrom: e.target.value }))}/></Field>
+          <Field label="Fin de validité"><input type="datetime-local" min={delegationForm.validFrom} value={delegationForm.validTo} onChange={(e) => setDelegationForm((v) => ({ ...v, validTo: e.target.value }))}/></Field>
+          <Field label="Motif *"><input required minLength={10} maxLength={1000} value={delegationForm.reason} onChange={(e) => setDelegationForm((v) => ({ ...v, reason: e.target.value }))}/></Field>
+        </div>
+        <div className="pta-permissions"><strong>Permissions accordées</strong><div className="pta-permission-grid">{(["ASSIGNMENT_REVIEW", "EVIDENCE_REVIEW", "RULE_REVIEW", "JURISDICTION_MANAGE"] as const).map((permission) => <label key={permission} className="pta-check"><input type="checkbox" checked={delegationForm.permissions.includes(permission)} onChange={(e) => setDelegationForm((v) => ({ ...v, permissions: e.target.checked ? [...v.permissions, permission] : v.permissions.filter((item) => item !== permission) }))}/>{permission}</label>)}</div></div>
+        <div className="pta-form-actions"><button className="pta-primary" disabled={saving || delegationForm.permissions.length === 0}><Save size={15}/> Accorder la délégation</button></div>
+      </form>}
+      {revokeTarget && <form className="pta-review-form" onSubmit={(e) => void revokeDelegation(e)}><div><strong>Révoquer la délégation</strong><small>{revokeTarget.identity_subject} · {revokeTarget.permissions.join(", ")}</small></div><Field label="Motif de révocation *"><input required minLength={10} maxLength={1000} value={revokeReason} onChange={(e) => setRevokeReason(e.target.value)}/></Field><div className="pta-actions"><button className="pta-primary" disabled={saving}>Confirmer</button><button type="button" onClick={() => setRevokeTarget(null)}>Annuler</button></div></form>}
+      {!delegations.length ? <div className="pta-empty">Aucune délégation fiscale n’est enregistrée.</div> : <div className="pta-table-wrap"><table className="pad-table"><thead><tr><th>Titulaire</th><th>Portée</th><th>Permissions</th><th>Validité</th><th>État</th><th>Motif</th><th>Actions</th></tr></thead><tbody>{delegations.map((d) => <tr key={d.id}><td><strong>{d.identity_subject}</strong><small>{d.identity_issuer}</small></td><td>{d.country_code ? `Pays ${d.country_code}` : jurisdictions?.items.find((j) => j.id === d.jurisdiction_id)?.code ?? d.jurisdiction_id}</td><td>{d.permissions.map((permission) => <small key={permission}>{permission}</small>)}</td><td>{new Date(d.valid_from).toLocaleString("fr-FR")}<small>{d.valid_to ? `jusqu’au ${new Date(d.valid_to).toLocaleString("fr-FR")}` : "Sans date de fin"}</small></td><td><Status value={d.status}/></td><td>{d.reason}</td><td>{d.status === "ACTIVE" && <button className="pta-action-link" onClick={() => { setRevokeTarget(d); setRevokeReason(""); }}>Révoquer</button>}</td></tr>)}</tbody></table></div>}
+    </section>}
+\n    {tab === "audit" && <section className="pta-panel"><div className="pta-panel-head"><div><h3>Journal d’audit fiscal</h3><p>Événements de création, soumission, décision et modification des juridictions.</p></div><History size={18}/></div>
       {!audit?.items.length ? <div className="pta-empty">Aucun événement fiscal ne correspond à cette vue.</div> : <div className="pta-table-wrap"><table className="pad-table"><thead><tr><th>Date</th><th>Action</th><th>Ressource</th><th>Acteur</th><th>Motif</th><th>Corrélation</th></tr></thead><tbody>{audit.items.map((event) => <tr key={event.id}><td>{new Date(event.created_at).toLocaleString("fr-FR")}</td><td><strong>{event.action}</strong></td><td>{event.resource_type}<small>{event.resource_id ?? "—"}</small></td><td><small>{event.actor_issuer}</small><small>{event.actor_subject}</small></td><td>{event.reason ?? "—"}</td><td><small>{event.correlation_id}</small></td></tr>)}</tbody></table></div>}
     </section>}
     <footer className="pta-footnote"><ShieldCheck size={15}/> La base contrôle les permissions, la séparation des auteurs et reviewers, la version soumise et l’activation atomique. Les actions sensibles sont journalisées par les fonctions SQL existantes.</footer>
