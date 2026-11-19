@@ -10,6 +10,7 @@ import { submitGlobalTaxRule } from "../../tax/application/submit-global-tax-rul
 import { reviewGlobalTaxRule } from "../../tax/application/review-global-tax-rule.use-case.js";
 import { listPlatformTaxApprovals } from "../../tax/application/list-platform-tax-approvals.use-case.js";
 import { managePlatformTaxJurisdiction } from "../../tax/application/manage-platform-tax-jurisdiction.use-case.js";
+import { managePlatformTaxDelegations } from "../../tax/application/manage-platform-tax-delegations.use-case.js";
 
 export const platformTaxAdminRouter = Router();
 
@@ -63,6 +64,9 @@ function sendTaxAdminError(error: unknown, res: Response): boolean {
     INVALID_JURISDICTION_LEVEL: { status: 422, message: "La définition du niveau de juridiction est invalide." },
     PARENT_JURISDICTION_LEVEL_NOT_FOUND: { status: 422, message: "Le niveau parent est introuvable ou inactif." },
     JURISDICTION_LEVEL_CYCLE: { status: 422, message: "Cette configuration créerait une boucle de niveaux." },
+    INVALID_TAX_DELEGATION: { status: 422, message: "La portée, les permissions ou la période de délégation sont invalides." },
+    SELF_DELEGATION_NOT_ALLOWED: { status: 403, message: "Un opérateur ne peut pas se déléguer ses propres permissions." },
+    REVOCATION_REASON_REQUIRED: { status: 422, message: "Un motif de révocation de 10 à 1000 caractères est obligatoire." },
   };
   const mapped = known[message];
   if (mapped) {
@@ -336,4 +340,100 @@ platformTaxAdminRouter.get("/tax/audit", requireUserAuth(), async (req, res, nex
     const result = await managePlatformTaxJurisdiction.listAuditEvents(parsed.data.page, parsed.data.pageSize);
     res.status(200).json({ data: { items: result.rows, page: parsed.data.page, pageSize: parsed.data.pageSize, hasMore: result.hasMore } });
   } catch (error) { next(error); }
+});
+
+
+const delegationBodySchema = z.object({
+  identityIssuer: z.string().trim().min(1).max(500),
+  identitySubject: z.string().trim().min(1).max(500),
+  jurisdictionId: z.string().uuid().nullable().default(null),
+  countryCode: z.string().regex(/^[A-Z]{2}$/).nullable().default(null),
+  permissions: z.array(z.enum(["ASSIGNMENT_REVIEW", "EVIDENCE_REVIEW", "RULE_REVIEW", "JURISDICTION_MANAGE"])).min(1).max(4),
+  validFrom: z.iso.datetime(),
+  validTo: z.iso.datetime().nullable().default(null),
+  reason: z.string().trim().min(10).max(1000),
+}).strict().superRefine((value, context) => {
+  if ((value.jurisdictionId === null) === (value.countryCode === null)) {
+    context.addIssue({ code: "custom", path: ["jurisdictionId"], message: "Choisir une juridiction précise ou un pays, mais pas les deux." });
+  }
+  if (value.validTo && value.validTo <= value.validFrom) {
+    context.addIssue({ code: "custom", path: ["validTo"], message: "La fin de validité doit être postérieure au début." });
+  }
+});
+const delegationRevokeSchema = z.object({ reason: z.string().trim().min(10).max(1000) }).strict();
+
+platformTaxAdminRouter.get("/tax/delegations", requireUserAuth(), async (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  const identity = req.financeUser;
+  try {
+    await platformAdminAccessService.assertActiveOperator(identity);
+    if (!identity) {
+      res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Une session utilisateur valide est requise." } });
+      return;
+    }
+    const items = await managePlatformTaxDelegations.list(identity.issuer, identity.id);
+    res.status(200).json({ data: { items, scope: "GLOBAL" } });
+  } catch (error) { if (!sendTaxAdminError(error, res)) next(error); }
+});
+
+platformTaxAdminRouter.post("/tax/delegations", requireUserAuth(), async (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  if (!sameOrigin(req)) {
+    res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origine de requête non autorisée." } });
+    return;
+  }
+  const identity = req.financeUser;
+  try { await platformAdminAccessService.assertActiveOperator(identity); }
+  catch (error) { if (!sendTaxAdminError(error, res)) next(error); return; }
+  if (!identity) {
+    res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Une session utilisateur valide est requise." } });
+    return;
+  }
+  const body = delegationBodySchema.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "La délégation ou sa portée est invalide." } });
+    return;
+  }
+  try {
+    const id = await managePlatformTaxDelegations.create({
+      ...body.data,
+      actorIssuer: identity.issuer,
+      actorSubject: identity.id,
+      correlationId: String(res.locals["correlationId"] ?? "unknown"),
+    });
+    res.status(201).json({ data: { id, status: "ACTIVE" } });
+  } catch (error) { if (!sendTaxAdminError(error, res)) next(error); }
+});
+
+platformTaxAdminRouter.post("/tax/delegations/:delegationId/revoke", requireUserAuth(), async (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  if (!sameOrigin(req)) {
+    res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origine de requête non autorisée." } });
+    return;
+  }
+  const identity = req.financeUser;
+  try { await platformAdminAccessService.assertActiveOperator(identity); }
+  catch (error) { if (!sendTaxAdminError(error, res)) next(error); return; }
+  if (!identity) {
+    res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Une session utilisateur valide est requise." } });
+    return;
+  }
+  const delegationId = uuidSchema.safeParse(req.params["delegationId"]);
+  const body = delegationRevokeSchema.safeParse(req.body);
+  if (!delegationId.success || !body.success) {
+    res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "L’identifiant ou le motif de révocation est invalide." } });
+    return;
+  }
+  try {
+    const revoked = await managePlatformTaxDelegations.revoke({
+      delegationId: delegationId.data, reason: body.data.reason,
+      actorIssuer: identity.issuer, actorSubject: identity.id,
+      correlationId: String(res.locals["correlationId"] ?? "unknown"),
+    });
+    if (!revoked) {
+      res.status(409).json({ error: { code: "TAX_DELEGATION_NOT_ACTIVE", message: "Cette délégation n’est plus active." } });
+      return;
+    }
+    res.status(200).json({ data: { id: delegationId.data, status: "REVOKED" } });
+  } catch (error) { if (!sendTaxAdminError(error, res)) next(error); }
 });
