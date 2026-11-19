@@ -13,6 +13,7 @@ type TaxRule = {
   accountingTreatment: string; applicabilityConditions: { schemaVersion: 1; all: unknown[] };
 };
 type Page<T> = { items: T[]; page: number; pageSize: number; hasMore: boolean; scope?: "GLOBAL" };
+type JurisdictionList = { items: Jurisdiction[]; total: number; scope: "GLOBAL" };
 type Jurisdiction = {
   id: string; code: string; countryCode: string; name: string;
   jurisdictionLevel: string; parentId: string | null; isActive: boolean;
@@ -81,17 +82,17 @@ async function apiPost<T>(path: string, body: unknown, fallback: string): Promis
 function Status({ value }: { value: string }) {
   return <span className={`pta-status pta-status-${value.toLowerCase()}`}>{statusLabels[value] ?? value}</span>;
 }
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="pta-field"><span>{label}</span>{children}</label>;
 }
-function ErrorLine({ children }: { children: React.ReactNode }) {
+function ErrorLine({ children }: { children: ReactNode }) {
   return <div className="pta-error" role="alert"><AlertCircle size={15}/>{children}</div>;
 }
 
 export function PlatformTaxAdmin() {
   const [tab, setTab] = useState<Tab>("rules");
   const [rules, setRules] = useState<Page<TaxRule> | null>(null);
-  const [jurisdictions, setJurisdictions] = useState<Page<Jurisdiction> | null>(null);
+  const [jurisdictions, setJurisdictions] = useState<JurisdictionList | null>(null);
   const [approvals, setApprovals] = useState<Page<Approval> | null>(null);
   const [audit, setAudit] = useState<Page<AuditEvent> | null>(null);
   const [levels, setLevels] = useState<JurisdictionLevel[]>([]);
@@ -129,7 +130,7 @@ export function PlatformTaxAdmin() {
     try {
       const results = await Promise.allSettled([
         apiGet<Page<TaxRule>>(`/api/v1/user/platform/tax/rules?${params}`, "Impossible de charger les règles."),
-        apiGet<Page<Jurisdiction>>("/api/v1/user/platform/tax/jurisdictions", "Impossible de charger les juridictions."),
+        apiGet<JurisdictionList>("/api/v1/user/platform/tax/jurisdictions", "Impossible de charger les juridictions."),
         apiGet<Page<Approval>>(`/api/v1/user/platform/tax/approvals?${approvalParams}`, "Impossible de charger la file de validation."),
         apiGet<Page<AuditEvent>>(`/api/v1/user/platform/tax/audit?${auditParams}`, "Impossible de charger le journal fiscal."),
         apiGet<{ items: JurisdictionLevel[] }>(`/api/v1/user/platform/tax/jurisdiction-levels?countryCode=${selectedCountry}`, "Impossible de charger les niveaux juridictionnels."),
