@@ -1,6 +1,9 @@
 import { platformTaxDelegationRepository, type PlatformTaxDelegationInput } from "../repositories/platform-tax-delegation.repository.js";
 
 export const managePlatformTaxDelegations = {
+  isActiveRuleReviewer(identityIssuer: string, identitySubject: string): Promise<boolean> {
+    return platformTaxDelegationRepository.isActiveRuleReviewer(identityIssuer, identitySubject);
+  },
   list(actorIssuer: string, actorSubject: string) {
     return platformTaxDelegationRepository.list(actorIssuer, actorSubject);
   },
