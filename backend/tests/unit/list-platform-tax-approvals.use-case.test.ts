@@ -14,8 +14,8 @@ describe("listPlatformTaxApprovals", () => {
       rows: [{ approval_id: "approval-1", status: "PENDING_REVIEW" }],
       hasMore: true,
     } as never);
-    const result = await listPlatformTaxApprovals.execute({ status: "PENDING_REVIEW", page: 1, pageSize: 25 });
-    expect(platformTaxApprovalRepository.list).toHaveBeenCalledWith({ status: "PENDING_REVIEW", page: 1, pageSize: 25 });
+    const result = await listPlatformTaxApprovals.execute({ status: "PENDING_REVIEW", page: 1, pageSize: 25 }, "issuer", "reviewer");
+    expect(platformTaxApprovalRepository.list).toHaveBeenCalledWith({ status: "PENDING_REVIEW", page: 1, pageSize: 25 }, "issuer", "reviewer");
     expect(result).toMatchObject({ items: [{ approval_id: "approval-1" }], page: 1, pageSize: 25, hasMore: true, scope: "GLOBAL" });
   });
 });
