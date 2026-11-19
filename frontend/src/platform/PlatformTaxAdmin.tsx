@@ -220,7 +220,7 @@ export function PlatformTaxAdmin() {
     catch { setError("Le JSON des conditions d’applicabilité est invalide."); return; }
     setSaving(true); setError(""); setNotice("");
     try {
-      const { reason, applicabilityConditions: _conditions, priority, validTo, sourceUrl, ...fields } = ruleForm;
+      const { reason, priority, validTo, sourceUrl, ...fields } = ruleForm;
       const data = await apiPost<{ id: string; status: string; scope: string }>("/api/v1/user/platform/tax/rules", {
         rule: { ...fields, priority: Number(priority), applicabilityConditions, ...(validTo ? { validTo } : {}), ...(sourceUrl.trim() ? { sourceUrl: sourceUrl.trim() } : {}) },
         reason,
