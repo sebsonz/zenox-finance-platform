@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireUserAuth } from "../../../middleware/require-user-auth.js";
 import { registrationRepository } from "../repositories/registration.repository.js";
 import { registrationDocumentReviewRouter } from "../../documents/routes/registration-document-review.routes.js";
+import { managePlatformTaxDelegations } from "../../tax/application/manage-platform-tax-delegations.use-case.js";
 
 export const platformRegistrationRouter = Router();
 
@@ -71,12 +72,15 @@ platformRegistrationRouter.get("/me", requireUserAuth(), async (req, res, next) 
   if (!user) return;
   try {
     const isPlatformOperator = await registrationRepository.isPlatformOperator(user.issuer, user.id);
-    if (!isPlatformOperator) {
-      res.status(403).json({ error: { code: "PLATFORM_OPERATOR_REQUIRED", message: "Une autorisation d’administration de la plateforme est requise." } });
+    const isTaxReviewer = isPlatformOperator
+      ? false
+      : await managePlatformTaxDelegations.isActiveRuleReviewer(user.issuer, user.id);
+    if (!isPlatformOperator && !isTaxReviewer) {
+      res.status(403).json({ error: { code: "PLATFORM_OPERATOR_REQUIRED", message: "Aucun accès d’administration de plateforme ou de revue fiscale déléguée n’est actif." } });
       return;
     }
     res.setHeader("Cache-Control", "no-store");
-    res.status(200).json({ data: { isPlatformOperator: true } });
+    res.status(200).json({ data: { isPlatformOperator, isTaxReviewer } });
   } catch (error) {
     next(error);
   }
