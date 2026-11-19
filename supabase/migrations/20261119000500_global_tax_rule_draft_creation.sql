@@ -13,7 +13,7 @@ BEGIN
   IF jsonb_typeof(p_rule)<>'object'
      OR length(btrim(coalesce(p_reason,''))) NOT BETWEEN 10 AND 1000
      OR length(btrim(coalesce(p_correlation_id,''))) NOT BETWEEN 1 AND 100
-     OR length(btrim(coalesce(p_rule->>'ruleCode',''))) NOT BETWEEN 1 AND 80
+     OR length(btrim(coalesce(p_rule->>'ruleCode',''))) NOT BETWEEN 2 AND 80
      OR length(btrim(coalesce(p_rule->>'sourceReference',''))) NOT BETWEEN 1 AND 500 THEN
     RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='INVALID_GLOBAL_TAX_RULE_DRAFT';
   END IF;
@@ -42,7 +42,7 @@ BEGIN
      coalesce((p_rule->>'isCompound')::boolean,false),coalesce(p_rule->>'appliesTo','GOODS'),
      nullif(p_rule->>'sourceReference',''),nullif(p_rule->>'sourceUrl',''),
      v_version,(p_rule->>'validFrom')::date,nullif(p_rule->>'validTo','')::date,
-     'DRAFT',coalesce(p_rule->>'accountingTreatment','STANDARD'),
+     'DRAFT',coalesce(p_rule->>'accountingTreatment','TAX_CHARGED'),
      coalesce(p_rule->'applicabilityConditions','{"schemaVersion":1,"all":[]}'::jsonb));
   INSERT INTO public.finance_platform_tax_audit_events
     (actor_issuer,actor_subject,action,resource_type,resource_id,correlation_id,reason,safe_metadata)
