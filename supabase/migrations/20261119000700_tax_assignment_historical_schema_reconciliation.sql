@@ -133,4 +133,3 @@ COMMENT ON FUNCTION public.finance_set_tenant_tax_jurisdiction(
 COMMENT ON TABLE public.finance_tenant_tax_jurisdictions IS
   'Historical tenant tax assignments plus reviewed tax assignment requests. Legacy rows are preserved; new workflow requests require verified evidence and authorized approval.';
 
-COMMIT;
