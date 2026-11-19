@@ -35,9 +35,10 @@ export const platformTaxApprovalRepository = {
     return row;
   },
 
-  async list(query: GlobalTaxApprovalQuery) {
+  async list(query: GlobalTaxApprovalQuery, actorIssuer: string, actorSubject: string) {
     const values: (string | number)[] = [];
-    const conditions = ["a.tenant_id IS NULL"];
+    const conditions = ["a.tenant_id IS NULL", "public.finance_tax_actor_can($1, $2, 'RULE_REVIEW', r.jurisdiction_id)"];
+    values.push(actorIssuer, actorSubject);
     if (query.status) {
       values.push(query.status);
       conditions.push(`a.status = $${values.length}`);
