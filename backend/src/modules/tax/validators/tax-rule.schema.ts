@@ -43,9 +43,9 @@ const taxRuleFieldsSchema = z.object({
   applicabilityConditions: taxApplicabilityConditionsSchema.default({ schemaVersion: 1, all: [] }),
 }).strict();
 
-function validateTaxRule(rule: {
-  treatment: string; taxType: string; ratePercent: string; validFrom: string; validTo?: string;
-}, ctx: z.RefinementCtx) {
+type TaxRuleValidationInput = Pick<z.output<typeof taxRuleFieldsSchema>, "treatment" | "taxType" | "ratePercent" | "validFrom" | "validTo">;
+
+function validateTaxRule(rule: TaxRuleValidationInput, ctx: z.RefinementCtx) {
   const rate = Number(rule.ratePercent);
   if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
     ctx.addIssue({ code: "custom", path: ["ratePercent"], message: "Tax rate must be between 0 and 100." });
