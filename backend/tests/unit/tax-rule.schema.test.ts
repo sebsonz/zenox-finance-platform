@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { taxRuleSchema } from "../../src/modules/tax/validators/tax-rule.schema.js";
+import { globalTaxRuleDraftSchema, taxRuleSchema } from "../../src/modules/tax/validators/tax-rule.schema.js";
 
 const baseRule = {
   jurisdictionId: "7c58f5f7-2dca-4ed1-a0db-8cc7d77f5c41",
@@ -10,6 +10,7 @@ const baseRule = {
   ratePercent: "18",
   validFrom: "2026-01-01",
 };
+const globalDraft = { ...baseRule, sourceReference: "Code général des impôts du Bénin" };
 
 describe("taxRuleSchema", () => {
   it("accepts a valid effective-dated tax rule and defaults SQL-compatible fields", () => {
@@ -39,27 +40,15 @@ describe("taxRuleSchema", () => {
   });
 
   it("rejects a non-zero rate for exempt treatment", () => {
-    expect(taxRuleSchema.safeParse({
-      ...baseRule,
-      treatment: "EXEMPT",
-      ratePercent: "18",
-    }).success).toBe(false);
+    expect(taxRuleSchema.safeParse({ ...baseRule, treatment: "EXEMPT", ratePercent: "18" }).success).toBe(false);
   });
 
   it("rejects withholding treatment paired with a non-withholding tax type", () => {
-    expect(taxRuleSchema.safeParse({
-      ...baseRule,
-      treatment: "WITHHOLDING",
-      taxType: "VAT",
-    }).success).toBe(false);
+    expect(taxRuleSchema.safeParse({ ...baseRule, treatment: "WITHHOLDING", taxType: "VAT" }).success).toBe(false);
   });
 
   it("rejects a validity end date before the start date", () => {
-    expect(taxRuleSchema.safeParse({
-      ...baseRule,
-      validFrom: "2026-06-01",
-      validTo: "2026-05-31",
-    }).success).toBe(false);
+    expect(taxRuleSchema.safeParse({ ...baseRule, validFrom: "2026-06-01", validTo: "2026-05-31" }).success).toBe(false);
   });
 
   it("rejects unknown properties independently of UUID validation", () => {
@@ -72,5 +61,29 @@ describe("taxRuleSchema", () => {
 
   it("rejects rates with more precision than the database contract", () => {
     expect(taxRuleSchema.safeParse({ ...baseRule, ratePercent: "18.1234567" }).success).toBe(false);
+  });
+});
+
+describe("globalTaxRuleDraftSchema", () => {
+  it("accepts a global draft payload with required legal source and server-owned defaults", () => {
+    expect(globalTaxRuleDraftSchema.parse(globalDraft)).toMatchObject({
+      sourceReference: "Code général des impôts du Bénin",
+      priceMode: "EXCLUSIVE",
+      priority: 100,
+      isCompound: false,
+      appliesTo: "GOODS",
+      accountingTreatment: "TAX_CHARGED",
+      applicabilityConditions: { schemaVersion: 1, all: [] },
+    });
+  });
+
+  it("requires a legal source reference", () => {
+    expect(globalTaxRuleDraftSchema.safeParse(baseRule).success).toBe(false);
+  });
+
+  it.each(["tenantId", "version", "status"])("does not let the client set %s", (field) => {
+    expect(globalTaxRuleDraftSchema.safeParse({ ...globalDraft, [field]: field === "tenantId"
+      ? "7c58f5f7-2dca-4ed1-a0db-8cc7d77f5c41"
+      : field === "version" ? 99 : "ACTIVE" }).success).toBe(false);
   });
 });
