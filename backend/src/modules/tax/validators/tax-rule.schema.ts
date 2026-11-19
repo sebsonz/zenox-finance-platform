@@ -2,7 +2,7 @@ import { z } from "zod";
 import { taxTreatmentSchema } from "../types/tax.types.js";
 import { taxApplicabilityConditionsSchema } from "./tax-applicability.schema.js";
 
-const decimalString = z.string().regex(/^(?:0|[1-9]\d{0,2})(?:\.\d{1,6})?$/);
+const decimalString = z.string().regex(/^(?:0|[1-9]\\d{0,2})(?:\\.\\d{1,6})?$/);
 const taxTreatmentValidator = z.enum(taxTreatmentSchema);
 const taxTypeSchema = z.enum([
   "VAT", "GST", "SALES_TAX", "EXCISE", "WITHHOLDING",
@@ -10,6 +10,15 @@ const taxTypeSchema = z.enum([
 ]);
 const appliesToSchema = z.enum([
   "GOODS", "SERVICES", "DIGITAL_SERVICES", "FREIGHT", "INSURANCE", "ALL",
+]);
+export const taxAccountingTreatmentSchema = z.enum([
+  "TAX_CHARGED",
+  "WITHHOLDING_DEDUCTION",
+  "ADVANCE_INCOME_TAX",
+  "RECOVERABLE_CREDIT",
+  "NON_RECOVERABLE_COST",
+  "CUSTOMS_COST",
+  "OTHER",
 ]);
 
 export const taxRuleSchema = z.object({
@@ -30,7 +39,7 @@ export const taxRuleSchema = z.object({
   validFrom: z.iso.date(),
   validTo: z.iso.date().optional(),
   status: z.enum(["DRAFT", "ACTIVE", "RETIRED"]).default("DRAFT"),
-  accountingTreatment: z.string().trim().min(1).max(80).default("STANDARD"),
+  accountingTreatment: taxAccountingTreatmentSchema.default("TAX_CHARGED"),
   applicabilityConditions: taxApplicabilityConditionsSchema.default({ schemaVersion: 1, all: [] }),
 }).strict().superRefine((rule, ctx) => {
   const rate = Number(rule.ratePercent);
