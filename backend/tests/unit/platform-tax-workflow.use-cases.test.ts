@@ -3,11 +3,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/modules/tax/repositories/platform-tax-approval.repository.js", () => ({
   platformTaxApprovalRepository: { submit: vi.fn(), review: vi.fn() },
 }));
+vi.mock("../../src/modules/tax/repositories/platform-tax-delegation.repository.js", () => ({
+  platformTaxDelegationRepository: { list: vi.fn(), create: vi.fn(), revoke: vi.fn() },
+}));
 vi.mock("../../src/modules/tax/repositories/platform-tax-jurisdiction-admin.repository.js", () => ({
   platformTaxJurisdictionAdminRepository: { upsert: vi.fn(), upsertLevel: vi.fn(), listLevels: vi.fn(), listAuditEvents: vi.fn() },
 }));
 import { platformTaxApprovalRepository } from "../../src/modules/tax/repositories/platform-tax-approval.repository.js";
 import { platformTaxJurisdictionAdminRepository } from "../../src/modules/tax/repositories/platform-tax-jurisdiction-admin.repository.js";
+import { platformTaxDelegationRepository } from "../../src/modules/tax/repositories/platform-tax-delegation.repository.js";
+import { managePlatformTaxDelegations } from "../../src/modules/tax/application/manage-platform-tax-delegations.use-case.js";
 import { submitGlobalTaxRule } from "../../src/modules/tax/application/submit-global-tax-rule.use-case.js";
 import { reviewGlobalTaxRule } from "../../src/modules/tax/application/review-global-tax-rule.use-case.js";
 import { managePlatformTaxJurisdiction } from "../../src/modules/tax/application/manage-platform-tax-jurisdiction.use-case.js";
