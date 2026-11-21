@@ -10,15 +10,21 @@ export interface PlatformUserDirectoryRow {
   organizations: Array<{ tenantId: string; tenantCode: string; legalName: string; role: string; status: string }>;
   platform_operator_status: "ACTIVE" | "SUSPENDED" | null;
 }
+
 export interface PlatformUserDirectoryPage {
   items: PlatformUserDirectoryRow[];
   total: number;
   page: number;
   pageSize: number;
 }
+
+interface PlatformUserDirectoryFunctionResult {
+  result: PlatformUserDirectoryPage | null;
+}
+
 export const platformUserDirectoryRepository = {
   async list(input: { operatorIssuer: string; operatorSubject: string; page: number; pageSize: number; query: string; status: string }): Promise<PlatformUserDirectoryPage> {
-    const result = await pool.query<PlatformUserDirectoryPage>(
+    const result = await pool.query<PlatformUserDirectoryFunctionResult>(
       "SELECT public.finance_list_platform_user_directory($1, $2, $3, $4, $5, $6) AS result",
       [input.operatorIssuer, input.operatorSubject, input.page, input.pageSize, input.query || null, input.status === "ALL" ? null : input.status],
     );
