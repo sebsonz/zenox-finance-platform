@@ -84,9 +84,9 @@ async function request(
   const headers: Record<string, string> = {};
 
   if (origin === undefined) {
-    headers.origin = baseUrl;
+    headers["origin"] = baseUrl;
   } else if (origin !== null) {
-    headers.origin = origin;
+    headers["origin"] = origin;
   }
 
   if (body !== undefined) {
@@ -208,7 +208,7 @@ describe("organization lifecycle routes", () => {
 
     const shortReason = await request(
       `/platform/organizations/${TENANT_ID}/status`,
-      { action: "SUSPEND", reason: "Trop court" },
+      { action: "SUSPEND", reason: "Court" },
     );
 
     const unknownField = await request(
