@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { taxTreatmentSchema } from "../types/tax.types.js";
+import { taxApplicabilityConditionsSchema } from "./tax-applicability.schema.js";
 
 const decimalString = z.string().regex(/^(?:0|[1-9]\d{0,2})(?:\.\d{1,6})?$/);
 const taxTreatmentValidator = z.enum(taxTreatmentSchema);
@@ -10,8 +11,17 @@ const taxTypeSchema = z.enum([
 const appliesToSchema = z.enum([
   "GOODS", "SERVICES", "DIGITAL_SERVICES", "FREIGHT", "INSURANCE", "ALL",
 ]);
+export const taxAccountingTreatmentSchema = z.enum([
+  "TAX_CHARGED",
+  "WITHHOLDING_DEDUCTION",
+  "ADVANCE_INCOME_TAX",
+  "RECOVERABLE_CREDIT",
+  "NON_RECOVERABLE_COST",
+  "CUSTOMS_COST",
+  "OTHER",
+]);
 
-export const taxRuleSchema = z.object({
+const taxRuleFieldsSchema = z.object({
   tenantId: z.string().uuid().optional(),
   jurisdictionId: z.string().uuid(),
   ruleCode: z.string().trim().min(2).max(80).regex(/^[A-Z0-9][A-Z0-9_.:-]+$/),
@@ -29,7 +39,13 @@ export const taxRuleSchema = z.object({
   validFrom: z.iso.date(),
   validTo: z.iso.date().optional(),
   status: z.enum(["DRAFT", "ACTIVE", "RETIRED"]).default("DRAFT"),
-}).strict().superRefine((rule, ctx) => {
+  accountingTreatment: taxAccountingTreatmentSchema.default("TAX_CHARGED"),
+  applicabilityConditions: taxApplicabilityConditionsSchema.default({ schemaVersion: 1, all: [] }),
+}).strict();
+
+type TaxRuleValidationInput = Pick<z.output<typeof taxRuleFieldsSchema>, "treatment" | "taxType" | "ratePercent" | "validFrom" | "validTo">;
+
+function validateTaxRule(rule: TaxRuleValidationInput, ctx: z.RefinementCtx) {
   const rate = Number(rule.ratePercent);
   if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
     ctx.addIssue({ code: "custom", path: ["ratePercent"], message: "Tax rate must be between 0 and 100." });
@@ -47,6 +63,16 @@ export const taxRuleSchema = z.object({
   if (rule.validTo && rule.validTo < rule.validFrom) {
     ctx.addIssue({ code: "custom", path: ["validTo"], message: "validTo must be on or after validFrom." });
   }
-});
+}
+
+export const taxRuleSchema = taxRuleFieldsSchema.superRefine(validateTaxRule);
+
+/** Client input for a platform-wide draft. Tenant, version and status are database-owned. */
+export const globalTaxRuleDraftSchema = taxRuleFieldsSchema
+  .omit({ tenantId: true, version: true, status: true })
+  .extend({ sourceReference: z.string().trim().min(1).max(500) })
+  .strict()
+  .superRefine(validateTaxRule);
 
 export type TaxRuleInput = z.infer<typeof taxRuleSchema>;
+export type GlobalTaxRuleDraftInput = z.infer<typeof globalTaxRuleDraftSchema>;

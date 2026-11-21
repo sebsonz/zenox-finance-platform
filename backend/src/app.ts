@@ -23,9 +23,27 @@ app.use((_req: Request, res: Response) => {
   });
 });
 
-const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, _next: NextFunction) => {
+const errorHandler: ErrorRequestHandler = (error: unknown, req, res, _next: NextFunction) => {
   const requestId = String(res.locals["correlationId"] ?? "unknown");
-  app.locals["logger"].error({ requestId, errorName: error instanceof Error ? error.name : "UnknownError" }, "Unhandled request error");
+  const errorRecord = typeof error === "object" && error !== null
+    ? error as { code?: unknown }
+    : undefined;
+  const errorData: Record<string, unknown> = {
+    requestId,
+    method: req.method,
+    path: req.path,
+    errorName: error instanceof Error ? error.name : "UnknownError",
+    ...(typeof errorRecord?.code === "string" ? { errorCode: errorRecord.code } : {}),
+  };
+
+  // Detailed diagnostics are restricted to local development. Never log request
+  // headers, cookies, authorization values, request bodies, or SQL parameters.
+  if (env.NODE_ENV === "development" && error instanceof Error) {
+    errorData["errorMessage"] = error.message;
+    if (error.stack) errorData["errorStack"] = error.stack;
+  }
+
+  app.locals["logger"].error(errorData, "Unhandled request error");
   res.status(500).json({
     error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred.", requestId },
   });

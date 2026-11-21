@@ -1,22 +1,46 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { Dashboard } from "../modules/dashboard/Dashboard.js";
-import { TaxWorkspace } from "../modules/tax/TaxWorkspace.js";
 import { ComingSoon } from "../shared/components/ComingSoon.js";
 import { pageFromPath, pagePaths, type Page } from "./navigation.js";
 import {
-  Bell, Building2, ChevronDown, CircleHelp, CreditCard, FileText, FilePlus2, Globe2, Users,
+  Bell, Building2, ChevronDown, CircleHelp, CreditCard, FileText, FilePlus2, Globe2, Users, ClipboardCheck,
   LayoutDashboard, Menu, Search, Settings2, ShieldCheck, WalletCards, X
 } from "lucide-react";
-import { RegistrationWorkspace } from "../auth/RegistrationWorkspace.js";
-import { PlatformEntryWorkspace } from "../auth/PlatformEntryWorkspace.js";
-import { InvoiceWorkspace } from "../invoices/InvoiceWorkspace.js";
-import { CommercialDocumentsWorkspace } from "../invoices/CommercialDocumentsWorkspace.js";
-import { CustomersWorkspace } from "../features/customers/CustomersWorkspace.js";
-import { PlatformReviewWorkspace } from "../platform/PlatformReviewWorkspace.js";
-import { PlatformAdminDashboard } from "../platform/PlatformAdminDashboard.js";
-import { LandingPage } from "../public/LandingPage.js";
 import { BrandLogo } from "../shared/components/BrandLogo.js";
+
+const Dashboard = lazy(() =>
+  import("../modules/dashboard/Dashboard.js").then((m) => ({ default: m.Dashboard }))
+);
+const TaxWorkspace = lazy(() =>
+  import("../modules/tax/TaxWorkspace.js").then((m) => ({ default: m.TaxWorkspace }))
+);
+const RegistrationWorkspace = lazy(() =>
+  import("../auth/RegistrationWorkspace.js").then((m) => ({ default: m.RegistrationWorkspace }))
+);
+const PlatformEntryWorkspace = lazy(() =>
+  import("../auth/PlatformEntryWorkspace.js").then((m) => ({ default: m.PlatformEntryWorkspace }))
+);
+const InvoiceWorkspace = lazy(() =>
+  import("../invoices/InvoiceWorkspace.js").then((m) => ({ default: m.InvoiceWorkspace }))
+);
+const CommercialDocumentsWorkspace = lazy(() =>
+  import("../invoices/CommercialDocumentsWorkspace.js").then((m) => ({ default: m.CommercialDocumentsWorkspace }))
+);
+const CustomersWorkspace = lazy(() =>
+  import("../features/customers/CustomersWorkspace.js").then((m) => ({ default: m.CustomersWorkspace }))
+);
+const PlatformReviewWorkspace = lazy(() =>
+  import("../platform/PlatformReviewWorkspace.js").then((m) => ({ default: m.PlatformReviewWorkspace }))
+);
+const PlatformAdminDashboard = lazy(() =>
+  import("../platform/PlatformAdminDashboard.js").then((m) => ({ default: m.PlatformAdminDashboard }))
+);
+const PlatformTaxReviewWorkspace = lazy(() =>
+  import("../platform/PlatformTaxReviewWorkspace.js").then((m) => ({ default: m.PlatformTaxReviewWorkspace }))
+);
+const LandingPage = lazy(() =>
+  import("../public/LandingPage.js").then((m) => ({ default: m.LandingPage }))
+);
 
 type SessionUser = { id: string; email?: string; emailConfirmedAt?: string | null };
 type ActiveTenant = { id: string; tenantCode: string; legalName: string; role: string };
@@ -36,9 +60,10 @@ const navigation: { id: Page; label: string; icon: typeof LayoutDashboard }[] = 
   { id: "tax", label: "Moteur fiscal", icon: Globe2 },
   { id: "settings", label: "Paramètres", icon: Settings2 },
   { id: "platform", label: "Demandes d’inscription", icon: ShieldCheck },
+  { id: "tax-review", label: "Revue fiscale", icon: ClipboardCheck },
 ];
 
-export function App() {
+function AppContent() {
   const location = useLocation();
   const routerNavigate = useNavigate();
   const [entryChecking, setEntryChecking] = useState(true);
@@ -46,6 +71,7 @@ export function App() {
   const [activeTenant, setActiveTenant] = useState<ActiveTenant | null>(null);
   const [tenants, setTenants] = useState<ActiveTenant[]>([]);
   const [isPlatformOperator, setIsPlatformOperator] = useState(false);
+  const [isTaxReviewer, setIsTaxReviewer] = useState(false);
   const [entryError, setEntryError] = useState("");
   const [showOrganizationSetup, setShowOrganizationSetup] = useState(false);
 
@@ -59,6 +85,7 @@ export function App() {
         setActiveTenant(null);
         setTenants([]);
         setIsPlatformOperator(false);
+        setIsTaxReviewer(false);
         setShowOrganizationSetup(false);
         if (location.pathname !== "/") routerNavigate(pagePaths.dashboard, { replace: true });
         return;
@@ -73,18 +100,24 @@ export function App() {
       setActiveTenant((current) => availableTenants.find((tenant) => tenant.id === current?.id) ?? availableTenants[0] ?? null);
       const platformResponse = await fetch("/api/v1/user/platform/me", { credentials: "same-origin", cache: "no-store" });
       let nextIsPlatformOperator = false;
+      let nextIsTaxReviewer = false;
       if (platformResponse.ok) {
-        const platformData = await readEntryData<{ isPlatformOperator: boolean }>(platformResponse);
+        const platformData = await readEntryData<{ isPlatformOperator: boolean; isTaxReviewer?: boolean }>(platformResponse);
         nextIsPlatformOperator = platformData.isPlatformOperator;
+        nextIsTaxReviewer = platformData.isTaxReviewer === true;
       }
       setIsPlatformOperator(nextIsPlatformOperator);
+      setIsTaxReviewer(nextIsTaxReviewer);
       if (availableTenants.length === 0 && nextIsPlatformOperator) routerNavigate(pagePaths.platform, { replace: true });
+      else if (availableTenants.length === 0 && nextIsTaxReviewer) routerNavigate(pagePaths["tax-review"], { replace: true });
       else if (page === "platform" && !nextIsPlatformOperator) routerNavigate(pagePaths.dashboard, { replace: true });
+      else if (page === "tax-review" && !nextIsTaxReviewer && !nextIsPlatformOperator) routerNavigate(pagePaths.dashboard, { replace: true });
     } catch (error) {
       setSessionUser(null);
       setActiveTenant(null);
       setTenants([]);
       setIsPlatformOperator(false);
+      setIsTaxReviewer(false);
       setShowOrganizationSetup(false);
       routerNavigate(pagePaths.dashboard, { replace: true });
       setEntryError(error instanceof Error ? error.message : "L’API Finance est inaccessible.");
@@ -101,7 +134,10 @@ export function App() {
     if (!entryChecking && page === "platform" && !isPlatformOperator) {
       routerNavigate(pagePaths.dashboard, { replace: true });
     }
-  }, [entryChecking, isPlatformOperator, page, routerNavigate]);
+    if (!entryChecking && page === "tax-review" && !isTaxReviewer && !isPlatformOperator) {
+      routerNavigate(pagePaths.dashboard, { replace: true });
+    }
+  }, [entryChecking, isPlatformOperator, isTaxReviewer, page, routerNavigate]);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notice, setNotice] = useState("");
@@ -109,7 +145,7 @@ export function App() {
   const navigate = (next: Page) => { routerNavigate(pagePaths[next]); setMobileOpen(false); setNotice(""); };
   const visibleNavigation = isPlatformOperator
     ? (activeTenant ? navigation : navigation.filter((item) => item.id === "platform"))
-    : navigation.filter((item) => item.id !== "platform");
+    : navigation.filter((item) => item.id !== "platform" && (item.id !== "tax-review" || isTaxReviewer));
   const title = visibleNavigation.find((item) => item.id === page)?.label ?? "Vue d’ensemble";
 
   if (entryChecking) return <main className="entry-loading"><BrandLogo variant="light" /><p>Vérification sécurisée de votre espace…</p></main>;
@@ -125,17 +161,17 @@ export function App() {
     />;
   }
   if (!sessionUser) return <><RegistrationWorkspace user={null} initialMode={authRequested ? requestedMode : "login"} onSessionChanged={refreshEntry}/>{entryError && <div className="entry-error">{entryError}</div>}</>;
-  if (!activeTenant && !isPlatformOperator && !sessionUser.emailConfirmedAt) {
+  if (!activeTenant && !isPlatformOperator && !isTaxReviewer && !sessionUser.emailConfirmedAt) {
     return <RegistrationWorkspace user={sessionUser} onSessionChanged={refreshEntry} />;
   }
-  if (!activeTenant && !isPlatformOperator && !showOrganizationSetup) {
+  if (!activeTenant && !isPlatformOperator && !isTaxReviewer && !showOrganizationSetup) {
     return <PlatformEntryWorkspace
       user={sessionUser}
       onCreateOrganization={() => setShowOrganizationSetup(true)}
       onSessionChanged={refreshEntry}
     />;
   }
-  if (!activeTenant && !isPlatformOperator) {
+  if (!activeTenant && !isPlatformOperator && !isTaxReviewer) {
     return <><RegistrationWorkspace
       user={sessionUser}
       onSessionChanged={refreshEntry}
@@ -144,6 +180,7 @@ export function App() {
   }
 
   if (isPlatformOperator) return <PlatformAdminDashboard email={sessionUser.email ?? "admin"} onSignOut={async () => { await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" }); await refreshEntry(); }} />;
+  if (!activeTenant && isTaxReviewer) return <PlatformTaxReviewWorkspace email={sessionUser.email ?? "reviewer"} onSignOut={async () => { await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" }); await refreshEntry(); }} />;
 
   async function signOut() {
     await fetch("/api/v1/user/session", { method: "DELETE", credentials: "same-origin" });
@@ -173,9 +210,27 @@ export function App() {
         {page === "payments" && <ComingSoon icon={WalletCards} title="Paiements & allocations" description="Les paiements, affectations et soldes seront servis par le backend Finance, avec idempotence et contrôle multi-tenant."/>}
         {page === "settings" && <ComingSoon icon={Settings2} title="Paramètres Finance" description="La configuration des organisations, devises et intégrations sera reliée aux services authentifiés."/>}
         {page === "platform" && isPlatformOperator && <PlatformReviewWorkspace/>}
+        {page === "tax-review" && isTaxReviewer && <PlatformTaxReviewWorkspace email={sessionUser.email ?? "reviewer"} onSignOut={signOut}/>}
         <footer><span>© 2026 ZENOX Finance</span><span><ShieldCheck size={13}/> Finance indépendante · API-first</span><span>Interface en construction</span></footer>
       </div>
     </main>
   </div>;
 }
 
+
+function AppLoadingFallback() {
+  return (
+    <main className="entry-loading">
+      <BrandLogo variant="light" />
+      <p>Chargement sécurisé de votre espace…</p>
+    </main>
+  );
+}
+
+export function App() {
+  return (
+    <Suspense fallback={<AppLoadingFallback />}>
+      <AppContent />
+    </Suspense>
+  );
+}

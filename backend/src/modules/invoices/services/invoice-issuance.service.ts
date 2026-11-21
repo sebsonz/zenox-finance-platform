@@ -124,6 +124,30 @@ export const invoiceIssuanceService = {
         );
       }
 
+      const taxEvidence = await client.query(
+        `SELECT 1
+           FROM public.finance_tax_calculation_snapshots s
+           JOIN public.finance_tenant_tax_jurisdictions tj
+             ON tj.tenant_id = s.tenant_id
+            AND tj.jurisdiction_id = s.jurisdiction_id
+            AND tj.status = 'ACTIVE'
+            AND tj.valid_from <= s.tax_date
+            AND (tj.valid_to IS NULL OR tj.valid_to >= s.tax_date)
+          WHERE s.id = $1
+            AND s.tenant_id = $2
+            AND s.document_type = 'INVOICE'
+            AND s.document_id = $3
+            AND s.jurisdiction_id IS NOT NULL
+          LIMIT 1`,
+        [invoice.tax_snapshot_id, context.tenantId, invoiceId],
+      );
+      if (taxEvidence.rowCount !== 1) {
+        throw new InvoiceIssuanceServiceError(
+          "INVOICE_TAX_NOT_CALCULATED",
+          "The invoice tax snapshot is missing, inconsistent, or its jurisdiction is no longer assigned to this organization for the tax date.",
+        );
+      }
+
       const lines = await client.query<{ id: string }>(
         `SELECT id FROM public.finance_invoice_lines
           WHERE tenant_id = $1 AND invoice_id = $2

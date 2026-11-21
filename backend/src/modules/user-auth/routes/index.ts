@@ -14,6 +14,7 @@ import { onboardingRouter } from "../../onboarding/routes/onboarding.routes.js";
 import { registrationDocumentRouter } from "../../documents/routes/registration-document.routes.js";
 import { registrationRequirementsRouter } from "../../compliance/routes/registration-requirements.routes.js";
 import { platformOrganizationLifecycleRouter } from "../../platform-admin/routes/organization-lifecycle.routes.js";
+import { platformOrganizationAdminRouter } from "../../platform-admin/routes/platform-organization-admin.routes.js";
 import { platformTaxAdminRouter } from "../../platform-admin/routes/platform-tax-admin.routes.js";
 
 /** Composes authenticated user, tenant and platform-registration endpoints. */
@@ -30,6 +31,7 @@ userAuthRouter.use("/registration/drafts/:draftId/documents", registrationDocume
 userAuthRouter.use("/registration/requirements", registrationRequirementsRouter);
 userAuthRouter.use("/platform", platformRegistrationRouter);
 userAuthRouter.use("/platform", platformOrganizationLifecycleRouter);
+userAuthRouter.use("/platform", platformOrganizationAdminRouter);
 userAuthRouter.use("/platform", platformTaxAdminRouter);
 userAuthRouter.use("/tenants", userInvoiceRouter);
 userAuthRouter.use("/tenants", userCustomerRouter);

@@ -9,6 +9,8 @@ type TaxRule = {
   sourceReference: string | null; sourceUrl: string | null; version: number;
   validFrom: string; validTo: string | null; status: "DRAFT" | "ACTIVE" | "RETIRED";
   scope: "GLOBAL" | "ORGANIZATION";
+  accountingTreatment: string;
+  applicabilityConditions: { schemaVersion: 1; all: Array<Record<string, unknown>> };
 };
 type ApiPayload<T> = { data?: T; error?: { message?: string } };
 type Props = { tenantId: string; canManage: boolean };
@@ -17,6 +19,8 @@ const emptyForm = (jurisdictionId = "") => ({
   jurisdictionId, ruleCode: "", name: "", taxType: "VAT", treatment: "STANDARD",
   ratePercent: "18", priceMode: "EXCLUSIVE", priority: "100", isCompound: false,
   appliesTo: "ALL", sourceReference: "", sourceUrl: "",
+  accountingTreatment: "STANDARD",
+  applicabilityConditionsJson: JSON.stringify({ schemaVersion: 1, all: [] }, null, 2),
   validFrom: new Date().toISOString().slice(0, 10), validTo: "",
 });
 
@@ -75,6 +79,13 @@ export function TaxWorkspace({ tenantId, canManage }: Props) {
     event.preventDefault();
     if (!canManage || saving) return;
     if (!form.jurisdictionId) { setError("Sélectionnez une juridiction active."); return; }
+    let applicabilityConditions: { schemaVersion: 1; all: Array<Record<string, unknown>> };
+    try {
+      applicabilityConditions = JSON.parse(form.applicabilityConditionsJson) as { schemaVersion: 1; all: Array<Record<string, unknown>> };
+    } catch {
+      setError("Les conditions d’applicabilité doivent être un JSON valide.");
+      return;
+    }
     setSaving(true); setError(""); setNotice("");
     try {
       await readPayload<{ rule: TaxRule }>(
@@ -94,6 +105,8 @@ export function TaxWorkspace({ tenantId, canManage }: Props) {
             appliesTo: form.appliesTo,
             ...(form.sourceReference.trim() ? { sourceReference: form.sourceReference.trim() } : {}),
             ...(form.sourceUrl.trim() ? { sourceUrl: form.sourceUrl.trim() } : {}),
+            accountingTreatment: form.accountingTreatment.trim() || "STANDARD",
+            applicabilityConditions,
             validFrom: form.validFrom,
             ...(form.validTo ? { validTo: form.validTo } : {}),
           }),
@@ -152,7 +165,12 @@ export function TaxWorkspace({ tenantId, canManage }: Props) {
           <label>Date de fin<input type="date" value={form.validTo} min={form.validFrom} onChange={(event) => setForm((current) => ({ ...current, validTo: event.target.value }))}/></label>
           <label>Référence officielle<input maxLength={500} value={form.sourceReference} onChange={(event) => setForm((current) => ({ ...current, sourceReference: event.target.value }))} placeholder="Loi, article, publication…"/></label>
           <label>URL de la source<input type="url" maxLength={2000} value={form.sourceUrl} onChange={(event) => setForm((current) => ({ ...current, sourceUrl: event.target.value }))} placeholder="https://…"/></label>
+          <label>Traitement comptable<input maxLength={80} value={form.accountingTreatment} onChange={(event) => setForm((current) => ({ ...current, accountingTreatment: event.target.value }))} placeholder="STANDARD"/></label>
         </div>
+        <label className="tax-admin-conditions-field">Conditions d’applicabilité (JSON)
+          <textarea rows={5} spellCheck={false} value={form.applicabilityConditionsJson} onChange={(event) => setForm((current) => ({ ...current, applicabilityConditionsJson: event.target.value }))} />
+          <small>Format : {"{ schemaVersion: 1, all: [] }"}. Les conditions utilisent les champs et opérateurs autorisés par le moteur fiscal.</small>
+        </label>
         <label className="tax-admin-checkbox"><input type="checkbox" checked={form.isCompound} onChange={(event) => setForm((current) => ({ ...current, isCompound: event.target.checked }))}/> Taxe composée (assiette incluant les taxes précédentes)</label>
         <div className="tax-admin-form-footer"><span><ShieldCheck size={15}/> Le taux sera créé en DRAFT et ne sera pas appliqué aux factures.</span><button type="button" className="outline-button" onClick={() => setShowForm(false)} disabled={saving}>Annuler</button><button type="submit" className="primary-button" disabled={saving}>{saving ? "Enregistrement…" : "Enregistrer le brouillon"}</button></div>
       </form>}
