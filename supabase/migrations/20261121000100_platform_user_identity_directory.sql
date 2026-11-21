@@ -103,20 +103,19 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.finance_list_platform_user_directory(text, text, integer, integer, text, text) FROM PUBLIC;
-DO $grants$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
-    EXECUTE 'REVOKE ALL ON FUNCTION public.finance_list_platform_user_directory(text, text, integer, integer, text, text) FROM anon';
-  END IF;
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-    EXECUTE 'REVOKE ALL ON FUNCTION public.finance_list_platform_user_directory(text, text, integer, integer, text, text) FROM authenticated';
-  END IF;
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'finance_runtime') THEN
-    GRANT EXECUTE ON FUNCTION public.finance_list_platform_user_directory(text, text, integer, integer, text, text) TO finance_runtime;
-  END IF;
-END
-$grants$;
+-- The backend currently connects through Supavisor as postgres.
+-- Keep the directory function unavailable to PUBLIC, anon and authenticated.
+REVOKE ALL ON FUNCTION
+  public.finance_list_platform_user_directory(text, text, integer, integer, text, text)
+FROM PUBLIC;
+
+REVOKE ALL ON FUNCTION
+  public.finance_list_platform_user_directory(text, text, integer, integer, text, text)
+FROM anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION
+  public.finance_list_platform_user_directory(text, text, integer, integer, text, text)
+TO postgres;
 
 COMMENT ON FUNCTION public.finance_list_platform_user_directory(text, text, integer, integer, text, text) IS
   'Platform-operator-only, paginated identity directory. Exposes minimal identity metadata and existing tenant memberships; no auth secrets or raw metadata.';
