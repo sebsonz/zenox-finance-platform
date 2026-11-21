@@ -42,7 +42,7 @@ BEGIN
         LIMIT 1) AS platform_operator_status
     FROM auth.users u
     WHERE (v_query IS NULL OR
-      coalesce(u.email, '') ILIKE '%' || replace(replace(replace(v_query, '\\', '\\\\'), '%', '\\%'), '_', '\\_') || '%' OR
+      strpos(lower(coalesce(u.email, '')), lower(v_query)) > 0 OR
       u.id::text = v_query)
       AND (v_status IS NULL OR
         CASE WHEN u.deleted_at IS NOT NULL THEN 'DELETED'
@@ -61,7 +61,7 @@ BEGIN
         LIMIT 1) AS platform_operator_status
     FROM auth.users u
     WHERE (v_query IS NULL OR
-      coalesce(u.email, '') ILIKE '%' || replace(replace(replace(v_query, '\\', '\\\\'), '%', '\\%'), '_', '\\_') || '%' OR
+      strpos(lower(coalesce(u.email, '')), lower(v_query)) > 0 OR
       u.id::text = v_query)
       AND (v_status IS NULL OR
         CASE WHEN u.deleted_at IS NOT NULL THEN 'DELETED'
