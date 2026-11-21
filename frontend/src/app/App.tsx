@@ -1,23 +1,46 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { Dashboard } from "../modules/dashboard/Dashboard.js";
-import { TaxWorkspace } from "../modules/tax/TaxWorkspace.js";
 import { ComingSoon } from "../shared/components/ComingSoon.js";
 import { pageFromPath, pagePaths, type Page } from "./navigation.js";
 import {
   Bell, Building2, ChevronDown, CircleHelp, CreditCard, FileText, FilePlus2, Globe2, Users, ClipboardCheck,
   LayoutDashboard, Menu, Search, Settings2, ShieldCheck, WalletCards, X
 } from "lucide-react";
-import { RegistrationWorkspace } from "../auth/RegistrationWorkspace.js";
-import { PlatformEntryWorkspace } from "../auth/PlatformEntryWorkspace.js";
-import { InvoiceWorkspace } from "../invoices/InvoiceWorkspace.js";
-import { CommercialDocumentsWorkspace } from "../invoices/CommercialDocumentsWorkspace.js";
-import { CustomersWorkspace } from "../features/customers/CustomersWorkspace.js";
-import { PlatformReviewWorkspace } from "../platform/PlatformReviewWorkspace.js";
-import { PlatformAdminDashboard } from "../platform/PlatformAdminDashboard.js";
-import { PlatformTaxReviewWorkspace } from "../platform/PlatformTaxReviewWorkspace.js";
-import { LandingPage } from "../public/LandingPage.js";
 import { BrandLogo } from "../shared/components/BrandLogo.js";
+
+const Dashboard = lazy(() =>
+  import("../modules/dashboard/Dashboard.js").then((m) => ({ default: m.Dashboard }))
+);
+const TaxWorkspace = lazy(() =>
+  import("../modules/tax/TaxWorkspace.js").then((m) => ({ default: m.TaxWorkspace }))
+);
+const RegistrationWorkspace = lazy(() =>
+  import("../auth/RegistrationWorkspace.js").then((m) => ({ default: m.RegistrationWorkspace }))
+);
+const PlatformEntryWorkspace = lazy(() =>
+  import("../auth/PlatformEntryWorkspace.js").then((m) => ({ default: m.PlatformEntryWorkspace }))
+);
+const InvoiceWorkspace = lazy(() =>
+  import("../invoices/InvoiceWorkspace.js").then((m) => ({ default: m.InvoiceWorkspace }))
+);
+const CommercialDocumentsWorkspace = lazy(() =>
+  import("../invoices/CommercialDocumentsWorkspace.js").then((m) => ({ default: m.CommercialDocumentsWorkspace }))
+);
+const CustomersWorkspace = lazy(() =>
+  import("../features/customers/CustomersWorkspace.js").then((m) => ({ default: m.CustomersWorkspace }))
+);
+const PlatformReviewWorkspace = lazy(() =>
+  import("../platform/PlatformReviewWorkspace.js").then((m) => ({ default: m.PlatformReviewWorkspace }))
+);
+const PlatformAdminDashboard = lazy(() =>
+  import("../platform/PlatformAdminDashboard.js").then((m) => ({ default: m.PlatformAdminDashboard }))
+);
+const PlatformTaxReviewWorkspace = lazy(() =>
+  import("../platform/PlatformTaxReviewWorkspace.js").then((m) => ({ default: m.PlatformTaxReviewWorkspace }))
+);
+const LandingPage = lazy(() =>
+  import("../public/LandingPage.js").then((m) => ({ default: m.LandingPage }))
+);
 
 type SessionUser = { id: string; email?: string; emailConfirmedAt?: string | null };
 type ActiveTenant = { id: string; tenantCode: string; legalName: string; role: string };
@@ -40,7 +63,7 @@ const navigation: { id: Page; label: string; icon: typeof LayoutDashboard }[] = 
   { id: "tax-review", label: "Revue fiscale", icon: ClipboardCheck },
 ];
 
-export function App() {
+function AppContent() {
   const location = useLocation();
   const routerNavigate = useNavigate();
   const [entryChecking, setEntryChecking] = useState(true);
@@ -194,3 +217,20 @@ export function App() {
   </div>;
 }
 
+
+function AppLoadingFallback() {
+  return (
+    <main className="entry-loading">
+      <BrandLogo variant="light" />
+      <p>Chargement sécurisé de votre espace…</p>
+    </main>
+  );
+}
+
+export function App() {
+  return (
+    <Suspense fallback={<AppLoadingFallback />}>
+      <AppContent />
+    </Suspense>
+  );
+}
