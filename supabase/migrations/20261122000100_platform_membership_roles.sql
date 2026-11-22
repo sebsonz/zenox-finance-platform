@@ -195,7 +195,12 @@ BEGIN
      OR length(btrim(coalesce(p_correlation_id,''))) NOT BETWEEN 1 AND 100 THEN
     RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='INVALID_PLATFORM_MEMBER_CHANGE';
   END IF;
-  IF p_role_code='PLATFORM_ADMIN'
+  IF p_target_issuer<>p_actor_issuer OR NOT EXISTS (
+       SELECT 1 FROM auth.users u WHERE u.id::text=p_target_subject
+     ) THEN
+    RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='PLATFORM_MEMBER_IDENTITY_NOT_FOUND';
+  END IF;
+  IF p_role_code IN ('PLATFORM_ADMIN','PLATFORM_ORGANIZATION_ADMIN','PLATFORM_TAX_ADMIN')
      AND NOT public.finance_platform_actor_can(p_actor_issuer,p_actor_subject,'PLATFORM_SETTINGS_MANAGE') THEN
     RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='PLATFORM_SUPER_ADMIN_REQUIRED';
   END IF;
@@ -206,8 +211,10 @@ BEGIN
    FOR UPDATE;
   v_is_new := NOT FOUND;
 
-  IF NOT v_is_new AND v_old_status='ACTIVE' AND p_status='SUSPENDED'
-     AND v_old_role='PLATFORM_ADMIN' THEN
+  IF NOT v_is_new AND v_old_status='ACTIVE'
+     AND v_old_role='PLATFORM_ADMIN'
+     AND (p_status<>'ACTIVE' OR p_role_code<>'PLATFORM_ADMIN') THEN
+    PERFORM pg_advisory_xact_lock(hashtextextended('finance:last-active-platform-admin',0));
     IF (SELECT count(*) FROM public.finance_platform_operators
          WHERE role_code='PLATFORM_ADMIN' AND status='ACTIVE') <= 1 THEN
       RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='LAST_ACTIVE_PLATFORM_ADMIN';
