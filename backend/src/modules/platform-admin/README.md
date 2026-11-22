@@ -9,7 +9,7 @@ The platform user directory is a read-only administrative capability. Its route 
 - Supabase Auth remains the identity source of truth. No duplicate credential or identity table is introduced.
 - The directory returns only email, confirmation timestamp, account timestamps/status, platform-operator status and existing Finance tenant memberships.
 - Password hashes, access/refresh tokens, MFA secrets, raw user metadata and provider credentials are never selected or returned.
-- The SQL function is SECURITY DEFINER with a fixed search_path, verifies the active operator on every call, and is executable only by finance_runtime.
+- The SQL function is SECURITY DEFINER with a fixed search_path, verifies the active operator on every call, and is executable only by the backend database role `postgres` used by the current Supavisor connection.
 - Responses are private and non-cacheable. Search is bounded, paginated and parameterized.
 - Lot 1 is read-only: no user invitation, suspension, deletion, role assignment or membership mutation. Those workflows belong to later lots with dedicated authorization, audit and approval controls.
 
@@ -26,4 +26,4 @@ The platform user directory is a read-only administrative capability. Its route 
 4. Search and page size are bounded and validated.
 5. The endpoint never returns secrets or raw Auth metadata.
 6. No tenant data is fetched outside the authenticated operator-authorized server function.
-7. No database migration is applied as part of this implementation.
+7. The migration is applied to DEV only; STAGING and PRODUCTION remain untouched.
