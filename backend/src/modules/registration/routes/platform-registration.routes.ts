@@ -4,6 +4,7 @@ import { requireUserAuth } from "../../../middleware/require-user-auth.js";
 import { registrationRepository } from "../repositories/registration.repository.js";
 import { registrationDocumentReviewRouter } from "../../documents/routes/registration-document-review.routes.js";
 import { managePlatformTaxDelegations } from "../../tax/application/manage-platform-tax-delegations.use-case.js";
+import { platformAdminAccessService } from "../../platform-admin/services/platform-admin-access.service.js";
 
 export const platformRegistrationRouter = Router();
 
@@ -90,6 +91,7 @@ platformRegistrationRouter.get("/organizations", requireUserAuth(), async (req, 
   const user = currentOperator(req, res);
   if (!user) return;
   try {
+    await platformAdminAccessService.assertCan(user, "PLATFORM_ORGANIZATIONS_READ");
     const organizations = await registrationRepository.listOrganizationsForOperator(user.issuer, user.id);
     res.setHeader("Cache-Control", "no-store");
     res.status(200).json({
@@ -115,6 +117,7 @@ platformRegistrationRouter.get("/registration-requests", requireUserAuth(), asyn
   const user = currentOperator(req, res);
   if (!user) return;
   try {
+    await platformAdminAccessService.assertCan(user, "PLATFORM_REGISTRATIONS_REVIEW");
     const requests = await registrationRepository.listPendingForOperator(user.issuer, user.id);
     res.setHeader("Cache-Control", "no-store");
     res.status(200).json({
@@ -153,6 +156,7 @@ platformRegistrationRouter.post("/registration-requests/:requestId/decision", re
   }
 
   try {
+    await platformAdminAccessService.assertCan(user, "PLATFORM_REGISTRATIONS_REVIEW");
     const decision = parsedBody.data.decision;
     const row = await registrationRepository.review({
       operatorIssuer: user.issuer,
