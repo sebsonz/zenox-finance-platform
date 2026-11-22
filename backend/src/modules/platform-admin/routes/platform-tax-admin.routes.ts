@@ -80,7 +80,7 @@ platformTaxAdminRouter.get("/tax/jurisdictions", requireUserAuth(), async (req, 
   res.setHeader("Cache-Control", "no-store");
   const identity = req.financeUser;
   try {
-    await platformAdminAccessService.assertActiveOperator(identity);
+    await platformAdminAccessService.assertCan(identity, "PLATFORM_TAX_READ");
     if (!identity) {
       res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Une session utilisateur valide est requise." } });
       return;
@@ -95,7 +95,7 @@ platformTaxAdminRouter.get("/tax/jurisdictions", requireUserAuth(), async (req, 
 platformTaxAdminRouter.get("/tax/rules", requireUserAuth(), async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
   try {
-    await platformAdminAccessService.assertActiveOperator(req.financeUser);
+    await platformAdminAccessService.assertCan(req.financeUser, "PLATFORM_TAX_READ");
   } catch (error) {
     if (!sendTaxAdminError(error, res)) next(error);
     return;
@@ -129,7 +129,7 @@ platformTaxAdminRouter.post("/tax/rules", requireUserAuth(), async (req, res, ne
   }
   const identity = req.financeUser;
   try {
-    await platformAdminAccessService.assertActiveOperator(identity);
+    await platformAdminAccessService.assertCan(identity, "PLATFORM_TAX_MANAGE");
   } catch (error) {
     if (!sendTaxAdminError(error, res)) next(error);
     return;
@@ -226,7 +226,7 @@ platformTaxAdminRouter.post("/tax/rules/:ruleId/submit", requireUserAuth(), asyn
     res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origine de requête non autorisée." } });
     return;
   }
-  try { await platformAdminAccessService.assertActiveOperator(req.financeUser); }
+  try { await platformAdminAccessService.assertCan(req.financeUser, "PLATFORM_TAX_MANAGE"); }
   catch (error) { if (!sendTaxAdminError(error, res)) next(error); return; }
   const ruleId = uuidSchema.safeParse(req.params["ruleId"]);
   if (!ruleId.success) {
@@ -276,7 +276,7 @@ platformTaxAdminRouter.post("/tax/approvals/:approvalId/review", requireUserAuth
 
 platformTaxAdminRouter.get("/tax/jurisdiction-levels", requireUserAuth(), async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
-  try { await platformAdminAccessService.assertActiveOperator(req.financeUser); }
+  try { await platformAdminAccessService.assertCan(req.financeUser, "PLATFORM_TAX_READ"); }
   catch (error) { if (!sendTaxAdminError(error, res)) next(error); return; }
   const countryCode = z.string().regex(/^[A-Z]{2}$/).safeParse(req.query["countryCode"]);
   if (!countryCode.success) {
@@ -295,7 +295,7 @@ platformTaxAdminRouter.post("/tax/jurisdictions", requireUserAuth(), async (req,
     res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origine de requête non autorisée." } });
     return;
   }
-  try { await platformAdminAccessService.assertActiveOperator(req.financeUser); }
+  try { await platformAdminAccessService.assertCan(req.financeUser, "PLATFORM_TAX_MANAGE"); }
   catch (error) { if (!sendTaxAdminError(error, res)) next(error); return; }
   const body = jurisdictionBodySchema.safeParse(req.body);
   if (!body.success) {
@@ -320,7 +320,7 @@ platformTaxAdminRouter.post("/tax/jurisdiction-levels", requireUserAuth(), async
     res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origine de requête non autorisée." } });
     return;
   }
-  try { await platformAdminAccessService.assertActiveOperator(req.financeUser); }
+  try { await platformAdminAccessService.assertCan(req.financeUser, "PLATFORM_TAX_MANAGE"); }
   catch (error) { if (!sendTaxAdminError(error, res)) next(error); return; }
   const body = jurisdictionLevelBodySchema.safeParse(req.body);
   if (!body.success) {
@@ -339,7 +339,7 @@ platformTaxAdminRouter.post("/tax/jurisdiction-levels", requireUserAuth(), async
 
 platformTaxAdminRouter.get("/tax/audit", requireUserAuth(), async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
-  try { await platformAdminAccessService.assertActiveOperator(req.financeUser); }
+  try { await platformAdminAccessService.assertCan(req.financeUser, "PLATFORM_AUDIT_READ"); }
   catch (error) { if (!sendTaxAdminError(error, res)) next(error); return; }
   const parsed = z.object({
     page: z.coerce.number().int().min(1).max(10000).default(1),
@@ -382,7 +382,7 @@ platformTaxAdminRouter.get("/tax/delegations", requireUserAuth(), async (req, re
   res.setHeader("Cache-Control", "no-store");
   const identity = req.financeUser;
   try {
-    await platformAdminAccessService.assertActiveOperator(identity);
+    await platformAdminAccessService.assertCan(identity, "PLATFORM_TAX_MANAGE");
     if (!identity) {
       res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Une session utilisateur valide est requise." } });
       return;
@@ -399,7 +399,7 @@ platformTaxAdminRouter.post("/tax/delegations", requireUserAuth(), async (req, r
     return;
   }
   const identity = req.financeUser;
-  try { await platformAdminAccessService.assertActiveOperator(identity); }
+  try { await platformAdminAccessService.assertCan(identity, "PLATFORM_TAX_MANAGE"); }
   catch (error) { if (!sendTaxAdminError(error, res)) next(error); return; }
   if (!identity) {
     res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Une session utilisateur valide est requise." } });
@@ -428,7 +428,7 @@ platformTaxAdminRouter.post("/tax/delegations/:delegationId/revoke", requireUser
     return;
   }
   const identity = req.financeUser;
-  try { await platformAdminAccessService.assertActiveOperator(identity); }
+  try { await platformAdminAccessService.assertCan(identity, "PLATFORM_TAX_MANAGE"); }
   catch (error) { if (!sendTaxAdminError(error, res)) next(error); return; }
   if (!identity) {
     res.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Une session utilisateur valide est requise." } });

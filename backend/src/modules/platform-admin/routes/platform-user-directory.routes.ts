@@ -14,7 +14,7 @@ const querySchema = z.object({
 
 platformUserDirectoryRouter.get("/users", requireUserAuth(), async (req, res, next) => {
   try {
-    await platformAdminAccessService.assertActiveOperator(req.financeUser);
+    await platformAdminAccessService.assertCan(req.financeUser, "PLATFORM_USERS_READ");
   } catch (error) {
     if (error instanceof PlatformAdminAccessError) {
       res.status(error.status).json({ error: { code: error.code, message: error.message } });

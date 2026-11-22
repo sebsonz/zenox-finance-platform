@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   isActiveRuleReviewer: vi.fn(),
   listPendingForOperator: vi.fn(),
   review: vi.fn(),
+  assertCan: vi.fn(),
   requireUserAuth: vi.fn(() => (req: Request, _res: Response, next: NextFunction) => {
     if (mocks.user) req.financeUser = mocks.user;
     else delete req.financeUser;
@@ -30,6 +31,10 @@ vi.mock("../../src/modules/registration/repositories/registration.repository.js"
     listPendingForOperator: mocks.listPendingForOperator,
     review: mocks.review,
   },
+}));
+vi.mock("../../src/modules/platform-admin/services/platform-admin-access.service.js", () => ({
+  platformAdminAccessService: { assertCan: mocks.assertCan },
+  PlatformAdminAccessError: class PlatformAdminAccessError extends Error {},
 }));
 
 import { platformRegistrationRouter } from "../../src/modules/registration/routes/platform-registration.routes.js";
@@ -83,6 +88,7 @@ describe("platform registration review routes", () => {
       emailConfirmedAt: "2026-10-20T10:00:00.000Z",
     };
     mocks.isPlatformOperator.mockResolvedValue(true);
+    mocks.assertCan.mockResolvedValue(undefined);
     mocks.isActiveRuleReviewer.mockResolvedValue(false);
     mocks.listPendingForOperator.mockResolvedValue([]);
     mocks.review.mockResolvedValue({

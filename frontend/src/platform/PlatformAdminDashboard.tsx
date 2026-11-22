@@ -4,12 +4,14 @@ import {
   CircleHelp, ClipboardList, CreditCard, FileCheck2,
   LayoutDashboard, LogOut, Moon, RefreshCw, Search,
   Server, Settings2, ShieldCheck, Sun, Users, X, ArrowLeftRight, BarChart3,
-  LockKeyhole, Globe2, type LucideIcon,
+  Globe2, type LucideIcon,
 } from "lucide-react";
 import { PlatformReviewWorkspace } from "./PlatformReviewWorkspace.js";
 import { PlatformOrganizationsWorkspace } from "./PlatformOrganizationsWorkspace.js";
 import { PlatformTaxAdmin } from "./PlatformTaxAdmin.js";
 import { PlatformUserDirectoryWorkspace } from "./PlatformUserDirectoryWorkspace.js";
+import { PlatformMembershipWorkspace } from "./PlatformMembershipWorkspace.js";
+import "./PlatformMembershipWorkspace.css";
 import "./PlatformTaxAdmin.css";
 import "./PlatformAdminDashboard.css";
 import { BrandLogo } from "../shared/components/BrandLogo.js";
@@ -162,7 +164,7 @@ export function PlatformAdminDashboard({ email, onSignOut }: { email: string; on
         {section === "revenue" && <ModuleWorkspace icon={CreditCard} title="Facturation & revenus" source="Indicateurs plateforme à définir" description="Suivi des revenus propres à ZENOX Finance, distincts des factures émises par ses organisations clientes." features={["Abonnements et plans","Factures de la plateforme","Paiements reçus et impayés","Revenus récurrents et historiques"]} note="Les données de facturation tenant ne doivent pas être assimilées aux revenus de la plateforme."/>}
         {section === "audit" && <ModuleWorkspace icon={Activity} title="Journal d'audit" source="Module audit à implémenter" description="Traçabilité consultable des actions privilégiées et des événements sensibles." features={["Acteur et rôle","Action et ressource concernée","Date, résultat et corrélation","Filtres et export des événements"]} note="Le module backend audit est actuellement un squelette : aucun journal global n'est présenté comme disponible."/>}
         {section === "health" && <ModuleWorkspace icon={Server} title="Santé & surveillance" source="Contrôles techniques partiels" description="État de disponibilité des composants critiques de la plateforme." features={["API et base de données","Stockage documentaire","Authentification","Latence, erreurs et disponibilité"]} note="Les endpoints de santé existants vérifient l'API et la connexion DB. Les métriques avancées ne sont pas encore collectées."/>}
-        {section === "security" && <ModuleWorkspace icon={LockKeyhole} title="Administrateurs & sécurité" source="Contrôle opérateur existant" description="Administration des accès privilégiés, avec séparation des responsabilités." features={["Liste des opérateurs plateforme","Rôles et habilitations","Sessions et événements sensibles","Révocation contrôlée des accès"]} note="L'autorisation d'opérateur existe. La gestion complète des administrateurs et des sessions reste à développer."/>}
+        {section === "security" && <PlatformMembershipWorkspace/>}
         {section === "settings" && <ModuleWorkspace icon={Settings2} title="Paramètres plateforme" source="Configuration à structurer" description="Centralisation des paramètres globaux et des référentiels." features={["Identité et coordonnées plateforme","Devises et référentiels","Notifications et modèles","Intégrations et maintenance"]} note="Les changements de configuration devront être validés, journalisés et limités aux administrateurs autorisés."/>}
         {section === "tax" && <PlatformTaxAdmin/>}
         <footer className="pad-footer"><span>© 2026 ZENOX Finance</span><span><ShieldCheck size={13}/> Administration sécurisée · Isolation multi-tenant</span><span>Platform Console V3</span></footer>

@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { requireUserAuth } from "../../../middleware/require-user-auth.js";
 import { organizationLifecycleRepository } from "../repositories/organization-lifecycle.repository.js";
+import { platformAdminAccessService, PlatformAdminAccessError } from "../services/platform-admin-access.service.js";
 
 export const platformOrganizationLifecycleRouter = Router();
 
@@ -25,8 +26,10 @@ function sameOrigin(req: Request): boolean {
 
 function sendLifecycleError(error: unknown, res: Response): boolean {
   const databaseError = error as { code?: string; message?: string };
-  if (databaseError.code === "42501") {
-    res.status(403).json({ error: { code: "PLATFORM_OPERATOR_REQUIRED", message: "Une autorisation d’administration de la plateforme est requise." } });
+  if (databaseError.code === "42501" || error instanceof PlatformAdminAccessError) {
+    const code = error instanceof PlatformAdminAccessError ? error.code : "PLATFORM_OPERATOR_REQUIRED";
+    const status = error instanceof PlatformAdminAccessError ? error.status : 403;
+    res.status(status).json({ error: { code, message: error instanceof Error ? error.message : "Une autorisation d’administration de la plateforme est requise." } });
     return true;
   }
   if (databaseError.code === "P0002") {
@@ -67,6 +70,7 @@ platformOrganizationLifecycleRouter.patch("/organizations/:tenantId/status", req
   }
 
   try {
+    await platformAdminAccessService.assertCan(user, "PLATFORM_ORGANIZATIONS_MANAGE");
     const row = await organizationLifecycleRepository.apply({
       operatorIssuer: user.issuer,
       operatorSubject: user.id,

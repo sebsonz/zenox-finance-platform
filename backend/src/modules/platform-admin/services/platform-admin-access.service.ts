@@ -1,4 +1,5 @@
 import { platformOperatorRepository } from "../repositories/platform-operator.repository.js";
+import { platformMembershipRepository } from "../repositories/platform-membership.repository.js";
 
 export interface PlatformIdentity {
   readonly id: string;
@@ -17,6 +18,14 @@ export const platformAdminAccessService = {
     if (!identity.emailConfirmedAt) throw new PlatformAdminAccessError(403, "EMAIL_CONFIRMATION_REQUIRED", "Confirmez votre adresse e-mail.");
     if (!(await platformOperatorRepository.isActive(identity.issuer, identity.id))) {
       throw new PlatformAdminAccessError(403, "PLATFORM_OPERATOR_REQUIRED", "Une autorisation d’administration de la plateforme est requise.");
+    }
+  },
+
+  async assertCan(identity: PlatformIdentity | undefined, permission: string): Promise<void> {
+    if (!identity) throw new PlatformAdminAccessError(401, "UNAUTHENTICATED", "Une session utilisateur valide est requise.");
+    if (!identity.emailConfirmedAt) throw new PlatformAdminAccessError(403, "EMAIL_CONFIRMATION_REQUIRED", "Confirmez votre adresse e-mail.");
+    if (!(await platformMembershipRepository.canManagePermission(identity.issuer, identity.id, permission))) {
+      throw new PlatformAdminAccessError(403, "PLATFORM_PERMISSION_REQUIRED", "Votre rôle ne possède pas cette habilitation plateforme.");
     }
   },
 };

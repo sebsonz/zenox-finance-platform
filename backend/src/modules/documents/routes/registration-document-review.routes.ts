@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireUserAuth } from "../../../middleware/require-user-auth.js";
 import { registrationDocumentReviewService } from "../application/registration-document-review.service.js";
 import { RegistrationDocumentError } from "../application/registration-document.service.js";
+import { platformAdminAccessService } from "../../platform-admin/services/platform-admin-access.service.js";
 
 export const registrationDocumentReviewRouter = Router({ mergeParams: true });
 const uuid = z.string().uuid();
@@ -37,7 +38,19 @@ function handleError(error: unknown, res: Response, next: (error?: unknown) => v
   next(error);
 }
 
-registrationDocumentReviewRouter.use(requireUserAuth());
+registrationDocumentReviewRouter.use(requireUserAuth(), async (req, res, next) => {
+  try {
+    await platformAdminAccessService.assertCan(req.financeUser, "PLATFORM_REGISTRATIONS_REVIEW");
+    next();
+  } catch (error) {
+    const access = error as { status?: number; code?: string; message?: string };
+    if (access.status === 401 || access.status === 403) {
+      res.status(access.status).json({ error: { code: access.code ?? "PLATFORM_PERMISSION_REQUIRED", message: access.message ?? "Une habilitation de revue des inscriptions est requise." } });
+      return;
+    }
+    next(error);
+  }
+});
 registrationDocumentReviewRouter.get("/", async (req, res, next) => {
   const user = context(req, res); const requestId = ids(req, res); if (!user || !requestId) return;
   try { res.setHeader("Cache-Control", "no-store"); res.json({ data: { documents: await registrationDocumentReviewService.list(user.issuer, user.id, requestId) } }); }
