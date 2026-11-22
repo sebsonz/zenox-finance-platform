@@ -4,7 +4,7 @@ import { requireUserAuth } from "../../../middleware/require-user-auth.js";
 import { registrationRepository } from "../repositories/registration.repository.js";
 import { registrationDocumentReviewRouter } from "../../documents/routes/registration-document-review.routes.js";
 import { managePlatformTaxDelegations } from "../../tax/application/manage-platform-tax-delegations.use-case.js";
-import { platformAdminAccessService } from "../../platform-admin/services/platform-admin-access.service.js";
+import { platformAdminAccessService, PlatformAdminAccessError } from "../../platform-admin/services/platform-admin-access.service.js";
 
 export const platformRegistrationRouter = Router();
 
@@ -40,6 +40,10 @@ function currentOperator(req: Request, res: Response) {
 }
 
 function sendReviewError(error: unknown, res: Response): boolean {
+  if (error instanceof PlatformAdminAccessError) {
+    res.status(error.status).json({ error: { code: error.code, message: error.message } });
+    return true;
+  }
   const databaseError = error as { code?: string; message?: string };
   if (databaseError.code === "42501") {
     const selfReview = databaseError.message === "SELF_REVIEW_NOT_ALLOWED";
