@@ -1,5 +1,5 @@
 -- ZENOX Finance — Platform user identity directory (Lot 1).
--- Review-only migration artifact. Do not apply until separately approved.
+-- Database migration for the platform identity directory (Lot 1). Apply to DEV only after the approved deployment procedure.
 -- Reads Auth identity metadata and existing Finance memberships; creates no
 -- new identity store and never exposes credentials, tokens or raw user metadata.
 
@@ -104,14 +104,14 @@ END;
 $function$;
 
 -- The backend currently connects through Supavisor as postgres.
--- Keep the directory function unavailable to PUBLIC, anon and authenticated.
+-- Keep the directory function unavailable to PUBLIC, anon, authenticated and service_role.
 REVOKE ALL ON FUNCTION
   public.finance_list_platform_user_directory(text, text, integer, integer, text, text)
 FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION
   public.finance_list_platform_user_directory(text, text, integer, integer, text, text)
-FROM anon, authenticated;
+FROM anon, authenticated, service_role;
 
 GRANT EXECUTE ON FUNCTION
   public.finance_list_platform_user_directory(text, text, integer, integer, text, text)
