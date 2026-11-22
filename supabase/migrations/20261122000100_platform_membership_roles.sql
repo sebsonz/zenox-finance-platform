@@ -205,6 +205,9 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='PLATFORM_SUPER_ADMIN_REQUIRED';
   END IF;
 
+  -- Serialize every membership mutation so last-admin checks cannot race with
+  -- a concurrent grant, demotion or suspension.
+  PERFORM pg_advisory_xact_lock(hashtextextended('finance:last-active-platform-admin',0));
   SELECT o.role_code,o.status INTO v_old_role,v_old_status
     FROM public.finance_platform_operators o
    WHERE o.identity_issuer=p_target_issuer AND o.identity_subject=p_target_subject
@@ -214,7 +217,6 @@ BEGIN
   IF NOT v_is_new AND v_old_status='ACTIVE'
      AND v_old_role='PLATFORM_ADMIN'
      AND (p_status<>'ACTIVE' OR p_role_code<>'PLATFORM_ADMIN') THEN
-    PERFORM pg_advisory_xact_lock(hashtextextended('finance:last-active-platform-admin',0));
     IF (SELECT count(*) FROM public.finance_platform_operators
          WHERE role_code='PLATFORM_ADMIN' AND status='ACTIVE') <= 1 THEN
       RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='LAST_ACTIVE_PLATFORM_ADMIN';
