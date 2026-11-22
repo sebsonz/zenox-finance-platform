@@ -6,7 +6,6 @@ import { platformMembershipRepository } from "../repositories/platform-membershi
 export const platformMembershipRouter = Router();
 
 const memberSchema = z.object({
-  targetIssuer: z.string().trim().min(1).max(500),
   targetSubject: z.string().trim().min(1).max(500),
   roleCode: z.enum([
     "PLATFORM_ADMIN",
@@ -87,7 +86,7 @@ platformMembershipRouter.put("/members", requireUserAuth(), async (req, res, nex
     await platformMembershipRepository.set({
       actorIssuer: identity.issuer,
       actorSubject: identity.id,
-      targetIssuer: parsed.data.targetIssuer,
+      targetIssuer: identity.issuer,
       targetSubject: parsed.data.targetSubject,
       roleCode: parsed.data.roleCode,
       status: parsed.data.status,
