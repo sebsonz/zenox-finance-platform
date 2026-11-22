@@ -151,6 +151,29 @@ AS $fn$
   )
 $fn$;
 
+-- Global tax reviewer eligibility is deliberately role-aware while preserving
+-- time-bounded, jurisdiction-scoped delegated reviewers.
+CREATE OR REPLACE FUNCTION public.finance_tax_actor_can(
+  p_issuer text, p_subject text, p_permission text, p_jurisdiction_id uuid
+) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public
+AS $fn$
+  SELECT public.finance_platform_actor_can(p_issuer,p_subject,'PLATFORM_TAX_MANAGE')
+    OR EXISTS (
+      SELECT 1
+        FROM public.finance_platform_tax_delegations d
+        LEFT JOIN public.finance_tax_jurisdictions j ON j.id=p_jurisdiction_id
+       WHERE d.identity_issuer=p_issuer AND d.identity_subject=p_subject
+         AND d.status='ACTIVE'
+         AND d.valid_from<=now() AND (d.valid_to IS NULL OR d.valid_to>now())
+         AND p_permission=ANY(d.permissions)
+         AND (
+           d.jurisdiction_id=p_jurisdiction_id
+           OR (d.country_code IS NOT NULL AND d.country_code=j.country_code)
+         )
+    )
+$fn$;
+
 CREATE OR REPLACE FUNCTION public.finance_list_platform_members(
   p_actor_issuer text,p_actor_subject text
 ) RETURNS TABLE (
