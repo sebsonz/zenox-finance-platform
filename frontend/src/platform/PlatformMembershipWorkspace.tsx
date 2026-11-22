@@ -52,9 +52,7 @@ export function PlatformMembershipWorkspace() {
   };
 
   useEffect(() => { void load(); }, []);
-  const eligible = useMemo(() => identities.filter((identity) =>
-    identity.account_status === "ACTIVE" && !members.some((member) => member.identity_subject === identity.identity_subject)
-  ), [identities, members]);
+  const eligible = useMemo(() => identities.filter((identity) => identity.account_status === "ACTIVE"), [identities]);
 
   const save = async () => {
     if (!subject || reason.trim().length < 10) return;
@@ -79,12 +77,23 @@ export function PlatformMembershipWorkspace() {
     {error && <div className="pad-inline-error" role="alert">{error}</div>}
     {notice && <div className="pad-module-note"><ShieldCheck size={17}/><p>{notice}</p></div>}
     <div className="pad-panel" style={{ padding: 20, marginBottom: 18 }}>
-      <div className="pad-panel-heading"><div><h2><UserPlus size={16}/> Attribuer un accès plateforme</h2><p>Choisissez une identité existante du répertoire global.</p></div></div>
+      <div className="pad-panel-heading"><div><h2><UserPlus size={16}/> Attribuer ou modifier un accès plateforme</h2><p>Choisissez une identité existante pour créer ou modifier son habilitation.</p></div></div>
       <div className="pad-feature-grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))" }}>
         <label className="pad-form-field">Identité
-          <select value={subject} onChange={(e) => setSubject(e.target.value)}>
+          <select value={subject} onChange={(e) => {
+            const next = e.target.value;
+            setSubject(next);
+            const existing = members.find((item) => item.identity_subject === next);
+            if (existing) {
+              setRole(existing.role_code as Role);
+              setStatus(existing.status as "ACTIVE" | "SUSPENDED");
+            } else {
+              setRole("PLATFORM_SUPPORT_READONLY");
+              setStatus("ACTIVE");
+            }
+          }}>
             <option value="">Sélectionner un utilisateur…</option>
-            {eligible.map((item) => <option key={item.identity_subject} value={item.identity_subject}>{item.email ?? item.identity_subject}</option>)}
+            {eligible.map((item) => <option key={item.identity_subject} value={item.identity_subject}>{item.email ?? item.identity_subject}{members.some((member) => member.identity_subject === item.identity_subject) ? " · Opérateur" : ""}</option>)}
           </select>
         </label>
         <label className="pad-form-field">Rôle
