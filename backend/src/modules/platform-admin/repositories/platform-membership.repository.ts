@@ -2,9 +2,13 @@ import { pool } from "../../../db/pool.js";
 
 export const platformMembershipRepository = {
   async canManage(actorIssuer: string, actorSubject: string): Promise<boolean> {
+    return this.canManagePermission(actorIssuer, actorSubject, "PLATFORM_MEMBERS_MANAGE");
+  },
+
+  async canManagePermission(actorIssuer: string, actorSubject: string, permission: string): Promise<boolean> {
     const result = await pool.query<{ allowed: boolean }>(
-      "SELECT public.finance_platform_actor_can($1, $2, 'PLATFORM_MEMBERS_MANAGE') AS allowed",
-      [actorIssuer, actorSubject],
+      "SELECT public.finance_platform_actor_can($1, $2, $3) AS allowed",
+      [actorIssuer, actorSubject, permission],
     );
     return result.rows[0]?.allowed === true;
   },
