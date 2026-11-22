@@ -61,9 +61,9 @@ function sendError(error: unknown, res: Response): boolean {
   return false;
 }
 
-async function authorize(req: Request, res: Response) {
+async function authorize(req: Request, res: Response, permission: string) {
   try {
-    await platformAdminAccessService.assertActiveOperator(req.financeUser);
+    await platformAdminAccessService.assertCan(req.financeUser, permission);
     return req.financeUser!;
   } catch (error) {
     sendError(error, res);
@@ -72,7 +72,7 @@ async function authorize(req: Request, res: Response) {
 }
 
 platformOrganizationAdminRouter.get("/organizations/:tenantId", requireUserAuth(), async (req, res, next) => {
-  const user = await authorize(req, res);
+  const user = await authorize(req, res, "PLATFORM_ORGANIZATIONS_READ");
   if (!user) return;
   const tenantId = idSchema.safeParse(req.params["tenantId"]);
   if (!tenantId.success) {
@@ -97,7 +97,7 @@ platformOrganizationAdminRouter.patch("/organizations/:tenantId/profile", requir
     res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origine de requête non autorisée." } });
     return;
   }
-  const user = await authorize(req, res);
+  const user = await authorize(req, res, "PLATFORM_ORGANIZATIONS_MANAGE");
   if (!user) return;
   const tenantId = idSchema.safeParse(req.params["tenantId"]);
   const body = profileSchema.safeParse(req.body);
@@ -123,7 +123,7 @@ platformOrganizationAdminRouter.patch("/organizations/:tenantId/members/:memberI
     res.status(403).json({ error: { code: "ORIGIN_NOT_ALLOWED", message: "Origine de requête non autorisée." } });
     return;
   }
-  const user = await authorize(req, res);
+  const user = await authorize(req, res, "PLATFORM_ORGANIZATIONS_MANAGE");
   if (!user) return;
   const tenantId = idSchema.safeParse(req.params["tenantId"]);
   const memberId = idSchema.safeParse(req.params["memberId"]);
