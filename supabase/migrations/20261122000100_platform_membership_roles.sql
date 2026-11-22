@@ -95,6 +95,11 @@ BEGIN
     REVOKE ALL ON public.finance_platform_role_permissions FROM service_role;
     REVOKE ALL ON public.finance_platform_audit_events FROM service_role;
   END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='finance_runtime') THEN
+    REVOKE ALL ON public.finance_platform_permissions FROM finance_runtime;
+    REVOKE ALL ON public.finance_platform_role_permissions FROM finance_runtime;
+    REVOKE ALL ON public.finance_platform_audit_events FROM finance_runtime;
+  END IF;
 END
 $revokes$;
 
@@ -219,7 +224,7 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='INVALID_PLATFORM_MEMBER_CHANGE';
   END IF;
   IF p_target_issuer<>p_actor_issuer OR NOT EXISTS (
-       SELECT 1 FROM auth.users u WHERE u.id::text=p_target_subject
+       SELECT 1 FROM auth.users u WHERE u.id::text=p_target_subject\n         AND u.email_confirmed_at IS NOT NULL AND u.deleted_at IS NULL\n         AND (u.banned_until IS NULL OR u.banned_until<=now())
      ) THEN
     RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='PLATFORM_MEMBER_IDENTITY_NOT_FOUND';
   END IF;
