@@ -4,7 +4,7 @@ import {
   CircleHelp, ClipboardList, CreditCard, FileCheck2,
   LayoutDashboard, LogOut, Moon, RefreshCw, Search,
   Server, Settings2, ShieldCheck, Sun, Users, X, ArrowLeftRight, BarChart3,
-  LockKeyhole, Globe2, type LucideIcon,
+  Globe2, type LucideIcon,
 } from "lucide-react";
 import { PlatformReviewWorkspace } from "./PlatformReviewWorkspace.js";
 import { PlatformOrganizationsWorkspace } from "./PlatformOrganizationsWorkspace.js";
