@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     emailConfirmedAt: string | null;
   },
   apply: vi.fn(),
+  assertCan: vi.fn(),
 }));
 
 vi.mock("../../src/middleware/require-user-auth.js", () => ({
@@ -38,6 +39,10 @@ vi.mock(
     },
   }),
 );
+vi.mock("../../src/modules/platform-admin/services/platform-admin-access.service.js", () => ({
+  platformAdminAccessService: { assertCan: mocks.assertCan },
+  PlatformAdminAccessError: class PlatformAdminAccessError extends Error {},
+}));
 
 import {
   platformOrganizationLifecycleRouter,
