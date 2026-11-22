@@ -27,3 +27,32 @@ The platform user directory is a read-only administrative capability. Its route 
 5. The endpoint never returns secrets or raw Auth metadata.
 6. No tenant data is fetched outside the authenticated operator-authorized server function.
 7. The migration is applied to DEV only; STAGING and PRODUCTION remain untouched.
+
+## Platform membership and permissions — Lot 2
+
+The platform operator allowlist is extended with a role-permission catalog. The existing `PLATFORM_ADMIN` role is retained as the compatibility Super Admin role and keeps all seeded platform permissions. New roles are deliberately narrower:
+
+- `PLATFORM_SECURITY_ADMIN`: identity directory, operator membership management and platform audit.
+- `PLATFORM_ORGANIZATION_ADMIN`: organization directory/lifecycle and registration review.
+- `PLATFORM_TAX_ADMIN`: global tax administration.
+- `PLATFORM_SUPPORT_READONLY`: dashboard, organization and identity read access only.
+
+Platform role permissions do not replace tenant membership roles or scoped tax delegations. Tax review approvals continue to use `finance_tax_actor_can`, including delegation scope and self-review prevention.
+
+### Security controls
+
+- Role changes require `PLATFORM_MEMBERS_MANAGE`, a confirmed authenticated identity, a same-project Auth subject, a reason and correlation ID.
+- Only the compatibility Super Admin can assign Super Admin, organization-admin or tax-admin roles.
+- Operators cannot modify their own membership.
+- The last active Super Admin cannot be suspended or demoted; the invariant is serialized with a transaction advisory lock.
+- Membership mutations are recorded in `finance_platform_audit_events`.
+- Browser roles receive no direct table grants; backend calls use SECURITY DEFINER functions.
+- No email invitation is claimed or sent by this lot. The UI selects an already registered Auth identity.
+
+### API
+
+- `GET /api/v1/user/platform/members` — list operator memberships; requires `PLATFORM_MEMBERS_MANAGE`.
+- `PUT /api/v1/user/platform/members` — create/update role and status; same permission, reason required.
+- Existing user directory remains the identity source of truth.
+
+Migration `20261122000100_platform_membership_roles.sql` is source-only until reviewed and explicitly applied to DEV. Do not apply to STAGING or PRODUCTION.
