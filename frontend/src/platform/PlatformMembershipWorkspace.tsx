@@ -55,16 +55,23 @@ export function PlatformMembershipWorkspace() {
   const eligible = useMemo(() => identities.filter((identity) => identity.account_status === "ACTIVE"), [identities]);
 
   const save = async () => {
-    if (!subject || reason.trim().length < 10) return;
-    const response = await fetch("/api/v1/user/platform/members", {
-      method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ targetSubject: subject, roleCode: role, status, reason: reason.trim() }),
-    });
-    const body = await response.json().catch(() => ({})) as Payload<{ updated: boolean }>;
-    if (!response.ok) { setError(body.error?.message ?? "La modification a échoué."); return; }
-    setNotice("Habilitation enregistrée et journalisée.");
-    setSubject(""); setReason("");
-    await load();
+    if (!subject || reason.trim().length < 10 || saving) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/v1/user/platform/members", {
+        method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetSubject: subject, roleCode: role, status, reason: reason.trim() }),
+      });
+      const body = await response.json().catch(() => ({})) as Payload<{ updated: boolean }>;
+      if (!response.ok) throw new Error(body.error?.message ?? "La modification a échoué.");
+      setNotice("Habilitation enregistrée et journalisée.");
+      setSubject(""); setReason("");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "La modification a échoué.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return <section className="pad-module-page">
